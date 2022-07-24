@@ -2,51 +2,73 @@
 
 To use [STREAM DECK](https://www.elgato.com/ja/stream-deck) on Linux enviroment easily.
 
-### Dependency
+Check the following instruction at first when you haven't setup STREAM DECK.
+https://onlinux.systems/guides/20220520_how-to-set-up-elgatos-stream-deck-on-ubuntu-linux-2204
 
-[xdotool](https://manpages.ubuntu.com/manpages/trusty/man1/xdotool.1.html) is required.
+## Dependency
+
+[xdotool](https://manpages.ubuntu.com/manpages/trusty/man1/xdotool.1.html) and python3-wand are required.
 
 Ubuntu:
 ```
 apt install xdotool
+apt install python3-wand
 ```
 
-### CAUTION
+## CAUTION
 
-This is alpha version software and I don't know much about Python.
+This is an alpha version software and I don't know much about Python.
 
-- Some code may be wrong for Python way.
-- Exception handlings are not yet coded at all.
+- Some code may be wrong for Python way
+- Exception handlings are not yet coded at all
+- I don't assume multiple STREAM DECK
+- Currently, I only assume 15 key STREAM DECK
+
+## How to run example
+
+```
+PYTHONPATH=src python3 example/main.py
+```
 
 ## configuration rule
 
 ```yaml
-`PANEL_LABEL`:
+PAGE_LABEL:
   key_number:
     "command": ["command", "options"]
-    "change_panel: "ANOTHER_PANEL_NAME"
+    "chrome": ["profile name", "url"]
+    "image_url": "https://example.com/path/to/image"
+    "change_page: "ANOTHER_PAGE_NAME"
     "image": "image to display"
     "label": "label to display"
+    "background_color": "white"
+    "exit": 1
 ```
 
-- PANEL_LABEL ... Name of panel
-- key_number ... It should be number, start from 0.
+- PAGE_LABEL ... Name of the page or name of active window
+- key_number ... It should be number, start from 0
 - command ... OS command
-- change_panel ... change panel when the button is pushed.
+- chrome ... launch chrome with profile. if image & image_url is not set, check url root path + /faviocn.ico and use it as image if it exists.
+- image_url ... use url instead of image file path
+- change_page ... change page when the button is pushed
 - image ... an image shown on button
 - label ... a label shown on button below the image
+- background_color ... background color of the key
+- exit ... can set 1 only. Exit app when the button is pushed
 
-`command` and `change_panel` can be used in same time.
-In the case, command is executed and then panel is changed.
+`command` and `change_page` can be used in same time.
+In the case, command is executed and then page is changed.
 
 configuration is live reload, 
-when you change yaml file, it is loaded when panel is changed.
+when you change yaml file, it is loaded when page is changed.
 
-### PANEL_LABEL
+### PAGE_LABEL
 
-`@HOME` is special label. This configuration is used for first panel.
-`@previous` is also special label. It can be used for the value of `change_panel`. 
-When the button is pushed, go back to the previous panel whose name isn't started with `~`.
+- `@HOME` is special label. This configuration is used for first page.
+- `@GAME` is reserved label for the page to collect games.
+- `@previous` is also special label. It can be used for the value of `change_page`. When the button is pushed, go back to the previous page whose name isn't started with `~`.
+
+If you set window title as PAGE_LABEL, page is changed according to active window.
 
 ## example
 
@@ -56,23 +78,23 @@ When the button is pushed, go back to the previous panel whose name isn't starte
 ---
 "@HOME":
   0: 
-    "change_panel": "@PRIVATE"
+    "change_page": "@PRIVATE"
     "label": "Private"
     "image": "./src/Assets/ktat.png"
   1: 
-    "change_panel": "@JOB"
+    "change_page": "@JOB"
     "label": "Job"
     "image": "./src/Assets/job.png"
   2: 
-    "change_panel": "@GAME"
+    "change_page": "@GAME"
     "label": "Game"
     "image": "./src/Assets/game.png"
   10: 
     "label": "Config"
     "image": "./src/Assets/settings.png"
-    "change_panel": "@CONFIG"
+    "change_page": "@CONFIG"
   14: 
-    "name": "exit"
+    "exit": 1
     "image": "./src/Assets/exit.png"
     "label": "Exit"
 "@PRIVATE": 
@@ -83,9 +105,9 @@ When the button is pushed, go back to the previous panel whose name isn't starte
   10: 
     "label": "Config"
     "image": "./src/Assets/settings.png"
-    "change_panel": "@CONFIG"
+    "change_page": "@CONFIG"
   14: 
-    "change_panel": "@HOME"
+    "change_page": "@HOME"
     "image": "./src/Assets/home.png"
 "@JOB": 
   0: 
@@ -106,7 +128,7 @@ When the button is pushed, go back to the previous panel whose name isn't starte
     "command": ["gnome-control-center", "display"]
     "image": "./src/Assets/display.png"
   14: 
-    "change_panel": "@previous"
+    "change_page": "@previous"
     "image": "./src/Assets/back.png"
     "label": "Back"
 "Meet - Google Chrome": 
@@ -131,7 +153,7 @@ When the button is pushed, go back to the previous panel whose name isn't starte
     "command": ["gnome-control-center", "sound"]
     "image": "./src/Assets/sound.png"
   14: 
-    "change_panel": "@JOB"
+    "change_page": "@JOB"
     "label": "Back"
     "image": "./src/Assets/back.png"
 "Zoom Meeting": 
@@ -156,7 +178,7 @@ When the button is pushed, go back to the previous panel whose name isn't starte
     "command": ["gnome-control-center", "sound"]
     "image": "./src/Assets/sound.png"
   14: 
-    "change_panel": "@JOB"
+    "change_page": "@JOB"
     "label": "Back"
     "image": "./src/Assets/back.png"
 ```
@@ -187,7 +209,7 @@ _ALERT_KEY_CONFIG = {
     "command": ["google-chrome", '--profile-directory=Profile 1', 'https://exapmle.com/nagios/cgi-bin/status.cgi?host=all&servicestatustypes=16&hoststatustypes=15'],
     "image": "./src/Assets/nagios.ico",
     "label": "nagios",
-    "change_panel": "@previous"
+    "change_page": "@previous"
 }
 
 ALERT_KEY_CONFIG = {
@@ -210,61 +232,54 @@ def check_alert():
         alerts = data.get("data")
 
         if alerts and len(alerts) > 0:
-	   print(alerts_for_check)
+           print(alerts_for_check)
            return True
 
     return False
 
 
+def check_alert():
+    res = requests.get(NAGIOS_URL)
+    if res.status_code == requests.codes.ok:
+        data = json.loads(res.text)
+        alerts = data.get("data")
+
+        if alerts:
+            alerts_for_check = []
+            for alert in alerts:
+                if len(alerts_for_check) > 0:
+                    print(alerts_for_check)
+                    return True
+    return False
+
+
 if __name__ == "__main__":
-    mydeck = MyStreamDeck({'config': "/path/to/config.yml"})
+    mydeck = MyStreamDeck(
+        {
+            'config': "./example/config/config.yml",
+            "apps": [
+                lambda mydeck: MyStreamDeckClock(mydeck, {'@HOME': 5, '@JOB': 12}, {}),
+                lambda mydeck: MyStreamDeckStopWatch(mydeck, {'@HOME': 6}),
+                lambda mydeck: MyStreamDeckCalendar(mydeck, {'@HOME': 7}),
+                lambda mydeck: MyStreamDeckAlert(mydeck, check_alert, ALERT_CHECK_INTERVAL, ALERT_KEY_CONFIG)
+            ]
+        }
+    )
+
     MyStreamDeckGameRandomNumber(mydeck)
     MyStreamDeckGameMemory(mydeck, "", 3)
-    MyStreamDeckGameTickTacToe(mydeck, "", 6)  
-    mydeck_alert = MyStreamDeckAlert(mydeck, ALERT_CHECK_INTERVAL, ALERT_KEY_CONFIG)
-    
-    current_pid = os.getpid()
-    child_pid = os.fork()
+    MyStreamDeckGameTickTacToe(mydeck, "", 6)
+    MyStreamDeckGameTickTacToe(mydeck, "", 7)
+    MyStreamDeckGameWhacAMole(mydeck, "", 8)
 
-    if child_pid == 0:
-        # child process
-        mydeck.register_singal_handler()
+    mydeck.deck_start()
 
-        streamdecks = DeviceManager().enumerate()
-        print("Found {} Stream Deck(s).\n".format(len(streamdecks)))
-
-        for index, deck in enumerate(streamdecks):
-            # This example only works with devices that have screens.
-            if not deck.is_visual():
-                continue
-
-            mydeck.deck = deck
-            deck.open()
-            mydeck.key_setup()
-
-            # Wait until all application threads have terminated (for this example,
-            # this is when all deck handles are closed).
-            for t in threading.enumerate():
-                try:
-                    t.join()
-                except RuntimeError:
-                    pass
-
-        os._exit(0)
-    else:
-        # parent process
-        mydeck.child_pid = child_pid
-        mydeck.register_singal_handler_for_parent()
-        mydeck_alert.register_check_function(check_alert)
-        while True:
-            time.sleep(1)
-            
-            if psutil.pid_exists(child_pid):
-                mydeck_alert.check_alert()
-                mydeck.check_window_switch()
-            else:
-                break
+    os.exit()
 ```
+
+## LICENSE
+
+MIT: https://ktat.mit-license.org/2016
 
 ## SEE ALSO
 

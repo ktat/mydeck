@@ -50,6 +50,7 @@ PRE_WIN_CONDITION = {
 }
 
 class MyStreamDeckGameTickTacToe:
+    data = {}
     def __init__ (self, mydeck, command_prefix="", start_key_num=0):
         self.mydeck = mydeck
         mydeck.add_game_key_conf({
@@ -64,6 +65,7 @@ class MyStreamDeckGameTickTacToe:
     def key_setup(self):
         mydeck = self.mydeck
         deck = mydeck.deck
+        self.data = {}
         mydeck._GAME_KEY_CONFIG = {}
 
         key_conf = {
@@ -155,9 +157,9 @@ class MyStreamDeckGameTickTacToe:
                     self.key_setup()
                 elif conf["name"] == "frame":
                     if conf["clicked"] == False and mydeck._GAME_KEY_CONFIG.get(4) is None:
-                        if mydeck._GAME_KEY_CONFIG[9].get("reverse") is None:
-                            mydeck._GAME_KEY_CONFIG[9]["reverse"] = False
-                        if mydeck._GAME_KEY_CONFIG[9]["reverse"]:
+                        if self.data.get("reverse") is None:
+                            self.data["reverse"] = False
+                        if self.data["reverse"]:
                             conf["image"] = "./src/Assets/check.png"
                         else:
                             conf["image"] = "./src/Assets/circle.png"
@@ -166,8 +168,9 @@ class MyStreamDeckGameTickTacToe:
                         mydeck.set_game_key(key, conf)
                         self.cpu_turn()
                 elif conf["name"] == "reverse":
-                    if conf.get("reverse") is None:
-                        conf["reverse"] = True
+                    print(self.data.get("reverse"))
+                    if self.data.get("reverse") is None:
+                        self.data["reverse"] = True
                         self.cpu_turn()
 
     def select_by_cpu(self):
@@ -178,7 +181,6 @@ class MyStreamDeckGameTickTacToe:
         cpu_val = 0
         can_select = []
         can_select_value = {}
-        pos = {}
         print(conf)
         for key in conf.keys():
             if conf[key]["name"] == "frame":
@@ -189,7 +191,7 @@ class MyStreamDeckGameTickTacToe:
                         cpu_val += conf[key]["value"]
                 else:
                     can_select.append(conf[key]["value"])
-                    pos[conf[key]["value"]] = key
+                    can_select_value[conf[key]["value"]] = key
 
         choose_key = None
         winner = None
@@ -198,10 +200,6 @@ class MyStreamDeckGameTickTacToe:
         for w in WIN_CONDITION.keys():
             if user_val & w == w:
                 return [None, 1]
-                break
-
-        for i, v in enumerate(can_select):
-            can_select_value[v] = i
 
         # 選択するところがない場合は引き分け
         if len(can_select) == 0:
@@ -210,45 +208,41 @@ class MyStreamDeckGameTickTacToe:
         # CPUが初手の場合はランダム
         if user_val == 0:
             selected = can_select[random.randint(0, len(can_select)-1)]
-            choose_key = pos[selected]
+            choose_key = can_select_value[selected]
         # ユーザーが、真ん中を選んだ場合は端を取る
         elif user_val == 16:
-            n = [1, 4, 64, 256]
-            n2 = []
-            for v in n:
-                if can_select_value.get(v):
-                    n2.append(v)
-            selected = n2[random.randint(0, len(n2)-1)]
-            choose_key = pos[selected]
+            n = [n for n in [1, 4, 64, 256] if can_select_value.get(n) is not None ]
+            selected = n[random.randint(0, len(n)-1)]
+            choose_key = can_select_value[selected]
         # 真ん中(cpu) x 対角(user)の場合は、辺の中を取る
         elif cpu_val == 16 and user_val in [68, 257]:
-             n = [2, 8, 128, 32]
-             selected = n[random.randint(0, len(n)-1)]
-             choose_key = pos[selected]
+            n = [n for n in [2, 8, 128, 32] if can_select_value.get(n) is not None ]
+            selected = n[random.randint(0, len(n)-1)]
+            choose_key = can_select_value[selected]
         # 真ん中があいてるなら真ん中を取る
         elif can_select_value.get(16) is not None:
-            choose_key = pos[16]
+            choose_key = can_select_value[16]
 
         if choose_key is None:
             # CPUの勝利条件の場所を探す
-            choose_key = pos.get(self.search_win_value(cpu_val, can_select, WIN_CONDITION))
+            choose_key = can_select_value.get(self.search_win_value(cpu_val, can_select, WIN_CONDITION))
             print("choose_key1: {}".format(choose_key))
         if choose_key is None:
             # ユーザーの勝利条件の場所を探す(ユーザーが勝つ場所に打って妨害する)
-            choose_key = pos.get(self.search_win_value(user_val, can_select, WIN_CONDITION))
+            choose_key = can_select_value.get(self.search_win_value(user_val, can_select, WIN_CONDITION))
             print("choose_key2: {}".format(choose_key))
         if choose_key is None:
             # ユーザーの勝てそうな場所を探す(ユーザーの勝てそうな場所は先に抑えて妨害する)
-            choose_key = pos.get(self.search_pre_win_value(2, user_val, cpu_val, can_select, PRE_WIN_CONDITION))
+            choose_key = can_select_value.get(self.search_pre_win_value(2, user_val, cpu_val, can_select, PRE_WIN_CONDITION))
             print("choose_key4-1: {}".format(choose_key))
         if choose_key is None:
             # CPUの勝てそうな場所を探す
-            choose_key = pos.get(self.search_pre_win_value(1, cpu_val, user_val, can_select, PRE_WIN_CONDITION))
+            choose_key = can_select_value.get(self.search_pre_win_value(1, cpu_val, user_val, can_select, PRE_WIN_CONDITION))
             print("choose_key4-2: {}".format(choose_key))
         if choose_key is None:
             # まだ決まっていない場合は、取れるところをrandomで取る
             select = random.randint(0, len(can_select) -1)
-            choose_key = pos[can_select.pop(select)]
+            choose_key = can_select_value[can_select.pop(select)]
             print("choose_key5: {}".format(choose_key))
 
         print("choose_key: {}".format(choose_key))
@@ -312,16 +306,24 @@ class MyStreamDeckGameTickTacToe:
             return None
 
         # 真ん中が空いてて危険度が高ければ真ん中を返す
-        if choose_value.get(16) and choose_value[16] == 2:
+        if choose_value.get(16) and choose_value[16] >= threshold:
             can_select.pop(can_select_value[16])
             return 16
+
+        # 端が空いてて危険度が高ければ端を返す
+        corner = [corner for corner in [1,4,64,256] if choose_value.get(corner) is not None and choose_value[corner] >= threshold]
+        if len(corner) > 0:
+            selected = corner[random.randint(0, len(corner)-1)]
+            can_select.pop(can_select_value[selected])
+            return selected
 
         # 危険度が高いものを返す
         sort_orders = sorted(choose_value.items(), key=lambda x: x[1], reverse=True)
 
         if threshold >= sort_orders[0][1]:
-            v = sort_orders[0][0]
-            can_select.pop(can_select_value[v])
+            selected = sort_orders[0][0]
+            can_select.pop(can_select_value[selected])
+            return selected
 
         return v
 
@@ -336,7 +338,7 @@ class MyStreamDeckGameTickTacToe:
             choose_conf = mydeck._GAME_KEY_CONFIG.get(choose_key)
             choose_conf["clicked"] = True
             choose_conf["user"] = 2
-            if mydeck._GAME_KEY_CONFIG[9]["reverse"]:
+            if self.data["reverse"]:
                 choose_conf["image"] = "./src/Assets/circle.png"
             else:
                 choose_conf["image"] = "./src/Assets/check.png"

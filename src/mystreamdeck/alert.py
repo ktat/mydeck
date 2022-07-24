@@ -1,29 +1,44 @@
 import time
 import os
-import signal
+import sys
 
 class MyStreamDeckAlert:
-    _check_function = None
+    # if app reuquire thread, true
+    use_thread = True
+    # dict: key is page name and value is key number.
+    page_key = {}
+    # need to stop thread
+    stop = False
 
-    def __init__ (self, mydeck, check_interval=60, alert_key_config={}):
+    _check_function = None
+    _previous_checke_time = 0
+    in_alert = False
+
+    def __init__ (self, mydeck, check_function, check_interval, alert_key_config):
         self._check_interval = check_interval
         self._previous_checke_time = 0
-        self._mydeck = mydeck
+        self._check_function = check_function
+        self.mydeck = mydeck
         mydeck.add_alert_key_conf(alert_key_config)
 
-    def register_check_function(self, check_function):
-        self._check_function = check_function
+    def start(self):
+        while True:
+            current = time.time()
+            if current - self._previous_checke_time > self._check_interval:
+                self._previous_checke_time = current
+                if self._check_function():
+                    self.mydeck.handler_alert()
+                    self.in_alert = True
+                    self.mydeck.set_alert(1)
+                else:
+                    self.mydeck.handler_alert_stop()
+                    self.in_alert =False
+                    self.mydeck.set_alert(0)
 
-    def check_alert(self):
-        current = time.time()
-        if current - self._previous_checke_time > self._check_interval:
-            self._previous_checke_time = current
-            child_pid = self._mydeck.child_pid
-            if self._check_function():
-                # sigalrm to raise alert
-                os.kill(child_pid, signal.SIGALRM)
-            else:
-                # sigusr2 to cancel alert
-                os.kill(child_pid, signal.SIGUSR2)
+            if self.mydeck._exit:
+                break
+            time.sleep(1)
+        sys.exit()
 
-
+    def key_setup(self):
+        return True

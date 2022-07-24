@@ -2,6 +2,7 @@ import time
 import random
 
 class MyStreamDeckGameMemory:
+    data = {}
     def __init__ (self, mydeck, command_prefix="", start_key_num=0):
         self.mydeck = mydeck
         mydeck.add_game_key_conf({
@@ -23,14 +24,24 @@ class MyStreamDeckGameMemory:
                 "label": "Memory 0",
                 "mode": 0,
             },
+            3 + start_key_num: {
+                "command": "GameMemory",
+                "image": "./src/Assets/memory-game.png",
+                "label": "Memory VS",
+                "mode": -1,
+            },
         })
         mydeck.add_game_command(command_prefix + "GameMemory", lambda conf: self.key_setup(conf["mode"]))
 
     def key_setup(self, wait_time):
         mydeck = self.mydeck
-        mydeck._GAME_KEY_CONFIG["num_of_try"] = 0
-        mydeck._GAME_KEY_CONFIG["wait_time"] = wait_time
-        mydeck._GAME_KEY_CONFIG["opened"] = None
+        self.data["num_of_try"] = 0
+        self.data["wait_time"] = wait_time
+        self.data["opened"] = None
+        self.data["vsmode"] = wait_time == -1
+        self.data["memory"] = {}
+        self.data["turn"] = None
+        self.data["score"] = {1: 0, 2: 0} # 1 is user, 2 is cpu
         deck = mydeck.deck
         deck.reset()
         mydeck.set_current_page_without_setup("~GAME_MEMORY")
@@ -71,15 +82,24 @@ class MyStreamDeckGameMemory:
             print(n)
             print(n2)
 
+        key_name = 'number'
+        if self.data["vsmode"]:
+            key_name = 'number_vs'
+            mydeck.set_game_key(13, {
+                "name": "reverse",
+                "image": "./src/Assets/reverse.png",
+                "label": 'reverse'
+            })
+
         for i in range(0, 12):
             n = pos[i]
             img = "./src/Assets/" + str(n) + ".png"
-            if wait_time == 0:
+            if wait_time <= 0:
                 img = "./src/Assets/cat.png"
             mydeck.set_game_key(i, {
                 "image": img,
-                "name": "number",
-                "click": True,
+                "name": "number_prepare",
+                "clicked": True,
             })
 
         if wait_time > 0:
@@ -87,19 +107,9 @@ class MyStreamDeckGameMemory:
                 mydeck.set_game_key(13, {
                     "image": "./src/Assets/" + str(wait_time - i) + ".png",
                     "name": "num_of_wait",
-                    "click": True,
                 })
                 if i < wait_time:
                     time.sleep(1)
-
-        for i in range(0, 12):
-            n = pos[i]
-            mydeck.set_game_key(i, {
-                "image": "./src/Assets/cat.png",
-                "name": "number",
-                "value": n,
-                "clicked": False,
-            })
 
         mydeck.set_game_key(12, {
             "name": "restart",
@@ -113,6 +123,15 @@ class MyStreamDeckGameMemory:
             "label": "exit Game"
         })
 
+        for i in range(0, 12):
+            n = pos[i]
+            mydeck.set_game_key(i, {
+                "image": "./src/Assets/cat.png",
+                "name": key_name,
+                "value": n,
+                "clicked": False,
+            })
+
     def key_change_callback(self, key, state):
         mydeck = self.mydeck
         deck = mydeck.deck
@@ -120,7 +139,7 @@ class MyStreamDeckGameMemory:
         print("Deck {} Key {} = {}".format(deck.id(), key, state), flush=True)
 
         conf = mydeck._GAME_KEY_CONFIG.get(key)
-        wait_time = mydeck._GAME_KEY_CONFIG["wait_time"]
+        wait_time = self.data["wait_time"]
         if state:
             if conf:
                 print(conf)
@@ -129,9 +148,9 @@ class MyStreamDeckGameMemory:
                 elif conf["name"] == "restart":
                     self.key_setup(wait_time)
                 elif conf["name"] == "number":
-                    if conf["clicked"] == False and mydeck._GAME_KEY_CONFIG["opened"] != key:
+                    if conf["clicked"] == False and self.data["opened"] != key:
                         self.open_and_check(key, conf)
-                    num_of_try = mydeck._GAME_KEY_CONFIG["num_of_try"]
+                    num_of_try = self.data["num_of_try"]
                     clicked = self.clicked()
                     evaluate = self.evaluate(clicked, num_of_try, wait_time)
                     label = ''
@@ -145,6 +164,45 @@ class MyStreamDeckGameMemory:
                         "image": "./src/Assets/" + evaluate + ".png",
                         "label": label
                     })
+                elif conf["name"] == "reverse":
+                    turn = self.data["turn"]
+                    if turn is None or turn != 1:
+                        while True:
+                            self.data['turn'] = 2
+                            if self.open_by_cpu() is False:
+                                break
+                        self.data['turn'] = 1
+                elif conf["name"] == "number_vs":
+                    turn = mydeck._GAME_KEY_CONFIG.get("turn")
+                    if conf["clicked"] == False and self.data["opened"] != key and (turn is None or turn == 1):
+                        result = self.open_and_check(key, conf)
+                        if result >= 0:
+                            if result == 1:
+                                self.data['score'][1] += 1
+                            elif result == 0:
+                                self.data['turn'] = 2
+                                while True:
+                                    if self.open_by_cpu() is False:
+                                        break
+                                self.data['turn'] = 1
+
+                    score = self.data['score']
+                    face = 'normal'
+                    label = "{} vs {}".format(score[1], score[2])
+                    if score[1] > score[2]:
+                        face = 'laugh'
+                    elif score[1] < score[2]:
+                        face = 'sad'
+
+                    clicked = self.clicked()
+
+                    mydeck.set_key(13, {
+                        "name": "num_of_try",
+                        "image": "./src/Assets/" + face + ".png",
+                        "label": label
+                    })
+
+
 
     def clicked(self):
         clicked = 0
@@ -192,28 +250,32 @@ class MyStreamDeckGameMemory:
 
     def open_and_check(self, key, conf):
         mydeck = self.mydeck
+        self.data['memory'][key] = conf["value"]
+        key_name = 'number'
+        if self.data["vsmode"]:
+            key_name = 'number_vs'
         n = {
             "image": "./src/Assets/" + str(conf["value"]) + ".png",
-            "name": "number",
+            "name": key_name,
             "value": conf["value"]
         }
         mydeck.set_key(key, n)
-        if mydeck._GAME_KEY_CONFIG["opened"] is None:
-            mydeck._GAME_KEY_CONFIG["opened"] = key
+        if self.data["opened"] is None:
+            self.data["opened"] = key
         else:
-            opened = mydeck._GAME_KEY_CONFIG["opened"]
+            opened = self.data['opened']
             if mydeck._GAME_KEY_CONFIG[opened]["value"] == mydeck._GAME_KEY_CONFIG[key]["value"]:
                 # Right choise
-                mydeck._GAME_KEY_CONFIG["opened"] = None
+                self.data['opened'] = None
                 n["clicked"] = True
                 for i in [opened, key]:
                     mydeck.set_game_key(i, n)
-                mydeck._GAME_KEY_CONFIG["num_of_try"] += 1
+                self.data["num_of_try"] += 1
                 return 1
             else:
                 # Wrong choise
                 time.sleep(0.5)
-                mydeck._GAME_KEY_CONFIG["opened"] = None
+                self.data['opened'] = None
                 for i in [opened, key]:
                     empty = {
                         "image": "./src/Assets/cat.png",
@@ -221,6 +283,62 @@ class MyStreamDeckGameMemory:
                         "value": mydeck._GAME_KEY_CONFIG[i]["value"]
                     }
                     mydeck.set_key(i, empty)
-                mydeck._GAME_KEY_CONFIG["num_of_try"] += 1
+                self.data["num_of_try"] += 1
                 return 0
         return -1
+
+    def open_by_cpu(self):
+        mydeck = self.mydeck
+        pairs = {}
+        candidate = []
+        can_open = []
+        can_open_prior = []
+        opened = self.data['opened']
+
+        for i in range(0, 12):
+            if mydeck._GAME_KEY_CONFIG[i]["clicked"] is False:
+                # search the place not opened and let it as candidate
+                can_open.append(i)
+                if self.data['memory'].get(i) is None:
+                    # if the place is not in memory, let is as prior candidate
+                    can_open_prior.append(i)
+
+            if (mydeck._GAME_KEY_CONFIG[i]["clicked"] is False or opened == i) and self.data['memory'].get(i):
+                # not opend or cpu opened place and when it is in memory
+                v = mydeck._GAME_KEY_CONFIG[i]["value"]
+                if pairs.get(v) is None:
+                    pairs[v] = []
+                pairs[v].append(i)
+                if len(pairs[v]) > 1:
+                    # cpu knows the place of the pair, let it as candidate
+                    candidate.append(v)
+
+        # finish when no closed place
+        if len(can_open) == 0:
+            return False
+
+        # can_open_prior prior to can_open, overrite can_open as can_open_prior
+        if len(can_open_prior) > 0:
+            can_open = can_open_prior
+
+        random.shuffle(can_open)
+
+        # cpu knows the place of the pair
+        if len(candidate) > 0:
+            random.shuffle(candidate)
+            for i in [0, 1]:
+                if pairs[candidate[0]][i] != opened:
+                    can_open[0] = pairs[candidate[0]][i]
+                    break
+
+        time.sleep(0.5)
+        conf = mydeck._GAME_KEY_CONFIG[can_open[0]]
+        result = self.open_and_check(can_open[0], mydeck._GAME_KEY_CONFIG[can_open[0]])
+        if result == 1:
+            self.data['score'][2] += 1
+        elif result == 0:
+            # if cpu open wrong place, return false
+            return False
+
+        # if cpu open right place or cpu open first place, return true
+        return True

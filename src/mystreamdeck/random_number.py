@@ -2,6 +2,7 @@ import time
 import random
 
 class MyStreamDeckGameRandomNumber:
+    data = {}
     def __init__ (self, mydeck, command_prefix="", start_key_num=0):
         self.mydeck = mydeck
         mydeck.add_game_key_conf({
@@ -31,7 +32,7 @@ class MyStreamDeckGameRandomNumber:
         deck = mydeck.deck
         deck.reset()
         mydeck.set_current_page_without_setup("~GAME_RANDOM_NUMBER")
-        mydeck._GAME_KEY_CONFIG["mode"] = num
+        self.data["mode"] = num
         print("Opened '{}' device (serial number: '{}', fw: '{}')".format(
             deck.deck_type(), deck.get_serial_number(), deck.get_firmware_version()
         ))
@@ -40,7 +41,7 @@ class MyStreamDeckGameRandomNumber:
         deck.set_brightness(30)
 
         number = {
-            "image": "./src/Assets/nagios.ico",
+            "image": "", # set number image after
             "name": "number",
             "click": False,
         }
@@ -62,7 +63,7 @@ class MyStreamDeckGameRandomNumber:
         cnt = 0
         r = 0
         used = {}
-        mydeck._GAME_KEY_CONFIG["correct"] = [];
+        self.data["correct"] = [];
         while True:
             if not mydeck.in_game_status():
                 break
@@ -77,7 +78,7 @@ class MyStreamDeckGameRandomNumber:
             while used.get(r) is not None and used.get(r) is True:
                 r = random.randint(0,9)
             used[r] = True
-            mydeck._GAME_KEY_CONFIG["correct"].append(str(r))
+            self.data["correct"].append(str(r))
             mydeck.set_game_key(prev, empty)
             number["image"] = "./src/Assets/" + str(r) + ".png"
             number["value"] = str(r)
@@ -113,7 +114,7 @@ class MyStreamDeckGameRandomNumber:
             "label": "exit Game"
         })
 
-        mydeck._GAME_KEY_CONFIG["answer"] = []
+        self.data["answer"] = []
 
     def key_change_callback(self, key, state):
         mydeck = self.mydeck
@@ -130,14 +131,14 @@ class MyStreamDeckGameRandomNumber:
                 if conf["name"] == "reset":
                     mydeck._GAME_KEY_CONFIG["answer"] = []
                 if conf["name"] == "restart":
-                     self.key_setup(mydeck._GAME_KEY_CONFIG["mode"])
+                    self.key_setup(self.data["mode"])
                 if conf["name"] == "number":
                     if conf["click"]:
-                        mydeck._GAME_KEY_CONFIG["answer"].append(conf["value"])
-                    if len(mydeck._GAME_KEY_CONFIG["answer"]) == mydeck._GAME_KEY_CONFIG["mode"]:
-                        print("-".join(mydeck._GAME_KEY_CONFIG["answer"]))
-                        print("-".join(mydeck._GAME_KEY_CONFIG["correct"]))
-                        if "-".join(mydeck._GAME_KEY_CONFIG["answer"]) == "-".join(mydeck._GAME_KEY_CONFIG["correct"]):
+                        self.data["answer"].append(conf["value"])
+                    if len(self.data["answer"]) == self.data["mode"]:
+                        print("-".join(self.data["answer"]))
+                        print("-".join(self.data["correct"]))
+                        if "-".join(self.data["answer"]) == "-".join(self.data["correct"]):
                             mydeck.set_key(13, {
                                 "label": "OK",
                                 "image": "./src/Assets/good.png",
@@ -147,5 +148,5 @@ class MyStreamDeckGameRandomNumber:
                                 "label": "NG",
                                 "image": "./src/Assets/bad.png",
                             })
-                            mydeck._GAME_KEY_CONFIG["answer"] = [];
+                            self.data["answer"] = [];
 
