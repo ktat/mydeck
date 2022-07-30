@@ -1,12 +1,4 @@
-from mystreamdeck.configure import MyStreamDeck
-from mystreamdeck.alert import MyStreamDeckAlert
-from mystreamdeck.random_number import MyStreamDeckGameRandomNumber
-from mystreamdeck.memory import MyStreamDeckGameMemory
-from mystreamdeck.tictacktoe import MyStreamDeckGameTickTacToe
-from mystreamdeck.clock import MyStreamDeckClock
-from mystreamdeck.stopwatch import MyStreamDeckStopWatch
-from mystreamdeck.calendar import MyStreamDeckCalendar
-from mystreamdeck.whacamole import MyStreamDeckGameWhacAMole
+from mystreamdeck import *
 
 import os
 import sys
@@ -47,24 +39,11 @@ def check_alert():
 
 
 if __name__ == "__main__":
-    mydeck = MyStreamDeck({'config': "./example/config/config.yml"})
-    mydeck = MyStreamDeck(
-        {
-            'config': "./example/config/config.yml",
-            "apps": [
-                lambda mydeck: MyStreamDeckClock(mydeck, {'@HOME': 5, '@JOB': 12}, {}),
-                lambda mydeck: MyStreamDeckStopWatch(mydeck, {'@HOME': 6}),
-                lambda mydeck: MyStreamDeckCalendar(mydeck, {'@HOME': 7}),
-                lambda mydeck: MyStreamDeckAlert(mydeck, check_alert, ALERT_INTERVAL, ALERT_KEY_CONFIG)
-            ]
-        }
-    )
-    MyStreamDeckGameRandomNumber(mydeck)
-    MyStreamDeckGameMemory(mydeck, "", 3)
-    MyStreamDeckGameTickTacToe(mydeck, "", 7)
-    MyStreamDeckGameWhacAMole(mydeck, "", 8)
+    mydeck = MyStreamDeck({
+        'config': "./example/config/config.yml",
+        'alert_func': check_alert,
+    })
 
     mydeck.deck_start()
 
-    print("program end")    
     os.exit()

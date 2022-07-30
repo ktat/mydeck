@@ -1,93 +1,122 @@
 ---
-"@HOME":
-  0: 
-    "change_page": "@PRIVATE"
-    "label": "Private"
-    "image": "./src/Assets/cat.png"
-  1: 
-    "change_page": "@GAME"
-    "label": "Game"
-    "image": "./src/Assets/game.png"
-  13: 
-    "label": "Config"
-    "image": "./src/Assets/settings.png"
-    "change_page": "@CONFIG"
-  14: 
-    "image": "./src/Assets/exit.png"
-    "label": "Exit"
-    "exit": 1
-"@PRIVATE": 
+apps:
+   Clock:
+     page_key:
+       '@HOME': 5
+       '@JOB': 12
+   StopWatch:
+     page_key:
+       '@HOME': 6
+   Calendar:
+     page_key:
+       '@HOME': 7
+   Alert:
+     check_interval: 180
+     key_cofnig:
+       0:  {command: ["google-chrome", '--profile-directory=Profile 1', 'https://example.com/nagios/cgi-bin/status.cgi?host=all&servicestatustypes=16&hoststatustypes=15']}
+       1:  {command: ["google-chrome", '--profile-directory=Profile 1', 'https://example.com/nagios/cgi-bin/status.cgi?host=all&servicestatustypes=16&hoststatustypes=15']}
+       4:  {command: ["google-chrome", '--profile-directory=Profile 1', 'https://example.com/nagios/cgi-bin/status.cgi?host=all&servicestatustypes=16&hoststatustypes=15']}
+       5:  {command: ["google-chrome", '--profile-directory=Profile 1', 'https://example.com/nagios/cgi-bin/status.cgi?host=all&servicestatustypes=16&hoststatustypes=15']}
+       7:  {command: ["google-chrome", '--profile-directory=Profile 1', 'https://example.com/nagios/cgi-bin/status.cgi?host=all&servicestatustypes=16&hoststatustypes=15']}
+       9:  {command: ["google-chrome", '--profile-directory=Profile 1', 'https://example.com/nagios/cgi-bin/status.cgi?host=all&servicestatustypes=16&hoststatustypes=15']}
+       10: {command: ["google-chrome", '--profile-directory=Profile 1', 'https://example.com/nagios/cgi-bin/status.cgi?host=all&servicestatustypes=16&hoststatustypes=15']}
+       13: {command: ["google-chrome", '--profile-directory=Profile 1', 'https://example.com/nagios/cgi-bin/status.cgi?host=all&servicestatustypes=16&hoststatustypes=15']}
+       14: {command: ["google-chrome", '--profile-directory=Profile 1', 'https://example.com/nagios/cgi-bin/status.cgi?host=all&servicestatustypes=16&hoststatustypes=15']}
+games:
+  RandomNumber: 0
+  Memory: 3
+  TicTackToe: 7
+  WhacAMole: 8
+key_config:
+  "@HOME":
     0: 
-      "command": ["google-chrome", "--profile-directory=Default"]
-      "image": "./src/Assets/chrome.png"
-      "label": "Chrome"
+      "change_page": "@PRIVATE"
+      "label": "Private"
+      "image": "./src/Assets/cat.png"
+    1: 
+      "change_page": "@GAME"
+      "label": "Game"
+      "image": "./src/Assets/game.png"
     13: 
       "label": "Config"
       "image": "./src/Assets/settings.png"
       "change_page": "@CONFIG"
     14: 
+      "image": "./src/Assets/exit.png"
+      "label": "Exit"
+      "exit": 1
+  "@PRIVATE": 
+      0: 
+        "command": ["google-chrome", "--profile-directory=Default"]
+        "image": "./src/Assets/chrome.png"
+        "label": "Chrome"
+      13: 
+        "label": "Config"
+        "image": "./src/Assets/settings.png"
+        "change_page": "@CONFIG"
+      14: 
+        "change_page": "@HOME"
+        "image": "./src/Assets/home.png"
+  "@CONFIG": 
+    0: 
+      "label": "Audio"
+      "command": ["pavucontrol", "--tab=4"]
+      "image": "./src/Assets/audio.png"
+    1: 
+      "label": "Sound"
+      "command": ["gnome-control-center", "sound"]
+      "image": "./src/Assets/sound.png"
+    2: 
+      "label": "Display"
+      "command": ["gnome-control-center", "display"]
+      "image": "./src/Assets/display.png"
+    14: 
+      "change_page": "@previous"
+      "image": "./src/Assets/back.png"
+      "label": "Back"
+  "Meet - Google Chrome": 
+    0: 
+      "command": ["xdotool", "key", "ctrl+d"]
+      "image": "./src/Assets/mute.png"
+      "label": "mute"
+    1: 
+      "command": ["xdotool", "key", "ctrl+e"]
+      "image": "./src/Assets/video.png"
+      "label": "camera"
+    10: 
+      "label": "Audio"
+      "command": ["pavucontrol", "--tab=4"]
+      "image": "./src/Assets/audio.png"
+    11: 
+      "label": "Sound"
+      "command": ["gnome-control-center", "sound"]
+      "image": "./src/Assets/sound.png"
+    14: 
+      "change_page": "@JOB"
+      "label": "Back"
+      "image": "./src/Assets/back.png"
+  "Zoom Meeting": 
+    0: 
+      "command": ["xdotool", "key", "alt+a"]
+      "image": "./src/Assets/mute.png"
+      "label": "mute"
+    1: 
+      "command": ["xdotool", "key", "alt+v"]
+      "image": "./src/Assets/video.png"
+      "label": "camera"
+    10: 
+      "label": "Audio"
+      "command": ["pavucontrol", "--tab=4"]
+      "image": "./src/Assets/audio.png"
+    11: 
+      "label": "Sound"
+      "command": ["gnome-control-center", "sound"]
+      "image": "./src/Assets/sound.png"
+    14: 
+      "change_page": "@JOB"
+      "label": "Back"
+      "image": "./src/Assets/back.png"
+  "@GAME": 
+    14: 
       "change_page": "@HOME"
       "image": "./src/Assets/home.png"
-"@CONFIG": 
-  0: 
-    "label": "Audio"
-    "command": ["pavucontrol", "--tab=4"]
-    "image": "./src/Assets/audio.png"
-  1: 
-    "label": "Sound"
-    "command": ["gnome-control-center", "sound"]
-    "image": "./src/Assets/sound.png"
-  2: 
-    "label": "Display"
-    "command": ["gnome-control-center", "display"]
-    "image": "./src/Assets/display.png"
-  14: 
-    "change_page": "@previous"
-    "image": "./src/Assets/back.png"
-    "label": "Back"
-"Meet - Google Chrome": 
-  0: 
-    "command": ["xdotool", "key", "ctrl+d"]
-    "image": "./src/Assets/mute.png"
-    "label": "mute"
-  1: 
-    "command": ["xdotool", "key", "ctrl+e"]
-    "image": "./src/Assets/video.png"
-    "label": "camera"
-  10: 
-    "label": "Audio"
-    "command": ["pavucontrol", "--tab=4"]
-    "image": "./src/Assets/audio.png"
-  11: 
-    "label": "Sound"
-    "command": ["gnome-control-center", "sound"]
-    "image": "./src/Assets/sound.png"
-  14: 
-    "change_page": "@JOB"
-    "label": "Back"
-    "image": "./src/Assets/back.png"
-"Zoom Meeting": 
-  0: 
-    "command": ["xdotool", "key", "alt+a"]
-    "image": "./src/Assets/mute.png"
-    "label": "mute"
-  1: 
-    "command": ["xdotool", "key", "alt+v"]
-    "image": "./src/Assets/video.png"
-    "label": "camera"
-  10: 
-    "label": "Audio"
-    "command": ["pavucontrol", "--tab=4"]
-    "image": "./src/Assets/audio.png"
-  11: 
-    "label": "Sound"
-    "command": ["gnome-control-center", "sound"]
-    "image": "./src/Assets/sound.png"
-  14: 
-    "change_page": "@JOB"
-    "label": "Back"
-    "image": "./src/Assets/back.png"
-"@GAME": 
-  14: 
-    "change_page": "@HOME"
-    "image": "./src/Assets/home.png"

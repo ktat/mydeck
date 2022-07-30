@@ -8,7 +8,7 @@ import sys
 X = 100
 Y = 100
 
-class MyStreamDeckClock:
+class Clock:
     # if app reuquire thread, true
     use_thread = True
     # dict: key is page name and value is key number.

@@ -59,7 +59,7 @@ PAGE_LABEL:
 `command` and `change_page` can be used in same time.
 In the case, command is executed and then page is changed.
 
-configuration is live reload, 
+configuration is live reload,
 when you change yaml file, it is loaded when page is changed.
 
 ### PAGE_LABEL
@@ -76,122 +76,138 @@ If you set window title as PAGE_LABEL, page is changed according to active windo
 
 ```yaml
 ---
-"@HOME":
-  0: 
-    "change_page": "@PRIVATE"
-    "label": "Private"
-    "image": "./src/Assets/ktat.png"
-  1: 
-    "change_page": "@JOB"
-    "label": "Job"
-    "image": "./src/Assets/job.png"
-  2: 
-    "change_page": "@GAME"
-    "label": "Game"
-    "image": "./src/Assets/game.png"
-  10: 
-    "label": "Config"
-    "image": "./src/Assets/settings.png"
-    "change_page": "@CONFIG"
-  14: 
-    "exit": 1
-    "image": "./src/Assets/exit.png"
-    "label": "Exit"
-"@PRIVATE": 
-  0: 
-    "command": ["google-chrome", "--profile-directory=Default"]
-    "image": "/usr/share/icons/hicolor/256x256/apps/google-chrome.png"
-    "label": "Chrome(PRIVATE)"
-  10: 
-    "label": "Config"
-    "image": "./src/Assets/settings.png"
-    "change_page": "@CONFIG"
-  14: 
-    "change_page": "@HOME"
-    "image": "./src/Assets/home.png"
-"@JOB": 
-  0: 
-    "command": ["google-chrome", '--profile-directory=Profile 1']
-    "image": "/usr/share/icons/hicolor/256x256/apps/google-chrome.png"
-    "label": "Chrome(JOB)"
-"@CONFIG": 
-  0: 
-    "label": "Audio"
-    "command": ["pavucontrol", "--tab=4"]
-    "image": "./src/Assets/audio.png"
-  1: 
-    "label": "Sound"
-    "command": ["gnome-control-center", "sound"]
-    "image": "./src/Assets/sound.png"
-  2: 
-    "label": "Display"
-    "command": ["gnome-control-center", "display"]
-    "image": "./src/Assets/display.png"
-  14: 
-    "change_page": "@previous"
-    "image": "./src/Assets/back.png"
-    "label": "Back"
-"Meet - Google Chrome": 
-  0: 
-    "command": ["echo", "meet"]
-    "image": "./src/Assets/meet.png"
-    "label": "Google Meet"
-  1: 
-    "command": ["xdotool", "key", "ctrl+d"]
-    "image": "./src/Assets/mute.png"
-    "label": "mute"
-  2: 
-    "command": ["xdotool", "key", "ctrl+e"]
-    "image": "./src/Assets/video.png"
-    "label": "camera"
-  10: 
-    "label": "Audio"
-    "command": ["pavucontrol", "--tab=4"]
-    "image": "./src/Assets/audio.png"
-  11: 
-    "label": "Sound"
-    "command": ["gnome-control-center", "sound"]
-    "image": "./src/Assets/sound.png"
-  14: 
-    "change_page": "@JOB"
-    "label": "Back"
-    "image": "./src/Assets/back.png"
-"Zoom Meeting": 
-  0: 
-    "command": ["echo", "zoom"]
-    "image": "./src/Assets/zoom.png"
-    "label": "Zoom"
-  1: 
-    "command": ["xdotool", "key", "alt+a"]
-    "image": "./src/Assets/mute.png"
-    "label": "mute"
-  2: 
-    "command": ["xdotool", "key", "alt+v"]
-    "image": "./src/Assets/video.png"
-    "label": "camera"
-  10: 
-    "label": "Audio"
-    "command": ["pavucontrol", "--tab=4"]
-    "image": "./src/Assets/audio.png"
-  11: 
-    "label": "Sound"
-    "command": ["gnome-control-center", "sound"]
-    "image": "./src/Assets/sound.png"
-  14: 
-    "change_page": "@JOB"
-    "label": "Back"
-    "image": "./src/Assets/back.png"
+"apps":
+  Clock:
+    page_key:
+      '@HOME': 5
+      '@JOB': 12
+  StopWatch:
+    page_key:
+      '@HOME': 6
+  Calendar:
+    page_key:
+      '@home': 7
+  Alert:
+    check_interval: 180
+    key_cofnig:
+      7:  {command: ["google-chrome", '--profile-directory=Profile 1', 'https://example.com/nagios/cgi-bin/status.cgi?host=all&servicestatustypes=16&hoststatustypes=15']}
+"games":
+  RandomNumber: 0
+  Memory: 3
+  TicTackToe: 7
+  WhacAMole: 8
+"key_config":
+  "@HOME":
+    0:
+      "change_page": "@PRIVATE"
+      "label": "Private"
+      "image": "./src/Assets/ktat.png"
+    1:
+      "change_page": "@JOB"
+      "label": "Job"
+      "image": "./src/Assets/job.png"
+    2:
+      "change_page": "@GAME"
+      "label": "Game"
+      "image": "./src/Assets/game.png"
+    10:
+      "label": "Config"
+      "image": "./src/Assets/settings.png"
+      "change_page": "@CONFIG"
+    14:
+      "exit": 1
+      "image": "./src/Assets/exit.png"
+      "label": "Exit"
+  "@PRIVATE":
+    0:
+      "command": ["google-chrome", "--profile-directory=Default"]
+      "image": "/usr/share/icons/hicolor/256x256/apps/google-chrome.png"
+      "label": "Chrome(PRIVATE)"
+    10:
+      "label": "Config"
+      "image": "./src/Assets/settings.png"
+      "change_page": "@CONFIG"
+    14:
+      "change_page": "@HOME"
+      "image": "./src/Assets/home.png"
+  "@JOB":
+    0:
+      "command": ["google-chrome", '--profile-directory=Profile 1']
+      "image": "/usr/share/icons/hicolor/256x256/apps/google-chrome.png"
+      "label": "Chrome(JOB)"
+  "@CONFIG":
+    0:
+      "label": "Audio"
+      "command": ["pavucontrol", "--tab=4"]
+      "image": "./src/Assets/audio.png"
+    1:
+      "label": "Sound"
+      "command": ["gnome-control-center", "sound"]
+      "image": "./src/Assets/sound.png"
+    2:
+      "label": "Display"
+      "command": ["gnome-control-center", "display"]
+      "image": "./src/Assets/display.png"
+    14:
+      "change_page": "@previous"
+      "image": "./src/Assets/back.png"
+      "label": "Back"
+  "Meet - Google Chrome":
+    0:
+      "command": ["echo", "meet"]
+      "image": "./src/Assets/meet.png"
+      "label": "Google Meet"
+    1:
+      "command": ["xdotool", "key", "ctrl+d"]
+      "image": "./src/Assets/mute.png"
+      "label": "mute"
+    2:
+      "command": ["xdotool", "key", "ctrl+e"]
+      "image": "./src/Assets/video.png"
+      "label": "camera"
+    10:
+      "label": "Audio"
+      "command": ["pavucontrol", "--tab=4"]
+      "image": "./src/Assets/audio.png"
+    11:
+      "label": "Sound"
+      "command": ["gnome-control-center", "sound"]
+      "image": "./src/Assets/sound.png"
+    14:
+      "change_page": "@JOB"
+      "label": "Back"
+      "image": "./src/Assets/back.png"
+  "Zoom Meeting":
+    0:
+      "command": ["echo", "zoom"]
+      "image": "./src/Assets/zoom.png"
+      "label": "Zoom"
+    1:
+      "command": ["xdotool", "key", "alt+a"]
+      "image": "./src/Assets/mute.png"
+      "label": "mute"
+    2:
+      "command": ["xdotool", "key", "alt+v"]
+      "image": "./src/Assets/video.png"
+      "label": "camera"
+    10:
+      "label": "Audio"
+      "command": ["pavucontrol", "--tab=4"]
+      "image": "./src/Assets/audio.png"
+    11:
+      "label": "Sound"
+      "command": ["gnome-control-center", "sound"]
+      "image": "./src/Assets/sound.png"
+    14:
+      "change_page": "@JOB"
+      "label": "Back"
+      "image": "./src/Assets/back.png"
 ```
 
 ### main script
 
 ```python
-from mystreamdeck.configure import MyStreamDeck
-from mystreamdeck.random_number import MyStreamDeckGameRandomNumber
-from mystreamdeck.memory import MyStreamDeckGameMemory
-from mystreamdeck.tictacktoe import MyStreamDeckGameTickTacToe
-from mystreamdeck.whacamole import MyStreamDeckGameWhacAMole
-from StreamDeck.DeviceManager import DeviceManager
+from mystreamdeck import *
 
 import os
 
@@ -199,18 +215,9 @@ if __name__ == "__main__":
     mydeck = MyStreamDeck(
         {
             'config': "./example/config/config.yml",
-            "apps": [
-                lambda mydeck: MyStreamDeckClock(mydeck, {'@HOME': 5, '@JOB': 12}, {}),
-                lambda mydeck: MyStreamDeckStopWatch(mydeck, {'@HOME': 6}),
-                lambda mydeck: MyStreamDeckCalendar(mydeck, {'@HOME': 7}),
-            ]
-        }
+            'alert_func': check_alert,
+	}
     )
-
-    MyStreamDeckGameRandomNumber(mydeck)
-    MyStreamDeckGameMemory(mydeck, "", 3)
-    MyStreamDeckGameTickTacToe(mydeck, "", 7)
-    MyStreamDeckGameWhacAMole(mydeck, "", 8)
 
     mydeck.deck_start()
 

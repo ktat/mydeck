@@ -2,7 +2,7 @@ import time
 import os
 import sys
 
-class MyStreamDeckAlert:
+class Alert:
     # if app reuquire thread, true
     use_thread = True
     # dict: key is page name and value is key number.
@@ -19,14 +19,15 @@ class MyStreamDeckAlert:
         alert_key_config = {}
         if config.get("check_interval"):
             self._check_interval = config.get("check_interval")
-        if config.get("check_func"):
-            self._check_function = config["check_func"]
         if config.get("key_cofnig"):
             alert_key_config = config.get("key_cofnig")
             
         self._previous_checke_time = 0
         self.mydeck = mydeck
         mydeck.add_alert_key_conf(alert_key_config)
+
+    def set_check_func(self, f):
+        self._check_function = f
 
     def start(self):
         while True:

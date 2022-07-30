@@ -1,9 +1,9 @@
 import time
 import random
 
-class MyStreamDeckGameMemory:
+class GameMemory:
     data = {}
-    def __init__ (self, mydeck, command_prefix="", start_key_num=0):
+    def __init__ (self, mydeck, start_key_num=0):
         self.mydeck = mydeck
         mydeck.add_game_key_conf({
             0 + start_key_num: {
@@ -31,7 +31,7 @@ class MyStreamDeckGameMemory:
                 "mode": -1,
             },
         })
-        mydeck.add_game_command(command_prefix + "GameMemory", lambda conf: self.key_setup(conf["mode"]))
+        mydeck.add_game_command("GameMemory", lambda conf: self.key_setup(conf["mode"]))
 
     def key_setup(self, wait_time):
         mydeck = self.mydeck

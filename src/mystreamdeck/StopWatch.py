@@ -9,7 +9,7 @@ import sys
 X = 100
 Y = 100
 
-class MyStreamDeckStopWatch:
+class StopWatch:
     # if app reuquire thread, true
     use_thread = False
     # dict: key is page name and value is key number.

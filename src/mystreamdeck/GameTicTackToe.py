@@ -49,9 +49,9 @@ PRE_WIN_CONDITION = {
     260: 32,
 }
 
-class MyStreamDeckGameTickTacToe:
+class GameTicTackToe:
     data = {}
-    def __init__ (self, mydeck, command_prefix="", start_key_num=0):
+    def __init__ (self, mydeck, start_key_num=0):
         self.mydeck = mydeck
         mydeck.add_game_key_conf({
             0 + start_key_num: {
@@ -60,7 +60,7 @@ class MyStreamDeckGameTickTacToe:
                 "label": "TicTacToe",
             },
         })
-        mydeck.add_game_command(command_prefix + "GameTicTacToe", lambda conf: self.key_setup())
+        mydeck.add_game_command("GameTicTacToe", lambda conf: self.key_setup())
 
     def key_setup(self):
         mydeck = self.mydeck

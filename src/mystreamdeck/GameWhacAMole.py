@@ -3,12 +3,12 @@ import time
 import random
 import threading
 
-class MyStreamDeckGameWhacAMole:
+class GameWhacAMole:
     data = {
         "score": 0,
     }
     exit = False
-    def __init__ (self, mydeck, command_prefix="", start_key_num=0):
+    def __init__ (self, mydeck, start_key_num=0):
         self.mydeck = mydeck
         mydeck.add_game_key_conf({
             0 + start_key_num: {
@@ -18,7 +18,7 @@ class MyStreamDeckGameWhacAMole:
                 "mode": 10,
             },
         })
-        mydeck.add_game_command(command_prefix + "WhacAMole", lambda conf: self.key_setup(conf.get("mode")))
+        mydeck.add_game_command("WhacAMole", lambda conf: self.key_setup(conf.get("mode")))
         
     def key_setup(self, num):
         mydeck = self.mydeck

@@ -8,6 +8,7 @@ import threading
 import requests
 import os.path
 import wand.image
+import importlib
 
 from PIL import Image, ImageDraw, ImageFont
 from StreamDeck.ImageHelpers import PILHelper
@@ -18,6 +19,8 @@ class MyStreamDeck:
     deck = ''
     child_pid = None
     apps = []
+    _alert_func = None
+    _loaded_apps = {}
     _exit = False
     _current_page = '@HOME'
     _previous_pages = ['@HOME']
@@ -40,6 +43,8 @@ class MyStreamDeck:
     font_path = "/usr/share/fonts/truetype/freefont/FreeMono.ttf"
 
     def __init__ (self, opt):
+        if opt.get('alert_func'):
+            self._alert_func = opt['alert_func']
         if opt.get("font_path"):
             self.font_path = opt["font_path"]
         if opt.get("apps"):
@@ -87,7 +92,27 @@ class MyStreamDeck:
     def load_conf_from_file(self):
         f = open(self._config_file)
         alert_config = self._KEY_CONFIG.get('~ALERT')
-        self._KEY_CONFIG = yaml.safe_load(f)
+        conf = yaml.safe_load(f)
+
+        if conf.get("apps"):
+            loaded = self._loaded_apps
+            for app in conf["apps"].keys():
+                if loaded.get(app):
+                    continue
+                m = importlib.import_module('mystreamdeck.' + app, "mystreamdeck")
+                o = getattr(m, app)(self, conf['apps'][app])
+                self.apps.append(o)
+                if app == 'Alert':
+                    o.set_check_func(self._alert_func)
+        if conf.get("games"):
+            self._KEY_CONFIG['@GAME'] = {}
+            for app in conf["games"].keys():
+                if loaded.get(app):
+                    continue
+                m = importlib.import_module('mystreamdeck.Game' + app, "mystreamdeck")
+                getattr(m, 'Game'+app)(self, conf['games'][app])
+
+        self._KEY_CONFIG = conf["key_config"]
         if alert_config is not None:
             self._KEY_CONFIG['~ALERT'] = alert_config
 

@@ -7,7 +7,7 @@ import sys
 X = 100
 Y = 100
 
-class MyStreamDeckCalendar:
+class Calendar:
     # if app reuquire thread, true
     use_thread = True
     # dict: key is page name and value is key number.
@@ -21,10 +21,10 @@ class MyStreamDeckCalendar:
     option = {}
     key_command = {}
 
-    def __init__(self, mydeck, page_key={}, option={}):
+    def __init__(self, mydeck, option={}):
         self.mydeck = mydeck
-        self.page_key = page_key
-        self.option = option
+        if option.get('page_key') is not None:
+            self.page_key = option['page_key']
 
     def set_image_to_key(self, key, page):
         now = datetime.datetime.now()
@@ -67,6 +67,9 @@ class MyStreamDeckCalendar:
                 key  = self.page_key.get(page)
                 if key is not None:
                     self.set_image_to_key(key, page)
+                else:
+                    print("no key is found!! for " + page)
+                    print(self.page_key)
             except Exception as e:
                 print(e)
                 pass
