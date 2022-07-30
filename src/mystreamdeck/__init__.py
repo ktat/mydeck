@@ -1,12 +1,13 @@
 from inspect import isclass
-from pkgutil import iter_modules
+from pkgutil import iter_modules,extend_path
 from pathlib import Path
 from importlib import import_module
+import re
 
 # iterate through the modules in the current package
-package_dir = Path(__file__).resolve().parent
+package_dir = extend_path(__path__, __name__)
 
-for (_, module_name, _) in iter_modules(['src/mystreamdeck']):
+for (_, module_name, _) in iter_modules(package_dir):
     # import the module and iterate through its attributes
     module = import_module(f"{__name__}.{module_name}")
     for attribute_name in dir(module):
