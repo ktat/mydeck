@@ -190,16 +190,9 @@ from mystreamdeck.configure import MyStreamDeck
 from mystreamdeck.random_number import MyStreamDeckGameRandomNumber
 from mystreamdeck.memory import MyStreamDeckGameMemory
 from mystreamdeck.tictacktoe import MyStreamDeckGameTickTacToe
+from StreamDeck.DeviceManager import DeviceManager
 
 import os
-import signal
-import time
-import psutil
-import requests
-import json
-import threading
-
-from StreamDeck.DeviceManager import DeviceManager
 
 if __name__ == "__main__":
     mydeck = MyStreamDeck(
@@ -215,7 +208,6 @@ if __name__ == "__main__":
 
     MyStreamDeckGameRandomNumber(mydeck)
     MyStreamDeckGameMemory(mydeck, "", 3)
-    MyStreamDeckGameTickTacToe(mydeck, "", 6)
     MyStreamDeckGameTickTacToe(mydeck, "", 7)
     MyStreamDeckGameWhacAMole(mydeck, "", 8)
 
