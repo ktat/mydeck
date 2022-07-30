@@ -17,7 +17,6 @@ class MyStreamDeckStopWatch:
     # need to stop thread
     stop = False
 
-    option = {}
     _key_conf = {
         "start": {
             "app_command": "MyStreamDeckStopWatchStart",
@@ -35,9 +34,10 @@ class MyStreamDeckStopWatch:
         "MyStreamDeckStopWatchStop":  lambda app: app.do_stop(),
     }
 
-    def __init__(self, mydeck, page_key={}, option={}):
+    def __init__(self, mydeck, option={}):
         self.mydeck = mydeck
-        self.page_key = page_key
+        if option.get("page_key"):
+            self.page_key = option["page_key"]
 
     # setup key configuration
     def key_setup(self):

@@ -19,13 +19,12 @@ class MyStreamDeckClock:
     x = 50
     y = 50
     l = 45
-    option = {}
     key_command = {}
 
-    def __init__(self, mydeck, page_key={}, option={}):
+    def __init__(self, mydeck, option={}):
         self.mydeck = mydeck
-        self.page_key = page_key
-        self.option = option
+        if option.get("page_key") is not None:
+            self.page_key = option["page_key"]
 
     def hour_pos (self, h, m, s):
         if h == 12:

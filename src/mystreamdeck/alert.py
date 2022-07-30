@@ -11,13 +11,20 @@ class MyStreamDeckAlert:
     stop = False
 
     _check_function = None
+    _check_interval = 300
     _previous_checke_time = 0
     in_alert = False
 
-    def __init__ (self, mydeck, check_function, check_interval, alert_key_config):
-        self._check_interval = check_interval
+    def __init__ (self, mydeck, config):
+        alert_key_config = {}
+        if config.get("check_interval"):
+            self._check_interval = config.get("check_interval")
+        if config.get("check_func"):
+            self._check_function = config["check_func"]
+        if config.get("key_cofnig"):
+            alert_key_config = config.get("key_cofnig")
+            
         self._previous_checke_time = 0
-        self._check_function = check_function
         self.mydeck = mydeck
         mydeck.add_alert_key_conf(alert_key_config)
 
