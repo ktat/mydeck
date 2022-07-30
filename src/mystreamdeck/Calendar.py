@@ -67,9 +67,6 @@ class Calendar:
                 key  = self.page_key.get(page)
                 if key is not None:
                     self.set_image_to_key(key, page)
-                else:
-                    print("no key is found!! for " + page)
-                    print(self.page_key)
             except Exception as e:
                 print(e)
                 pass
