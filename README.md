@@ -190,6 +190,7 @@ from mystreamdeck.configure import MyStreamDeck
 from mystreamdeck.random_number import MyStreamDeckGameRandomNumber
 from mystreamdeck.memory import MyStreamDeckGameMemory
 from mystreamdeck.tictacktoe import MyStreamDeckGameTickTacToe
+from mystreamdeck.whacamole import MyStreamDeckGameWhacAMole
 from StreamDeck.DeviceManager import DeviceManager
 
 import os
