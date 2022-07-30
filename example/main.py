@@ -10,26 +10,7 @@ import threading
 
 from StreamDeck.DeviceManager import DeviceManager
 
-ALERT_INTERVAL = 300
-CHECK_URL = 'https://www.rwds.net/'
-_ALERT_KEY_CONFIG = {
-    "command": ["google-chrome", '--profile-directory=Profile 1', 'https://www.rwds.net/'],
-    "image": "./src/Assets/cat.png",
-    "label": "ALERT",
-    "change_page": "@previous"
-}
-
-ALERT_KEY_CONFIG = {
-    0: _ALERT_KEY_CONFIG,
-    1: _ALERT_KEY_CONFIG,
-    5: _ALERT_KEY_CONFIG,
-    7: _ALERT_KEY_CONFIG,
-    10: _ALERT_KEY_CONFIG,
-    13: _ALERT_KEY_CONFIG,
-    14: _ALERT_KEY_CONFIG,
-    9: _ALERT_KEY_CONFIG,
-    4: _ALERT_KEY_CONFIG,
-}
+CHECK_URL = 'https://www.rwds.net/xx'
 
 def check_alert():
     res = requests.get(CHECK_URL)
