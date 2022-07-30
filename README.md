@@ -187,7 +187,6 @@ If you set window title as PAGE_LABEL, page is changed according to active windo
 
 ```python
 from mystreamdeck.configure import MyStreamDeck
-from mystreamdeck.alert import MyStreamDeckAlert
 from mystreamdeck.random_number import MyStreamDeckGameRandomNumber
 from mystreamdeck.memory import MyStreamDeckGameMemory
 from mystreamdeck.tictacktoe import MyStreamDeckGameTickTacToe
@@ -202,57 +201,6 @@ import threading
 
 from StreamDeck.DeviceManager import DeviceManager
 
-# NAGIOS JSON URL
-NAGIOS_URL = 'https://example.com/nagios/cgi-bin/nagios2json.cgi?hostprops=2&serviceprops=2&servicestatustypes=24'
-ALERT_CHECK_INTERVAL = 60
-_ALERT_KEY_CONFIG = {
-    "command": ["google-chrome", '--profile-directory=Profile 1', 'https://exapmle.com/nagios/cgi-bin/status.cgi?host=all&servicestatustypes=16&hoststatustypes=15'],
-    "image": "./src/Assets/nagios.ico",
-    "label": "nagios",
-    "change_page": "@previous"
-}
-
-ALERT_KEY_CONFIG = {
-    0: _ALERT_KEY_CONFIG,
-    1: _ALERT_KEY_CONFIG,
-    5: _ALERT_KEY_CONFIG,
-    7: _ALERT_KEY_CONFIG,
-    10: _ALERT_KEY_CONFIG,
-    13: _ALERT_KEY_CONFIG,
-    14: _ALERT_KEY_CONFIG,
-    9: _ALERT_KEY_CONFIG,
-    4: _ALERT_KEY_CONFIG,
-}
-
-# function to check alert
-def check_alert():
-    res = requests.get(NAGIOS_URL)
-    if res.status_code == requests.codes.ok:
-        data = json.loads(res.text)
-        alerts = data.get("data")
-
-        if alerts and len(alerts) > 0:
-           print(alerts_for_check)
-           return True
-
-    return False
-
-
-def check_alert():
-    res = requests.get(NAGIOS_URL)
-    if res.status_code == requests.codes.ok:
-        data = json.loads(res.text)
-        alerts = data.get("data")
-
-        if alerts:
-            alerts_for_check = []
-            for alert in alerts:
-                if len(alerts_for_check) > 0:
-                    print(alerts_for_check)
-                    return True
-    return False
-
-
 if __name__ == "__main__":
     mydeck = MyStreamDeck(
         {
@@ -261,7 +209,6 @@ if __name__ == "__main__":
                 lambda mydeck: MyStreamDeckClock(mydeck, {'@HOME': 5, '@JOB': 12}, {}),
                 lambda mydeck: MyStreamDeckStopWatch(mydeck, {'@HOME': 6}),
                 lambda mydeck: MyStreamDeckCalendar(mydeck, {'@HOME': 7}),
-                lambda mydeck: MyStreamDeckAlert(mydeck, check_alert, ALERT_CHECK_INTERVAL, ALERT_KEY_CONFIG)
             ]
         }
     )
