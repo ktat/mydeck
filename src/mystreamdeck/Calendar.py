@@ -40,14 +40,14 @@ class Calendar:
         im = Image.new('RGB', (X, Y), (0, 0, 0))
         font = ImageFont.truetype(self.mydeck.font_path, 34)
         draw = ImageDraw.Draw(im)
-        wday = {0: "Mon", 1: "Tue", 2: "Wed", 3: "Thu", 4: "Fri", 5: "Sat", 6: "Sun"}[now.weekday()]
+        wday = now.strftime('%a')
         color = "white"
         if wday in 'Sun':
             color="red"
         draw.text((12, 0), font=font, text=wday,fill=color)
         draw.text((0, 33), font=font, text=date_text, fill="white")
         font = ImageFont.truetype(self.mydeck.font_path, 30)
-        draw.text((10, 73), font=font, text="{}".format(now.year), fill="white")
+        draw.text((10, 73), font=font, text=str(now.year), fill="white")
 
         self.mydeck.update_key_image(
             key,
