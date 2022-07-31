@@ -10,6 +10,9 @@ apps:
    Calendar:
      page_key:
        '@HOME': 7
+   WeatherJp:
+     page_key:
+       '@HOME': 8
    Alert:
      check_interval: 180
      key_config:

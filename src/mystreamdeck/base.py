@@ -1,3 +1,5 @@
+from cairosvg import svg2png
+import wand.image
 import re
 import subprocess
 import os
@@ -7,7 +9,6 @@ import time
 import threading
 import requests
 import os.path
-import wand.image
 import importlib
 
 from PIL import Image, ImageDraw, ImageFont
@@ -40,7 +41,7 @@ class MyStreamDeck:
     ]
 
     # path of font
-    font_path = "/usr/share/fonts/truetype/freefont/FreeMono.ttf"
+    font_path = "/usr/share/fonts/truetype/freefont/FreeSans.ttf"
 
     def __init__ (self, opt):
         if opt.get('alert_func'):
@@ -167,7 +168,6 @@ class MyStreamDeck:
             self._current_page = name
             self.set_game_status(0)
             self.deck.reset()
-            print(self.key_config().get(name))
             self.key_setup()
 
     # display keys and set key callbacks
@@ -196,36 +196,60 @@ class MyStreamDeck:
         deck = self.deck
         if conf is not None:
             if conf.get('chrome'):
+                chrome = conf['chrome']
+                url = chrome[-1]
                 if conf.get('image') is None and conf.get('image_url') is None:
-                    chrome = conf['chrome']
-                    url = chrome[-1]
-                    icon_url = re.sub(r'^(https?://[^/]+).*$', '\\1/favicon.ico', url)
-                    icon = re.sub(r'^https?://([^/]+).*$', '\\1', url)
-                    self.save_image(conf, icon_url, '/tmp/' + 'mystreamdeck-' + icon + '.ico')
+                    self.image_url_to_image(conf, url)
                 elif conf.get("image_url") is not None:
-                    chrome = conf['chrome']
-                    icon_name = re.sub(r'^https?://([^/]+).*$', '\\1', chrome[-1])
-                    ext = re.sub(r'.+(\.\w+)$', '\\1', conf["image_url"])
-                    self.save_image(conf, conf["image_url"], '/tmp/' + 'mystreamdeck-' + icon_name + ext)
+                    self.image_url_to_image(conf)
+            elif conf.get("image") is None and conf.get('image_url') is not None:
+                self.image_url_to_image(conf)
 
             if conf.get('no_image') is None:
                 self.update_key_image(key, self.render_key_image(conf["image"], conf.get("label"), conf.get("background_color")))
 
 
-    def save_image(self, conf, icon_url, icon_file):
+    def image_url_to_image(self, conf, url=None):
+        image_url = conf.get('image_url')
+        icon_name = None
+        if image_url is None:
+            icon_url = re.sub(r'^(https?://[^/]+).*$', '\\1/favicon.ico', url)
+            icon = re.sub(r'^https?://([^/]+).*$', '\\1', url)
+            icon_name = icon + '.ico'
+        else:
+            icon_name = ""
+            if url is None:
+                icon_name = re.sub(r'^https?://', '', image_url)
+                icon_name = re.sub(r'[&=?/.]', '-', icon_name)
+            else:
+                icon_name = re.sub(r'^https?://([^/]+).*$', '\\1', url)
+            ext = re.sub(r'.+(\.\w+)$', '\\1', image_url)
+            icon_name += ext
+
+        icon_file = self.save_image(image_url, '/tmp/' + 'mystreamdeck-' + icon_name)
+
+        if icon_file is not None:
+            conf["image"] = icon_file
+        else:
+            conf["image"] = "./src/Assets/world.png"
+
+    def save_image(self, icon_url, icon_file):
         if os.path.exists(icon_file) is False:
-            print(icon_url)
             res = requests.get(icon_url)
             if res.status_code == requests.codes.ok:
-                with open(icon_file, mode="wb") as f:
-                    f.write(res.content)
+                icon_data = res.content
+                if icon_url[-3:len(icon_url)] == 'svg':
+                    icon_file = icon_file[0:-4] + '.png'
+                    svg2png(bytestring=icon_data,write_to=icon_file)
+                else:
+                    with open(icon_file, mode="wb") as f:
+                        f.write(icon_data)
                 if self.check_icon_file(icon_file):
-                    conf["image"] = icon_file
+                    return icon_file
         else:
-            conf["image"] = icon_file
+            return icon_file
 
-        if conf.get("image") is None:
-            conf["image"] = "./src/Assets/world.png"
+        return None
 
     def check_icon_file(self, file_path):
         try:
@@ -245,7 +269,7 @@ class MyStreamDeck:
             deck.set_key_image(key, image)
 
     # render key image and label
-    def render_key_image(self, icon_filename_or_object, label, bg_color):
+    def render_key_image(self, icon_filename_or_object, label, bg_color, no_label=False):
         deck = self.deck
         font_bg_color = "white"
         if bg_color is None or bg_color == "black":
@@ -258,14 +282,19 @@ class MyStreamDeck:
         icon = icon_filename_or_object
         if type(icon) == str:
             icon = Image.open(icon_filename_or_object)
-        image = PILHelper.create_scaled_image(deck, icon, margins=[0, 0, 20, 0], background=bg_color)
+
+        margins = [0, 0, 20, 0]
+        if no_label:
+            margins = [0, 0, 0, 0]
+        image = PILHelper.create_scaled_image(deck, icon, margins=margins, background=bg_color)
 
         draw = ImageDraw.Draw(image)
-        font_size = 14
-        if len(label) > 7:
-            font_size = int(14 * 7 / len(label) + 0.999)
-        font = ImageFont.truetype(self.font_path, font_size)
-        draw.text((image.width / 2, image.height - 5), font=font, text=label, anchor="ms", fill=font_bg_color)
+        if no_label is False:
+            font_size = 14
+            if len(label) > 7:
+                font_size = int(14 * 7 / len(label) + 0.999)
+            font = ImageFont.truetype(self.font_path, font_size)
+            draw.text((image.width / 2, image.height - 5), font=font, text=label, anchor="ms", fill=font_bg_color)
 
         return PILHelper.to_native_format(deck, image)
 

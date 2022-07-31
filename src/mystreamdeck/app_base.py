@@ -12,6 +12,8 @@ class AppBase:
     time_to_sleep = 1
     # execute command when button pushed
     command = None
+    # not in target page
+    in_other_page = True
 
     def __init__(self, mydeck, option={}):
         self.mydeck = mydeck
@@ -34,6 +36,8 @@ class AppBase:
                 key  = self.page_key.get(page)
                 if key is not None:
                     self.set_image_to_key(key, page)
+                else:
+                    self.in_other_page = True
             except Exception as e:
                 print(e)
                 pass
@@ -42,7 +46,7 @@ class AppBase:
                 break
             time.sleep(self.time_to_sleep)
         sys.exit()
-    
+
     # if command is given as option, set key to command
     def key_setup(self):
         if self.command is not None:
