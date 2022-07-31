@@ -1,4 +1,5 @@
 import time
+import sys
 
 class AppBase:
     # if app reuquire thread, true
@@ -9,11 +10,15 @@ class AppBase:
     stop = False
     # sleep sec in thread
     time_to_sleep = 1
+    # execute command when button pushed
+    command = None
 
     def __init__(self, mydeck, option={}):
         self.mydeck = mydeck
         if option.get("page_key") is not None:
             self.page_key = option["page_key"]
+        if option.get("command") is not None:
+            self.command = option["command"]
 
 
     # implment it in subclass
@@ -38,6 +43,12 @@ class AppBase:
             time.sleep(self.time_to_sleep)
         sys.exit()
     
-    # No need to setup key, do notiong.
+    # if command is given as option, set key to command
     def key_setup(self):
-        pass
+        if self.command is not None:
+            key_config =self.mydeck.key_config()
+            for page_value in self.page_key.items():
+                key_config[page_value[0]][page_value[1]] = {
+                    "command": self.command,
+                    "no_image": True,
+                }
