@@ -100,7 +100,8 @@ class MyStreamDeck:
                 for app in conf["apps"].keys():
                     if loaded.get(app):
                         continue
-                    m = importlib.import_module('mystreamdeck.' + app, "mystreamdeck")
+                    module = re.sub('([A-Z])', r'_\1', app)[1:].lower()
+                    m = importlib.import_module('mystreamdeck.' + module, "mystreamdeck")
                     o = getattr(m, app)(self, conf['apps'][app])
                     self.apps.append(o)
                     if app == 'Alert':
@@ -112,7 +113,8 @@ class MyStreamDeck:
                 for app in conf["games"].keys():
                     if loaded.get(app):
                         continue
-                    m = importlib.import_module('mystreamdeck.Game' + app, "mystreamdeck")
+                    module = re.sub('([A-Z])', r'_\1', app)[1:].lower()                    
+                    m = importlib.import_module('mystreamdeck.game_' + module, "mystreamdeck")
                     getattr(m, 'Game'+app)(self, conf['games'][app])
 
             self._KEY_CONFIG = conf["key_config"]
