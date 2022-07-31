@@ -92,39 +92,39 @@ class MyStreamDeck:
     def load_conf_from_file(self):
         statinfo = os.stat(self._config_file)
         if self._config_file_mtime < statinfo.st_mtime:
-            f = open(self._config_file)
-            conf = yaml.safe_load(f)
-            alert_config = {}
-            if conf.get("apps"):
-                loaded = self._loaded_apps
-                for app in conf["apps"].keys():
-                    if loaded.get(app):
-                        continue
-                    module = re.sub('([A-Z])', r'_\1', app)[1:].lower()
-                    m = importlib.import_module('mystreamdeck.' + module, "mystreamdeck")
-                    o = getattr(m, app)(self, conf['apps'][app])
-                    self.apps.append(o)
-                    if app == 'Alert':
-                        o.set_check_func(self._alert_func)
-                        alert_config = conf["apps"][app]["key_config"]
+            with open(self._config_file) as f:
+                conf = yaml.safe_load(f)
+                alert_config = {}
+                if conf.get("apps"):
+                    loaded = self._loaded_apps
+                    for app in conf["apps"].keys():
+                        if loaded.get(app):
+                            continue
+                        module = re.sub('([A-Z])', r'_\1', app)[1:].lower()
+                        m = importlib.import_module('mystreamdeck.' + module, "mystreamdeck")
+                        o = getattr(m, app)(self, conf['apps'][app])
+                        self.apps.append(o)
+                        if app == 'Alert':
+                            o.set_check_func(self._alert_func)
+                            alert_config = conf["apps"][app]["key_config"]
 
-            if conf.get("games"):
-                self._KEY_CONFIG['@GAME'] = {}
-                for app in conf["games"].keys():
-                    if loaded.get(app):
-                        continue
-                    module = re.sub('([A-Z])', r'_\1', app)[1:].lower()                    
-                    m = importlib.import_module('mystreamdeck.game_' + module, "mystreamdeck")
-                    getattr(m, 'Game'+app)(self, conf['games'][app])
+                if conf.get("games"):
+                    self._KEY_CONFIG['@GAME'] = {}
+                    for app in conf["games"].keys():
+                        if loaded.get(app):
+                            continue
+                        module = re.sub('([A-Z])', r'_\1', app)[1:].lower()
+                        m = importlib.import_module('mystreamdeck.game_' + module, "mystreamdeck")
+                        getattr(m, 'Game'+app)(self, conf['games'][app])
 
-            self._KEY_CONFIG = conf["key_config"]
-            self._KEY_CONFIG['~ALERT'] = alert_config
+                self._KEY_CONFIG = conf["key_config"]
+                self._KEY_CONFIG['~ALERT'] = alert_config
 
-            for k in self._KEY_CONFIG_GAME.keys():
-                self._KEY_CONFIG['@GAME'][k]  = self._KEY_CONFIG_GAME[k]
+                for k in self._KEY_CONFIG_GAME.keys():
+                    self._KEY_CONFIG['@GAME'][k]  = self._KEY_CONFIG_GAME[k]
 
-            for app in self.apps:
-                app.key_setup()
+                for app in self.apps:
+                    app.key_setup()
 
             self._config_file_mtime = statinfo.st_mtime
 
