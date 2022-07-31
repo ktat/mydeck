@@ -346,12 +346,12 @@ class MyStreamDeck:
                         self.key_setup()
 
 
-    # handler for sigalrm to notify alert
+    # handler to notify alert
     def handler_alert(self):
         self.set_alert(1)
         self.set_current_page("~ALERT")
 
-    # handler for usr2 to stop alert
+    # handler to stop alert
     def handler_alert_stop(self):
         if self.current_page() == "~ALERT":
             print("stop alert")
@@ -408,7 +408,7 @@ class MyStreamDeck:
                 self._previous_window = new_result
                 self.handler_switch(new_result)
 
-    # handler for sigusr1 to switch window
+    # handler to switch window
     def handler_switch(self, page):
         # enabled when alert is off and not playing game
         if not self.in_alert() and not self.in_game_status():
