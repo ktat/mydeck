@@ -234,11 +234,11 @@ class GameTicTackToe:
         if choose_key is None:
             # ユーザーの勝てそうな場所を探す(ユーザーの勝てそうな場所は先に抑えて妨害する)
             choose_key = can_select_value.get(self.search_pre_win_value(2, user_val, cpu_val, can_select, PRE_WIN_CONDITION))
-            print("choose_key4-1: {}".format(choose_key))
+            print("choose_key3: {}".format(choose_key))
         if choose_key is None:
             # CPUの勝てそうな場所を探す
             choose_key = can_select_value.get(self.search_pre_win_value(1, cpu_val, user_val, can_select, PRE_WIN_CONDITION))
-            print("choose_key4-2: {}".format(choose_key))
+            print("choose_key4: {}".format(choose_key))
         if choose_key is None:
             # まだ決まっていない場合は、取れるところをrandomで取る
             select = random.randint(0, len(can_select) -1)
