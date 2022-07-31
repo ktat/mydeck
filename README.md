@@ -90,7 +90,11 @@ If you set window title as PAGE_LABEL, page is changed according to active windo
   Alert:
     check_interval: 180
     key_cofnig:
-      7:  {command: ["google-chrome", '--profile-directory=Profile 1', 'https://example.com/nagios/cgi-bin/status.cgi?host=all&servicestatustypes=16&hoststatustypes=15']}
+     key_config:
+       7:
+         command: ["google-chrome", '--profile-directory=Profile 1', 'https://example.com/nagios/cgi-bin/status.cgi?host=all&servicestatustypes=16&hoststatustypes=15']
+         image: "./src/Assets/nagios.ico"
+         change_page: '@previous'
 "games":
   RandomNumber: 0
   Memory: 3
@@ -210,6 +214,14 @@ If you set window title as PAGE_LABEL, page is changed according to active windo
 from mystreamdeck import *
 
 import os
+
+CHECK_URL = 'https://example.com/'
+
+def check_alert():
+    res = requests.get(CHECK_URL)
+    if res.status_code != requests.codes.ok:
+        return True
+    return False
 
 if __name__ == "__main__":
     mydeck = MyStreamDeck(
