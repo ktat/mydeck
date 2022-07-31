@@ -1,4 +1,5 @@
 from PIL import Image, ImageDraw
+from mystreamdeck import AppBase
 import math
 import datetime
 import time
@@ -8,13 +9,9 @@ import sys
 X = 100
 Y = 100
 
-class Clock:
+class Clock(AppBase):
     # if app reuquire thread, true
     use_thread = True
-    # dict: key is page name and value is key number.
-    page_key = {}
-    # need to stop thread
-    stop = False
 
     x = 50
     y = 50
@@ -22,9 +19,7 @@ class Clock:
     key_command = {}
 
     def __init__(self, mydeck, option={}):
-        self.mydeck = mydeck
-        if option.get("page_key") is not None:
-            self.page_key = option["page_key"]
+        super().__init__(mydeck, option)
 
     def hour_pos (self, h, m, s):
         if h == 12:
@@ -65,7 +60,7 @@ class Clock:
 
         return im
 
-    def set_image_to_key(self, key):
+    def set_image_to_key(self, key, page):
         hms = self.get_current_hms()
         im = self.get_current_clock_image(hms)
         self.mydeck.update_key_image(
@@ -76,24 +71,3 @@ class Clock:
                 'black',
             )
         )
-
-    # if use_thread is true, this method is call in thread
-    def start(self):
-        while True:
-            try:
-                page = self.mydeck.current_page()
-                key  = self.page_key.get(page)
-                if key is not None:
-                    self.set_image_to_key(key)
-            except Exception as e:
-                print(e)
-                pass
-            # exit when main process is finished
-            if self.mydeck._exit:
-                break
-            time.sleep(1)
-        sys.exit()
-
-    # No need to setup key, do notiong and return anything.
-    def key_setup(self):
-        return True

@@ -1,4 +1,5 @@
 from PIL import Image, ImageDraw, ImageFont
+from mystreamdeck import AppBase
 import datetime
 import time
 import sys
@@ -7,24 +8,15 @@ import sys
 X = 100
 Y = 100
 
-class Calendar:
+class Calendar(AppBase):
     # if app reuquire thread, true
     use_thread = True
-    # dict: key is page name and value is key number.
-    page_key = {}
-    # need to stop thread
-    stop = False
 
     previous_page = ''
     previous_date = ''
 
-    option = {}
-    key_command = {}
-
     def __init__(self, mydeck, option={}):
-        self.mydeck = mydeck
-        if option.get('page_key') is not None:
-            self.page_key = option['page_key']
+        super().__init__(mydeck, option)
 
     def set_image_to_key(self, key, page):
         now = datetime.datetime.now()
@@ -57,25 +49,3 @@ class Calendar:
                 'black',
             )
         )
-
-    # if use_thread is true, this method is call in thread
-    def start(self):
-        t = datetime.datetime.now()
-        while True:
-            try:
-                page = self.mydeck.current_page()
-                key  = self.page_key.get(page)
-                if key is not None:
-                    self.set_image_to_key(key, page)
-            except Exception as e:
-                print(e)
-                pass
-            # exit when main process is finished
-            if self.mydeck._exit:
-                break
-            time.sleep(1)
-        sys.exit()
-
-    # No need to setup key, do notiong and return anything.
-    def key_setup(self):
-        return True

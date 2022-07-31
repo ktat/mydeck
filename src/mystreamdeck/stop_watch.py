@@ -1,4 +1,5 @@
 from PIL import Image, ImageDraw, ImageFont
+from mystreamdeck import AppBase
 import math
 import datetime
 import time
@@ -9,14 +10,7 @@ import sys
 X = 100
 Y = 100
 
-class StopWatch:
-    # if app reuquire thread, true
-    use_thread = False
-    # dict: key is page name and value is key number.
-    page_key = {}
-    # need to stop thread
-    stop = False
-
+class StopWatch(AppBase):
     _key_conf = {
         "start": {
             "app_command": "MyStreamDeckStopWatchStart",
@@ -35,9 +29,7 @@ class StopWatch:
     }
 
     def __init__(self, mydeck, option={}):
-        self.mydeck = mydeck
-        if option.get("page_key"):
-            self.page_key = option["page_key"]
+        super().__init__(mydeck, option)
 
     # setup key configuration
     def key_setup(self):
