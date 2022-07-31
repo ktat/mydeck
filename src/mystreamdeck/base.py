@@ -81,17 +81,14 @@ class MyStreamDeck:
 
     def key_config(self):
         if self._config_file != '':
-            statinfo = os.stat(self._config_file)
-            if self._config_file_mtime < statinfo.st_mtime:
-                self._config_file_mtime = statinfo.st_mtime
-                self.load_conf_from_file()
-                print("reload config")
+            self.load_conf_from_file()
 
         return self._KEY_CONFIG
 
     def load_conf_from_file(self):
         statinfo = os.stat(self._config_file)
         if self._config_file_mtime < statinfo.st_mtime:
+            self._config_file_mtime = statinfo.st_mtime
             with open(self._config_file) as f:
                 conf = yaml.safe_load(f)
                 alert_config = {}
@@ -125,8 +122,6 @@ class MyStreamDeck:
 
                 for app in self.apps:
                     app.key_setup()
-
-            self._config_file_mtime = statinfo.st_mtime
 
     def set_alert(self, n):
         self._in_alert = n
@@ -213,7 +208,8 @@ class MyStreamDeck:
                     ext = re.sub(r'.+(\.\w+)$', '\\1', conf["image_url"])
                     self.save_image(conf, conf["image_url"], '/tmp/' + 'mystreamdeck-' + icon_name + ext)
 
-            self.update_key_image(key, self.render_key_image(conf["image"], conf.get("label"), conf.get("background_color")))
+            if conf.get('no_image') is None:
+                self.update_key_image(key, self.render_key_image(conf["image"], conf.get("label"), conf.get("background_color")))
 
 
     def save_image(self, conf, icon_url, icon_file):
