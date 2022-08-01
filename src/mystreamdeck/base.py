@@ -478,10 +478,10 @@ class MyStreamDeck:
             time.sleep(1)
             app()
 
-    def check_thread(self, mydeck_alert):
+    def check_thread(self):
         while True:
             time.sleep(1)
-            if mydeck.in_alert is False:
+            if self.in_alert() is False:
                 self.check_window_switch()
 
             if self._exit:
@@ -495,4 +495,5 @@ class MyStreamDeck:
             if app.use_thread:
                 t = threading.Thread(target=lambda: app.start(), args=())
                 t.start()
-
+        t = threading.Thread(target=lambda: self.check_thread(), args=())
+        t.start()
