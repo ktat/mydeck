@@ -95,22 +95,30 @@ class MyStreamDeck:
                 alert_config = {}
                 if conf.get("apps"):
                     loaded = self._loaded_apps
-                    for app in conf["apps"].keys():
-                        if loaded.get(app):
-                            continue
-                        module = re.sub('([A-Z])', r'_\1', app)[1:].lower()
-                        m = importlib.import_module('mystreamdeck.' + module, "mystreamdeck")
-                        o = getattr(m, app)(self, conf['apps'][app])
-                        self.apps.append(o)
-                        if app == 'Alert':
-                            o.set_check_func(self._alert_func)
-                            alert_config = conf["apps"][app]["key_config"]
+                    i = -1
+                    for app_definition in conf["apps"]:
+                        i += 1
+                        app = app_definition.get("app")
+                        if app is not None:
+                            if loaded.get(app):
+                                continue
 
+                            app_conf = app_definition.get('option')
+                            loaded[app + '-' +str(i)] = True
+                            module = re.sub('([A-Z])', r'_\1', app)[1:].lower()
+                            m = importlib.import_module('mystreamdeck.' + module, "mystreamdeck")
+                            o = getattr(m, app)(self, app_conf)
+                            self.apps.append(o)
+                            if app == 'Alert':
+                                o.set_check_func(self._alert_func)
+                                alert_config = app_conf["key_config"]
+  
                 if conf.get("games"):
                     self._KEY_CONFIG['@GAME'] = {}
                     for app in conf["games"].keys():
                         if loaded.get(app):
                             continue
+                        loaded[app] = True
                         module = re.sub('([A-Z])', r'_\1', app)[1:].lower()
                         m = importlib.import_module('mystreamdeck.game_' + module, "mystreamdeck")
                         getattr(m, 'Game'+app)(self, conf['games'][app])
@@ -424,6 +432,8 @@ class MyStreamDeck:
         self._GAME_KEY_CONFIG = {}
 
     def set_key_conf(self, page, key, conf):
+        if self._KEY_CONFIG.get(page) is None:
+            self._KEY_CONFIG[page] = {}
         self._KEY_CONFIG[page][key] = conf
 
     def check_window_switch(self):

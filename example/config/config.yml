@@ -1,25 +1,39 @@
 ---
 apps:
-   Clock:
-     page_key:
-       '@HOME': 5
-       '@JOB': 12
-   StopWatch:
-     page_key:
-       '@HOME': 6
-   Calendar:
-     page_key:
-       '@HOME': 7
-   WeatherJp:
-     page_key:
-       '@HOME': 8
-   Alert:
-     check_interval: 180
-     key_config:
-       7:
-         command: ["google-chrome", '--profile-directory=Profile 1', 'https://example.com/nagios/cgi-bin/status.cgi?host=all&servicestatustypes=16&hoststatustypes=15']
-         image: "./src/Assets/nagios.ico"
-         change_page: '@previous'
+   - app: Clock
+     option:
+       page_key:
+         '@HOME': 5
+         '@JOB': 12
+   - app: StopWatch
+     option:
+       page_key:
+         '@HOME': 6
+   - app: Calendar
+     option:
+       page_key:
+         '@HOME': 7
+   - app: 'WeatherJp'
+     option:
+       page_key:
+         '@HOME': 8
+       display_name: 'Tokyo'
+   - app: 'WeatherJp'
+     option:
+       page_key:
+         '@HOME': 9
+       division: '大阪府'
+       area: '大阪府'
+       area_temp: '大阪'
+       display_name: 'Osaka'
+   - app: Alert
+     option:
+       check_interval: 180
+       key_config:
+         7:
+           command: ["google-chrome", '--profile-directory=Profile 1', 'https://example.com/nagios/cgi-bin/status.cgi?host=all&servicestatustypes=16&hoststatustypes=15']
+           image: "./src/Assets/cat.png"
+           change_page: '@previous'
 games:
   RandomNumber: 0
   Memory: 3
