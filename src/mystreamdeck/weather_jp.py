@@ -1,6 +1,5 @@
 from mystreamdeck import AppBase
 from PIL import Image, ImageDraw, ImageFont
-import datetime
 import time
 import sys
 import json
@@ -22,15 +21,7 @@ class WeatherJp(AppBase):
         self.jma  = JMA(self.area)
 
     def set_image_to_key(self, key, page):
-        now = datetime.datetime.now()
-        date_text = "{0:02d}/{1:02d}/{2:02d}".format(now.month, now.day, now.hour)
-
-        # quit when page and date is not changed
-        if self.in_other_page or page != self.previous_page or date_text != self.previous_date:
-            self.in_other_page = False
-            self.previous_page = page
-            self.previous_date = date_text
-        else:
+        if self.is_required_process_hourly() is False:
             return False
 
         result = JMASearch(self.jma, self.area).search()
@@ -42,11 +33,17 @@ class WeatherJp(AppBase):
             im = im.convert("RGB")
             font = ImageFont.truetype(self.mydeck.font_path, 20)
             draw = ImageDraw.Draw(im)
-            if result.temp_max is not None:
-                draw.text((20, 0),  font=font, text=result.temp_max, fill=(200,50,50),   width=3)
-            if result.temp_min is not None:
-                draw.text((20, 23), font=font, text=result.temp_min, fill=(100,100,200), width=3)
-            draw.text((10, 43), font=font, text=self.area.display_name, fill=(255,255,255), width=3)
+            if result.temp is not None:
+                draw.text((28, 1),  font=font, text=result.temp, fill=(255,255,255))
+                draw.text((27, 0),  font=font, text=result.temp, fill=(255,0,0))
+
+            if result.pop is not None:
+                draw.text((28, 21),  font=font, text=result.pop, fill=(255,255,255))
+                draw.text((27, 20),  font=font, text=result.pop, fill=(0,0,255))
+
+            draw.text((11, 44), font=font, text=self.area.display_name, fill=(0,0,0))
+            draw.text((10, 43), font=font, text=self.area.display_name, fill=(255,255,255))
+
             self.mydeck.update_key_image(
                 key,
                 self.mydeck.render_key_image(
@@ -125,15 +122,16 @@ class JMA:
 class JMAResult:
     image_url = None
     weather = None
-    temp_min = 0
-    temp_max = 0
-    def __init__(self, weather, temp_min, temp_max):
+    temp = None # 気温
+    pop  = None # 降水量
+    def __init__(self, weather, pop, temp):
         image = forecast_mapping().get(weather)
         self.image_url = 'https://www.jma.go.jp/bosai/forecast/img/' + image[0] # TODO 夜は [1] を使う(?)
         self.weather = weather
-        self.temp_min = temp_min
-        self.temp_max = temp_max
-
+        if pop is not None:
+            self.pop = str(pop) + '%'
+        if temp is not None:
+            self.temp = str(temp) + '℃'
 
 class JMASearch:
     area = None
@@ -147,23 +145,22 @@ class JMASearch:
         if res.status_code == requests.codes.ok:
             image_url = ''
             weather = None
-            temp_min = None
-            temp_max = None
+            temp = None
             data = json.loads(res.text)
-            for d in data[0]["timeSeries"]:
-                for area in d["areas"]:
-                    if area["area"]["name"] == self.area.area or area["area"]["code"] == self.area.area_code:
-                        weather = area["weatherCodes"][0]
-                        break
-                else:
-                    continue
-                break
-            for area in data[1]["tempAverage"]["areas"]:
-                if area["area"]["name"] == self.area.area_temp or area["area"]["code"] == self.area.area_temp:
-                    temp_min = area["min"]
-                    temp_max = area["max"]
+            for area in data[0]["timeSeries"][0]["areas"]:
+                if area["area"]["name"] == self.area.area or area["area"]["code"] == self.area.area_code:
+                    weather = area["weatherCodes"][0]
                     break
-            return JMAResult(weather, temp_min, temp_max)
+                    break
+            for area in data[0]["timeSeries"][1]["areas"]:
+                if area["area"]["name"] == self.area.area or area["area"]["code"] == self.area.area_code:
+                    pop = area["pops"][0]
+                    break
+            for area in data[0]["timeSeries"][2]["areas"]:
+                if area["area"]["name"] == self.area.area_temp or area["area"]["code"] == self.area.area_temp:
+                    temp = area["temps"][0]
+                    break
+            return JMAResult(weather, pop, temp)
         return None
 
 
