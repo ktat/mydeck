@@ -1,5 +1,6 @@
 import time
 import sys
+import datetime
 
 class AppBase:
     # if app reuquire thread, true
@@ -27,7 +28,7 @@ class AppBase:
     def set_iamge_to_key(self, key, page):
         print("Implemnt set_image_to_key in subclass.")
         pass
-    
+
     # if use_thread is true, this method is call in thread
     def start(self):
         while True:
@@ -56,3 +57,27 @@ class AppBase:
                     "command": self.command,
                     "no_image": True,
                 }
+
+    # check whether processing is required or not(hourly)
+    def is_required_process_hourly(self):
+        now = datetime.datetime.now()
+        self._is_required_process(now.month, now.day, now.hour)
+
+    # check whether processing is required or not(daily)
+    def is_required_process_daily(self):
+        now = datetime.datetime.now()
+        self._is_required_process(now.month, now.day)
+
+    def _is_required_process(self, m, d, h=0):
+        now = datetime.datetime.now()
+        page = self.mydeck.current_page()
+        date_text = "{0:02d}/{1:02d}/{2:02d}".format(m, d, h)
+
+        # quit when page and date is not changed
+        if self.in_other_page or page != self.previous_page or date_text != self.previous_date:
+            self.in_other_page = False
+            self.previous_page = page
+            self.previous_date = date_text
+            return True
+        else:
+            return False

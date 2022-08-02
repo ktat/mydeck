@@ -1,8 +1,8 @@
 from PIL import Image, ImageDraw, ImageFont
 from mystreamdeck import AppBase
-import datetime
 import time
 import sys
+import datetime
 
 # whole image size
 X = 100
@@ -19,20 +19,15 @@ class Calendar(AppBase):
         super().__init__(mydeck, option)
 
     def set_image_to_key(self, key, page):
-        now = datetime.datetime.now()
-        date_text = "{0:02d}/{1:02d}".format(now.month, now.day)
-
-        # quit when page and date is not changed
-        if self.in_other_page or page != self.previous_page or date_text != self.previous_date:
-            self.previous_page = page
-            self.previous_date = date_text
-        else:
+        if self.is_required_process_daily() is False:
             return False
 
+        now = datetime.datetime.now()
         im = Image.new('RGB', (X, Y), (0, 0, 0))
         font = ImageFont.truetype(self.mydeck.font_path, 29)
         draw = ImageDraw.Draw(im)
         wday = now.strftime('%a')
+        date_text = "{0:02d}/{1:02d}".format(now.month, now.day)
         color = "white"
         if wday in 'Sun':
             color="red"
