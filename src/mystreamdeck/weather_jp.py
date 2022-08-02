@@ -87,12 +87,12 @@ class Area:
 
         result = self.find(division_mapping(), self.division, self.division_code)
         if result is None:
-            raise Exception
+            result = (None, None)
         (self.division, self.division_code) = result
 
         result = self.find(area_mapping(), self.area, self.area_code)
         if result is None:
-            raise Exception
+            result = (None, None)
         (self.area, self.area_code) = result
 
     def find(self, mapping, name=None, code=None):
@@ -151,6 +151,7 @@ class JMASearch:
             image_url = ''
             weather = None
             temp = None
+            pop = None
             data = json.loads(res.text)
             for area in data[0]["timeSeries"][0]["areas"]:
                 if area["area"]["name"] == self.area.area or area["area"]["code"] == self.area.area_code:
