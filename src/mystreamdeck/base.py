@@ -221,7 +221,7 @@ class MyStreamDeck:
         image_url = conf.get('image_url')
         icon_name = None
         if image_url is None:
-            icon_url = re.sub(r'^(https?://[^/]+).*$', '\\1/favicon.ico', url)
+            image_url = re.sub(r'^(https?://[^/]+).*$', '\\1/favicon.ico', url)
             icon = re.sub(r'^https?://([^/]+).*$', '\\1', url)
             icon_name = icon + '.ico'
         else:
