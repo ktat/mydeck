@@ -61,12 +61,12 @@ class AppBase:
     # check whether processing is required or not(hourly)
     def is_required_process_hourly(self):
         now = datetime.datetime.now()
-        self._is_required_process(now.month, now.day, now.hour)
+        return self._is_required_process(now.month, now.day, now.hour)
 
     # check whether processing is required or not(daily)
     def is_required_process_daily(self):
         now = datetime.datetime.now()
-        self._is_required_process(now.month, now.day)
+        return self._is_required_process(now.month, now.day)
 
     def _is_required_process(self, m, d, h=0):
         now = datetime.datetime.now()

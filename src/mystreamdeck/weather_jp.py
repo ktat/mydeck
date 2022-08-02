@@ -5,6 +5,7 @@ import sys
 import json
 import requests
 import re
+import datetime
 
 class WeatherJp(AppBase):
     # if app reuquire thread, true
@@ -23,11 +24,12 @@ class WeatherJp(AppBase):
     def set_image_to_key(self, key, page):
         if self.is_required_process_hourly() is False:
             return False
-
+        print(self.is_required_process_hourly())
         result = JMASearch(self.jma, self.area).search()
 
         if result is not None:
-            icon_file = "/tmp/mystreamdeck-app-weather-" + result.weather + ".png"
+            image_name = result.image_url[-7: len(result.image_url) - 4]
+            icon_file = "/tmp/mystreamdeck-app-weather-" + image_name + ".png"
             self.mydeck.save_image(result.image_url, icon_file)
             im = Image.open(icon_file)
             im = im.convert("RGB")
@@ -88,7 +90,6 @@ class Area:
             raise Exception
         (self.division, self.division_code) = result
 
-
         result = self.find(area_mapping(), self.area, self.area_code)
         if result is None:
             raise Exception
@@ -98,7 +99,6 @@ class Area:
         if name is not None:
             if mapping.get(name) is not None:
                 code = mapping[name]
-                print(code)
             if code is not None:
                 for item in mapping.items():
                     if item[1] == code:
@@ -125,8 +125,13 @@ class JMAResult:
     temp = None # 気温
     pop  = None # 降水量
     def __init__(self, weather, pop, temp):
+        now = datetime.datetime.now()
         image = forecast_mapping().get(weather)
-        self.image_url = 'https://www.jma.go.jp/bosai/forecast/img/' + image[0] # TODO 夜は [1] を使う(?)
+        if now.hour <= 18 and now.hour >= 6:
+            self.image_url = 'https://www.jma.go.jp/bosai/forecast/img/' + image[0]
+        else:
+            self.image_url = 'https://www.jma.go.jp/bosai/forecast/img/' + image[1]
+
         self.weather = weather
         if pop is not None:
             self.pop = str(pop) + '%'
@@ -150,7 +155,6 @@ class JMASearch:
             for area in data[0]["timeSeries"][0]["areas"]:
                 if area["area"]["name"] == self.area.area or area["area"]["code"] == self.area.area_code:
                     weather = area["weatherCodes"][0]
-                    break
                     break
             for area in data[0]["timeSeries"][1]["areas"]:
                 if area["area"]["name"] == self.area.area or area["area"]["code"] == self.area.area_code:
