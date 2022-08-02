@@ -7,12 +7,13 @@ https://onlinux.systems/guides/20220520_how-to-set-up-elgatos-stream-deck-on-ubu
 
 ## Dependency
 
-[xdotool](https://manpages.ubuntu.com/manpages/trusty/man1/xdotool.1.html) and python3-wand are required.
+[xdotool](https://manpages.ubuntu.com/manpages/trusty/man1/xdotool.1.html), python3-wand and python3-cairosvg are required.
 
 Ubuntu:
 ```
 apt install xdotool
 apt install python3-wand
+apt install python3-cairosvg
 ```
 
 ## CAUTION
