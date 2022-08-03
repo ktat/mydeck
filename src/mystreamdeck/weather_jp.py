@@ -28,8 +28,7 @@ class WeatherJp(AppBase):
         result = JMASearch(self.jma, self.area).search()
 
         if result is not None:
-            image_name = result.image_url[-7: len(result.image_url) - 4]
-            icon_file = "/tmp/mystreamdeck-app-weather-" + image_name + ".png"
+            icon_file = "/tmp/mystreamdeck-app-weather-" + result.image_name + ".png"
             self.mydeck.save_image(result.image_url, icon_file)
             im = Image.open(icon_file)
             im = im.convert("RGB")
@@ -43,8 +42,12 @@ class WeatherJp(AppBase):
                 draw.text((28, 21),  font=font, text=result.pop, fill=(255,255,255))
                 draw.text((27, 20),  font=font, text=result.pop, fill=(0,0,255))
 
-            draw.text((11, 44), font=font, text=self.area.display_name, fill=(0,0,0))
-            draw.text((10, 43), font=font, text=self.area.display_name, fill=(255,255,255))
+            l = 20
+            if len(self.area.display_name) >= 6:
+                l = int(20 / (len(self.area.display_name) / 6))
+            font = ImageFont.truetype(self.mydeck.font_path, l)
+            draw.text((11, 44 + (19-l)), font=font, text=self.area.display_name, fill=(0,0,0))
+            draw.text((10, 43 + (19-l)), font=font, text=self.area.display_name, fill=(255,255,255))
 
             self.mydeck.update_key_image(
                 key,
@@ -122,6 +125,7 @@ class JMA:
 class JMAResult:
     image_url = None
     weather = None
+    image_name = None
     temp = None # 気温
     pop  = None # 降水量
     def __init__(self, weather, pop, temp):
@@ -129,8 +133,10 @@ class JMAResult:
         image = forecast_mapping().get(weather)
         if now.hour <= 18 and now.hour >= 6:
             self.image_url = 'https://www.jma.go.jp/bosai/forecast/img/' + image[0]
+            self.image_name = image[0][0:-4]
         else:
             self.image_url = 'https://www.jma.go.jp/bosai/forecast/img/' + image[1]
+            self.image_name = image[1][0:-4]
 
         self.weather = weather
         if pop is not None:
@@ -384,6 +390,8 @@ def area_mapping():
 	'与那国島地方': '474020',
     }
 
+# https://www.jma.go.jp/bosai/forecast/
+# Forecast.Const.TELOPS in console of developer tool
 def forecast_mapping():
     return {
         "100": [
