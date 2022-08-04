@@ -18,10 +18,10 @@ from StreamDeck.DeviceManager import DeviceManager
 class MyStreamDeck:
     """STREAM DECK COnfiguration"""
     deck = ''
+    config = None
     child_pid = None
-    apps = []
+    page_in_change = True
     _alert_func = None
-    _loaded_apps = {}
     _exit = False
     _current_page = '@HOME'
     _previous_pages = ['@HOME']
@@ -48,22 +48,20 @@ class MyStreamDeck:
             self._alert_func = opt['alert_func']
         if opt.get("font_path"):
             self.font_path = opt["font_path"]
-        if opt.get("apps"):
-            for app in opt.get("apps"):
-                self.apps.append(app(self))
         if opt.get("config"):
             self._config_file = opt.get('config')
             self._KEY_CONFIG_GAME = {}
-            self.load_conf_from_file()
+            self.config = Config(self, self._config_file)
+            self.config.reflect_config()
 
     def init_deck(self, deck):
         self.deck = deck
 
         deck.open()
 
-        self.threading_apps()
-
         self.key_setup()
+
+        self.page_in_change = False
 
         # Wait until all application threads have terminated (for this example,
         # this is when all deck handles are closed).
@@ -82,55 +80,10 @@ class MyStreamDeck:
 
     def key_config(self):
         if self._config_file != '':
-            self.load_conf_from_file()
+            # self.load_conf_from_file()
+            self.config.reflect_config()
 
         return self._KEY_CONFIG
-
-    def load_conf_from_file(self):
-        statinfo = os.stat(self._config_file)
-        if self._config_file_mtime < statinfo.st_mtime:
-            self._config_file_mtime = statinfo.st_mtime
-            with open(self._config_file) as f:
-                conf = yaml.safe_load(f)
-                alert_config = {}
-                if conf.get("apps"):
-                    loaded = self._loaded_apps
-                    i = -1
-                    for app_definition in conf["apps"]:
-                        i += 1
-                        app = app_definition.get("app")
-                        if app is not None:
-                            if loaded.get(app):
-                                continue
-
-                            app_conf = app_definition.get('option')
-                            loaded[app + '-' +str(i)] = True
-                            module = re.sub('([A-Z])', r'_\1', app)[1:].lower()
-                            m = importlib.import_module('mystreamdeck.' + module, "mystreamdeck")
-                            o = getattr(m, app)(self, app_conf)
-                            self.apps.append(o)
-                            if app == 'Alert':
-                                o.set_check_func(self._alert_func)
-                                alert_config = app_conf["key_config"]
-  
-                if conf.get("games"):
-                    self._KEY_CONFIG['@GAME'] = {}
-                    for app in conf["games"].keys():
-                        if loaded.get(app):
-                            continue
-                        loaded[app] = True
-                        module = re.sub('([A-Z])', r'_\1', app)[1:].lower()
-                        m = importlib.import_module('mystreamdeck.game_' + module, "mystreamdeck")
-                        getattr(m, 'Game'+app)(self, conf['games'][app])
-
-                self._KEY_CONFIG = conf["key_config"]
-                self._KEY_CONFIG['~ALERT'] = alert_config
-
-                for k in self._KEY_CONFIG_GAME.keys():
-                    self._KEY_CONFIG['@GAME'][k]  = self._KEY_CONFIG_GAME[k]
-
-                for app in self.apps:
-                    app.key_setup()
 
     def set_alert(self, n):
         self._in_alert = n
@@ -332,7 +285,7 @@ class MyStreamDeck:
 
                         # informa program is end to other thread
                         self._exit = True
-                        for app in self.apps:
+                        for app in self.config.apps:
                             app.stop = True
                         sys.exit()
 
@@ -358,7 +311,7 @@ class MyStreamDeck:
                     command = conf.get("app_command")
                     if command is not None:
                         found = False
-                        for app in self.apps:
+                        for app in self.config.apps:
                             if app.page_key.get(self.current_page()):
                                 for key in app.key_command:
                                     if command == key:
@@ -371,6 +324,7 @@ class MyStreamDeck:
 
                 if conf.get("change_page") is not None:
                     with deck:
+                        self.page_in_change = True
                         page_name = conf.get("change_page")
                         if page_name == "@previous":
                             print(self._previous_pages)
@@ -378,6 +332,8 @@ class MyStreamDeck:
                         else:
                             self.set_current_page(page_name)
 
+                        print(1111)
+                        self.page_in_change = False
                         self.key_setup()
 
 
@@ -408,6 +364,10 @@ class MyStreamDeck:
         except:
             return result
 
+    def set_key_config(self, conf):
+        if conf is None:
+            conf = {}
+        self._KEY_CONFIG = conf
 
     def set_game_key(self, key, conf):
         self._GAME_KEY_CONFIG[key] = conf
@@ -415,6 +375,8 @@ class MyStreamDeck:
 
     def add_game_key_conf(self, conf):
         key_config = self.key_config()
+        if key_config.get('@GAME') is None:
+            key_config['@GAME'] = {}
         for key in conf.keys():
             key_config['@GAME'][key] = conf[key]
             self._KEY_CONFIG_GAME[key] = conf[key]
@@ -422,7 +384,7 @@ class MyStreamDeck:
     def add_game_command(self, name, command):
         self._game_command[name] = command
 
-    def add_alert_key_conf(self, conf):
+    def set_alert_key_conf(self, conf):
         key_config = self.key_config()
         key_config['~ALERT'] = conf
 
@@ -488,22 +450,120 @@ class MyStreamDeck:
             time.sleep(1)
             app()
 
+    def threading_apps(self, apps):
+        time.sleep(0.5)
+        for app in apps:
+            if app.use_thread:
+                t = threading.Thread(target=lambda: app.start(), args=())
+                t.start()
+        t = threading.Thread(target=lambda: self.check_thread(), args=())
+        t.start()
+
     def check_thread(self):
         while True:
-            time.sleep(1)
             if self.in_alert() is False:
                 self.check_window_switch()
 
             if self._exit:
                 break
 
+            time.sleep(1)
+
         print("check thread end!")
         sys.exit()
 
-    def threading_apps(self):
+class Config:
+    _file_mtime = 0
+    _file = ''
+    _config_content = {}
+    _loaded = {}
+    conf = {}
+    apps = []
+    mydeck = None
+    def __init__(self, mydeck, file):
+        self.mydeck = mydeck
+        self._file = file
+
+
+    def reflect_config(self):
+        loaded = self.load()
+        if loaded is not None:
+            try:
+                return self.parse(loaded)
+            except Exception as e:
+                print(e)
+                return None
+
+    def load(self):
+        statinfo = os.stat(self._file)
+        if self._file_mtime < statinfo.st_mtime:
+            self._file_mtime = statinfo.st_mtime
+            with open(self._file) as f:
+                try:
+                    self._config_content = yaml.safe_load(f)
+                    return self._config_content
+                except Exception as e:
+                    print(e)
+
+        return None
+
+    def parse(self, conf):
+        self.mydeck.set_key_config(conf.get('key_config'))
+        alert_config = {}
+        self.parse_apps(conf.get('apps'))
+        self.parse_games(conf.get('games'))
+        self.parse_alert(conf.get('alert'))
+        self.mydeck.threading_apps(self.apps)
+
+    def parse_games(self, games_conf):
+        for game in games_conf.keys():
+            self.parse_game(game, games_conf[game])
+
+    def parse_game(self, game, game_conf):
+        if game_conf is None:
+            return False
+        game = 'Game' + game
+        m = self._load_module(game)
+        getattr(m, game)(self.mydeck, game_conf)
+
+    def parse_apps(self, apps_conf):
         for app in self.apps:
-            if app.use_thread:
-                t = threading.Thread(target=lambda: app.start(), args=())
-                t.start()
-        t = threading.Thread(target=lambda: self.check_thread(), args=())
-        t.start()
+            app.stop = True
+
+        # destloy apps
+        for app in self.apps:
+            del app
+
+        if apps_conf is None:
+            return False
+
+        for app_conf in apps_conf:
+            self.parse_app(app_conf)
+
+    def parse_app(self, app_conf):
+        if app_conf is None:
+            return False
+
+        app = app_conf.get('app')
+        m = self._load_module(app)
+        o = getattr(m, app)(self.mydeck, app_conf.get('option'))
+        self.apps.append(o)
+        o.key_setup()
+
+        return o
+
+    def parse_alert(self, app_conf):
+        if app_conf is None:
+            return False
+
+        o = self.parse_app({'app': 'Alert', 'option': app_conf})
+        if o is not False:
+            o.set_check_func(self.mydeck._alert_func)
+            self.mydeck.set_alert_key_conf(app_conf["key_config"])
+
+    def _load_module(self, app):
+        module = re.sub('([A-Z])', r'_\1', app)[1:].lower()
+        if self._loaded.get(app) is None:
+            self._loaded[app] = importlib.import_module('mystreamdeck.' + module, "mystreamdeck")
+
+        return self._loaded[app]

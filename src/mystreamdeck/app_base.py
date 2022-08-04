@@ -32,6 +32,15 @@ class AppBase:
     # if use_thread is true, this method is call in thread
     def start(self):
         while True:
+            # exit when main process is finished
+            if self.mydeck._exit or self.stop:
+                break
+
+            if self.mydeck.page_in_change:
+                # need to wait page is setup(?)
+                time.sleep(1)
+                continue
+
             try:
                 page = self.mydeck.current_page()
                 key  = self.page_key.get(page)
@@ -42,8 +51,9 @@ class AppBase:
             except Exception as e:
                 print(e)
                 pass
+
             # exit when main process is finished
-            if self.mydeck._exit:
+            if self.mydeck._exit or self.stop:
                 break
             time.sleep(self.time_to_sleep)
         sys.exit()
