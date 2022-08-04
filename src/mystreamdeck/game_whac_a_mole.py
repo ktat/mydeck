@@ -131,7 +131,6 @@ class GameWhacAMole:
         conf = mydeck._GAME_KEY_CONFIG.get(key)
         if state:
             if conf:
-                print(conf)
                 if conf["name"] == "exit":
                     self.exit = True
                     if self.data["left_second"] > 0:

@@ -181,7 +181,6 @@ class GameTicTackToe:
         cpu_val = 0
         can_select = []
         can_select_value = {}
-        print(conf)
         for key in conf.keys():
             if conf[key]["name"] == "frame":
                 if conf[key]["clicked"]:

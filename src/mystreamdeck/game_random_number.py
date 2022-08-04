@@ -125,7 +125,6 @@ class GameRandomNumber:
         conf = mydeck._GAME_KEY_CONFIG.get(key)
         if state:
             if conf:
-                print(conf)
                 if conf["name"] == "exit":
                     mydeck.exit_game()
                 if conf["name"] == "reset":
@@ -136,8 +135,6 @@ class GameRandomNumber:
                     if conf["click"]:
                         self.data["answer"].append(conf["value"])
                     if len(self.data["answer"]) == self.data["mode"]:
-                        print("-".join(self.data["answer"]))
-                        print("-".join(self.data["correct"]))
                         if "-".join(self.data["answer"]) == "-".join(self.data["correct"]):
                             mydeck.set_key(13, {
                                 "label": "OK",

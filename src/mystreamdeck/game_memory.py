@@ -79,8 +79,6 @@ class GameMemory:
             used[n2] = True
             pairs[i] = [n, n2]
             pos[n] = pos[n2] = i
-            print(n)
-            print(n2)
 
         key_name = 'number'
         if self.data["vsmode"]:
@@ -142,7 +140,6 @@ class GameMemory:
         wait_time = self.data["wait_time"]
         if state:
             if conf:
-                print(conf)
                 if conf["name"] == "exit":
                     mydeck.exit_game()
                 elif conf["name"] == "restart":
