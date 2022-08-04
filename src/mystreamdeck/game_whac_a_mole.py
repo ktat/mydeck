@@ -4,6 +4,8 @@ import random
 import threading
 
 class GameWhacAMole:
+    in_game = False
+    stop = False
     data = {
         "score": 0,
     }
@@ -80,9 +82,11 @@ class GameWhacAMole:
         game_time = self.data['mode']
         t = time.time()
         while True:
+            self.in_game = True
             if not mydeck.in_game_status():
                 break
-            if self.exit:
+            if self.exit or self.stop:
+                self.in_game = False
                 break
 
             self.data["count"] += 1
@@ -139,6 +143,10 @@ class GameWhacAMole:
                 if conf["name"] == "reset":
                     mydeck._GAME_KEY_CONFIG["answer"] = []
                 if conf["name"] == "restart":
+                    self.stop = True
+                    while self.in_game:
+                        time.sleep(0.5)
+                    self.stop = False
                     self.key_setup(self.data["mode"])
                 if conf["name"] == "mole":
                     if self.data["left_second"] > 0:
