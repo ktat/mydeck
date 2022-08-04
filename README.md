@@ -78,24 +78,27 @@ If you set window title as PAGE_LABEL, page is changed according to active windo
 ```yaml
 ---
 "apps":
-  Clock:
-    page_key:
-      '@HOME': 5
-      '@JOB': 12
-  StopWatch:
-    page_key:
-      '@HOME': 6
-  Calendar:
-    page_key:
-      '@home': 7
-  Alert:
-    check_interval: 180
-    key_cofnig:
-     key_config:
-       7:
-         command: ["google-chrome", '--profile-directory=Profile 1', 'https://example.com/nagios/cgi-bin/status.cgi?host=all&servicestatustypes=16&hoststatustypes=15']
-         image: "./src/Assets/nagios.ico"
-         change_page: '@previous'
+  - app: Clock
+    option:
+      page_key:
+        '@HOME': 5
+        '@JOB': 12
+  - app: StopWatch
+    option:
+      page_key:
+        '@HOME': 6
+  - app: Calendar
+    option:
+      page_key:
+        '@home': 7
+"alert":
+   retry_interval: 60
+   check_interval: 180
+   key_config:
+      7:
+        command: ["google-chrome", '--profile-directory=Profile 1', 'https://example.com/nagios/cgi-bin/status.cgi?host=all&servicestatustypes=16&hoststatustypes=15']
+        image: "./src/Assets/nagios.ico"
+        change_page: '@previous'
 "games":
   RandomNumber: 0
   Memory: 3
