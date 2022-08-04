@@ -35,11 +35,11 @@ class WeatherJp(AppBase):
             font = ImageFont.truetype(self.mydeck.font_path, 20)
             draw = ImageDraw.Draw(im)
             if result.temp is not None:
-                draw.text((28, 1),  font=font, text=result.temp, fill=(255,255,255))
+                draw.text((28, 1),  font=font, text=result.temp, fill=(200,200,200))
                 draw.text((27, 0),  font=font, text=result.temp, fill=(255,0,0))
 
             if result.pop is not None:
-                draw.text((28, 21),  font=font, text=result.pop, fill=(255,255,255))
+                draw.text((28, 21),  font=font, text=result.pop, fill=(200,200,200))
                 draw.text((27, 20),  font=font, text=result.pop, fill=(0,0,255))
 
             l = 20
