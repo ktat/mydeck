@@ -3,6 +3,7 @@ import os
 import sys
 
 class Alert:
+    index = 0
     # if app reuquire thread, true
     use_thread = True
     # dict: key is page name and value is key number.

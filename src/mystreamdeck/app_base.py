@@ -3,6 +3,7 @@ import sys
 import datetime
 
 class AppBase:
+    index = None
     # if app reuquire thread, true
     use_thread = False
     # dict: key is page name and value is key number.
@@ -17,12 +18,12 @@ class AppBase:
     in_other_page = True
 
     def __init__(self, mydeck, option={}):
+        self.temp_wait = 0
         self.mydeck = mydeck
         if option.get("page_key") is not None:
             self.page_key = option["page_key"]
         if option.get("command") is not None:
             self.command = option["command"]
-
 
     # implment it in subclass
     def set_iamge_to_key(self, key, page):
@@ -32,14 +33,15 @@ class AppBase:
     # if use_thread is true, this method is call in thread
     def start(self):
         while True:
+            self.mydeck.working_apps[self.index] = True
+            
             # exit when main process is finished
             if self.mydeck._exit or self.stop:
-                break
+                print("STOP")
+                if self.mydeck.working_apps.get(self.index):
+                    del self.mydeck.working_apps[self.index]
 
-            if self.mydeck.page_in_change:
-                # need to wait page is setup(?)
-                time.sleep(1)
-                continue
+                break
 
             try:
                 page = self.mydeck.current_page()
@@ -49,7 +51,7 @@ class AppBase:
                 else:
                     self.in_other_page = True
             except Exception as e:
-                print(e)
+                print('Error in app_base.start', type(self), e)
                 pass
 
             # exit when main process is finished

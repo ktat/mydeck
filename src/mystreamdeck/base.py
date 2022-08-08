@@ -17,10 +17,10 @@ from StreamDeck.DeviceManager import DeviceManager
 
 class MyStreamDeck:
     """STREAM DECK COnfiguration"""
-    deck = ''
+    deck = None
     config = None
     child_pid = None
-    page_in_change = True
+    working_apps = {}
     _alert_func = None
     _exit = False
     _current_page = '@HOME'
@@ -52,16 +52,17 @@ class MyStreamDeck:
             self._config_file = opt.get('config')
             self._KEY_CONFIG_GAME = {}
             self.config = Config(self, self._config_file)
-            self.config.reflect_config()
 
     def init_deck(self, deck):
         self.deck = deck
 
         deck.open()
 
+        if self.config is not None:
+            self.config.reflect_config()
+
         self.key_setup()
 
-        self.page_in_change = False
 
         # Wait until all application threads have terminated (for this example,
         # this is when all deck handles are closed).
@@ -69,7 +70,7 @@ class MyStreamDeck:
             try:
                 t.join()
             except RuntimeError as e:
-                print(e)
+                print("Error in init_deck", e)
                 pass
 
     def in_game_status(self):
@@ -133,7 +134,7 @@ class MyStreamDeck:
 
     # display keys and set key callbacks
     def key_setup(self):
-        deck =  self.deck
+        deck = self.deck
         print("Opened '{}' device (serial number: '{}', fw: '{}')".format(
             deck.deck_type(), deck.get_serial_number(), deck.get_firmware_version()
         ))
@@ -173,11 +174,11 @@ class MyStreamDeck:
     def image_url_to_image(self, conf, url=None):
         image_url = conf.get('image_url')
         icon_name = None
-        if image_url is None:
+        if image_url is None and url is not None:
             image_url = re.sub(r'^(https?://[^/]+).*$', '\\1/favicon.ico', url)
             icon = re.sub(r'^https?://([^/]+).*$', '\\1', url)
             icon_name = icon + '.ico'
-        else:
+        elif image_url is not None:
             icon_name = ""
             if url is None:
                 icon_name = re.sub(r'^https?://', '', image_url)
@@ -218,7 +219,7 @@ class MyStreamDeck:
             with wand.image.Image(filename=file_path):
                 return True
         except Exception as e:
-            print(e)
+            print("Error in check_icon_file:", e)
             os.rename(file_path, file_path + '.back')
             return False
 
@@ -247,6 +248,7 @@ class MyStreamDeck:
         margins = [0, 0, 20, 0]
         if no_label:
             margins = [0, 0, 0, 0]
+
         image = PILHelper.create_scaled_image(deck, icon, margins=margins, background=bg_color)
 
         draw = ImageDraw.Draw(image)
@@ -324,7 +326,7 @@ class MyStreamDeck:
 
                 if conf.get("change_page") is not None:
                     with deck:
-                        self.page_in_change = True
+                        self.check_working_apps()
                         page_name = conf.get("change_page")
                         if page_name == "@previous":
                             print(self._previous_pages)
@@ -332,10 +334,10 @@ class MyStreamDeck:
                         else:
                             self.set_current_page(page_name)
 
-                        print(1111)
-                        self.page_in_change = False
-                        self.key_setup()
-
+    def check_working_apps(self):
+        while len(self.working_apps.keys()) > 0:
+            print("check_working_apps", self.working_apps)
+            time.sleep(0.5)
 
     # handler to notify alert
     def handler_alert(self):
@@ -489,9 +491,10 @@ class Config:
         loaded = self.load()
         if loaded is not None:
             try:
-                return self.parse(loaded)
+                self.parse(loaded)
+                self.mydeck.threading_apps(self.apps)
             except Exception as e:
-                print(e)
+                print("Error in reflect_config", e)
                 return None
 
     def load(self):
@@ -503,7 +506,7 @@ class Config:
                     self._config_content = yaml.safe_load(f)
                     return self._config_content
                 except Exception as e:
-                    print(e)
+                    print("Error in load", e)
 
         return None
 
@@ -513,7 +516,6 @@ class Config:
         self.parse_apps(conf.get('apps'))
         self.parse_games(conf.get('games'))
         self.parse_alert(conf.get('alert'))
-        self.mydeck.threading_apps(self.apps)
 
     def parse_games(self, games_conf):
         for game in games_conf.keys():
@@ -537,8 +539,11 @@ class Config:
         if apps_conf is None:
             return False
 
+        i = 1
         for app_conf in apps_conf:
-            self.parse_app(app_conf)
+            app = self.parse_app(app_conf)
+            app.index = i
+            i += 1
 
     def parse_app(self, app_conf):
         if app_conf is None:
