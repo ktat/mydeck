@@ -1,5 +1,6 @@
 import time
 import random
+import threading
 
 class GameRandomNumber:
     data = {}
@@ -26,11 +27,12 @@ class GameRandomNumber:
             }
         })
         mydeck.add_game_command("RandomNumber", lambda conf: self.key_setup(conf.get("mode")))
-        
+
     def key_setup(self, num):
         mydeck = self.mydeck
         deck = mydeck.deck
         deck.reset()
+        mydeck.set_game_status(1)
         mydeck.set_current_page_without_setup("~GAME_RANDOM_NUMBER")
         self.data["mode"] = num
         print("Opened '{}' device (serial number: '{}', fw: '{}')".format(
@@ -40,40 +42,62 @@ class GameRandomNumber:
         # Set initial screen brightness to 30%.
         deck.set_brightness(30)
 
+        self.data["correct"] = [];
+
+        t = threading.Thread(target=lambda: self.prepare_number(num), args=())
+        t.start()
+
+        # Set initial key images.
+        deck.set_key_callback(lambda deck, key, state: self.key_change_callback(key, state))
+
+        mydeck.set_game_key(10, {
+            "name": "reset",
+            "label": "RESET",
+            "image": "./src/Assets/cat.png",
+        })
+
+        mydeck.set_game_key(11, {
+            "name": "restart",
+            "label": "RESTART",
+            "image": "./src/Assets/restart.png",
+        })
+
+        mydeck.set_game_key(14, {
+            "name": "exit",
+            "image": "./src/Assets/back.png",
+            "label": "exit Game"
+        })
+
+        self.data["answer"] = []
+
+    def prepare_number(self, num):
+        mydeck = self.mydeck
+        cnt = 0
+        r = 0
+        used = {}
+        prev = 0
+
         number = {
             "image": "", # set number image after
-            "name": "number",
+            "name": "numberPrepare",
             "click": False,
+            "command": "RandomNumber"
         }
         empty = {
             "image": "./src/Assets/cat.png",
             "name": "empty"
         }
 
-        prev = 0
-
-        mydeck.set_game_status(1)
-
         for key in range(0, 10):
             mydeck.set_game_key(key, empty)
 
-        # Set initial key images.
-        deck.set_key_callback(lambda deck, key, state: self.key_change_callback(key, state))
-
-        cnt = 0
-        r = 0
-        used = {}
-        self.data["correct"] = [];
         while True:
             if not mydeck.in_game_status():
                 break
-
             time.sleep(0.5)
             cnt += 1
             if cnt > num:
-                mydeck.set_game_status(0)
                 break
-
             r = random.randint(0,9)
             while used.get(r) is not None and used.get(r) is True:
                 r = random.randint(0,9)
@@ -96,25 +120,6 @@ class GameRandomNumber:
             })
             i = i+1
 
-        mydeck.set_game_key(10, {
-            "name": "reset",
-            "label": "RESET",
-            "image": "./src/Assets/cat.png",
-        })
-
-        mydeck.set_game_key(11, {
-            "name": "restart",
-            "label": "RESTART",
-            "image": "./src/Assets/restart.png",
-        })
-
-        mydeck.set_game_key(14, {
-            "name": "exit",
-            "image": "./src/Assets/back.png",
-            "label": "exit Game"
-        })
-
-        self.data["answer"] = []
 
     def key_change_callback(self, key, state):
         mydeck = self.mydeck
