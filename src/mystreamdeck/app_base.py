@@ -16,6 +16,10 @@ class AppBase:
     command = None
     # not in target page
     in_other_page = True
+    # app is running now
+    in_working = False
+    # normaly true
+    is_normal_app = True
 
     def __init__(self, mydeck, option={}):
         self.temp_wait = 0
@@ -27,38 +31,54 @@ class AppBase:
 
     # implment it in subclass
     def set_iamge_to_key(self, key, page):
-        print("Implemnt set_image_to_key in subclass.")
-        pass
+        print("Implemnt set_image_to_key in subclass for app to use thread anytime.")
+
+    # check current page is whther app's target or not
+    def is_in_target_page(self):
+        page = self.mydeck.current_page()
+        key  = self.page_key.get(page)
+        if key is not None:
+            return True
+        else:
+            self.in_other_page = True
+            return False
 
     # if use_thread is true, this method is call in thread
     def start(self):
-        while True:
-            self.mydeck.working_apps[self.index] = True
-            
-            # exit when main process is finished
-            if self.mydeck._exit or self.stop:
-                print("STOP")
-                if self.mydeck.working_apps.get(self.index):
-                    del self.mydeck.working_apps[self.index]
+        if not self.is_in_target_page():
+            sys.exit()
+            return
 
-                break
+        while True:
+            self.in_working = True
 
             try:
                 page = self.mydeck.current_page()
                 key  = self.page_key.get(page)
                 if key is not None:
                     self.set_image_to_key(key, page)
-                else:
-                    self.in_other_page = True
             except Exception as e:
-                print('Error in app_base.start', type(self), e)
-                pass
+                print('Error in app_base.is_in_target', type(self), e)
+                print(type(self), self.in_other_page, page,key)
+
 
             # exit when main process is finished
-            if self.mydeck._exit or self.stop:
+            if self.check_to_stop():
                 break
+
             time.sleep(self.time_to_sleep)
         sys.exit()
+
+    def check_to_stop(self):
+        if self.mydeck._exit or self.stop or not self.is_in_target_page():
+            self.stop_app()
+            return True
+        return False
+
+    def stop_app(self):
+        if self.in_working:
+            self.stop = False
+            self.in_working = False
 
     # if command is given as option, set key to command
     def key_setup(self):

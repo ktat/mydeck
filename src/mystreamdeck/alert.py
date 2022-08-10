@@ -16,6 +16,8 @@ class Alert:
     _retry_interval = 60
     _previous_checke_time = 0
     in_alert = False
+    in_working = False
+    is_normal_app = False
 
     def __init__ (self, mydeck, config):
         alert_key_config = {}
