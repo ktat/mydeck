@@ -1,12 +1,11 @@
 import time
 import os
 import sys
+from mystreamdeck import BackgroundAppBase
 
-class Alert:
+class Alert(BackgroundAppBase):
     # if app reuquire thread, true
     use_thread = True
-    # dict: key is page name and value is key number.
-    page_key = {}
     # need to stop thread
     stop = False
 

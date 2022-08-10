@@ -1,12 +1,11 @@
 import time
 import os
 import sys
+from mystreamdeck import BackgroundAppBase
 
-class WindowCheckBase:
+class WindowCheckBase(BackgroundAppBase):
     # if app reuquire thread, true
     use_thread = True
-    # dict: key is page name and value is key number.
-    page_key = {}
     # need to stop thread
     stop = False
 
@@ -18,24 +17,7 @@ class WindowCheckBase:
         [r'^(Slack \|.+?\|.+?\|).+', '\\1'],
     ]
     
-    def __init__ (self, mydeck, config):
-        self.mydeck = mydeck
-
-    def start(self):
-        mydeck = self.mydeck
-        while True:
-            if mydeck.in_alert() is False:
-                self.check_window_switch()
-
-            if mydeck._exit:
-                break
-
-            time.sleep(1)
-
-        print("check thread end!")
-        sys.exit()
-
-    def check_window_switch(self):
+    def execute_in_thread(self):
         mydeck = self.mydeck
         if not mydeck.in_alert():
             new_result = self.get_current_window()
