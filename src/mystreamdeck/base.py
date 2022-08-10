@@ -17,10 +17,10 @@ from StreamDeck.DeviceManager import DeviceManager
 
 class MyStreamDeck:
     """STREAM DECK COnfiguration"""
-    deck = ''
+    deck = None
     config = None
     child_pid = None
-    page_in_change = True
+    is_check_thread_started = False
     _alert_func = None
     _exit = False
     _current_page = '@HOME'
@@ -52,25 +52,17 @@ class MyStreamDeck:
             self._config_file = opt.get('config')
             self._KEY_CONFIG_GAME = {}
             self.config = Config(self, self._config_file)
-            self.config.reflect_config()
 
     def init_deck(self, deck):
         self.deck = deck
 
         deck.open()
 
+        if self.config is not None:
+            self.config.reflect_config()
+
         self.key_setup()
 
-        self.page_in_change = False
-
-        # Wait until all application threads have terminated (for this example,
-        # this is when all deck handles are closed).
-        for t in threading.enumerate():
-            try:
-                t.join()
-            except RuntimeError as e:
-                print(e)
-                pass
 
     def in_game_status(self):
         return self._game_status == 1
@@ -98,8 +90,6 @@ class MyStreamDeck:
             return ''
 
     def pop_last_previous_page(self):
-        print("a:pop_previous_page:")
-        print(self._previous_pages)
         if len(self._previous_pages) > 0:
             return self._previous_pages.pop(-1)
         else:
@@ -108,7 +98,6 @@ class MyStreamDeck:
     def set_previous_page(self, name):
         if  name[0] != '~' and (len(self._previous_pages) == 0 or self._previous_pages[-1] != name):
             self._previous_pages.append(name)
-            print("b:set_previous_page:"+name)
 
     def current_page(self):
         return self._current_page
@@ -119,21 +108,23 @@ class MyStreamDeck:
         self._current_page = name
 
     def set_current_page(self, name):
-        print("c:set_current_page:"+name)
         self.set_previous_page(self._current_page)
 
         if name[0] != "~ALERT":
             self.set_alert(0)
 
         if name != self._current_page:
+            self.stop_working_apps()
             self._current_page = name
             self.set_game_status(0)
             self.deck.reset()
             self.key_setup()
+            self.threading_apps(self.config.apps)
+
 
     # display keys and set key callbacks
     def key_setup(self):
-        deck =  self.deck
+        deck = self.deck
         print("Opened '{}' device (serial number: '{}', fw: '{}')".format(
             deck.deck_type(), deck.get_serial_number(), deck.get_firmware_version()
         ))
@@ -173,11 +164,11 @@ class MyStreamDeck:
     def image_url_to_image(self, conf, url=None):
         image_url = conf.get('image_url')
         icon_name = None
-        if image_url is None:
+        if image_url is None and url is not None:
             image_url = re.sub(r'^(https?://[^/]+).*$', '\\1/favicon.ico', url)
             icon = re.sub(r'^https?://([^/]+).*$', '\\1', url)
             icon_name = icon + '.ico'
-        else:
+        elif image_url is not None:
             icon_name = ""
             if url is None:
                 icon_name = re.sub(r'^https?://', '', image_url)
@@ -218,7 +209,7 @@ class MyStreamDeck:
             with wand.image.Image(filename=file_path):
                 return True
         except Exception as e:
-            print(e)
+            print("Error in check_icon_file:", e)
             os.rename(file_path, file_path + '.back')
             return False
 
@@ -247,6 +238,7 @@ class MyStreamDeck:
         margins = [0, 0, 20, 0]
         if no_label:
             margins = [0, 0, 0, 0]
+
         image = PILHelper.create_scaled_image(deck, icon, margins=margins, background=bg_color)
 
         draw = ImageDraw.Draw(image)
@@ -324,17 +316,27 @@ class MyStreamDeck:
 
                 if conf.get("change_page") is not None:
                     with deck:
-                        self.page_in_change = True
                         page_name = conf.get("change_page")
                         if page_name == "@previous":
-                            print(self._previous_pages)
                             self.set_current_page(self.pop_last_previous_page())
                         else:
                             self.set_current_page(page_name)
 
-                        print(1111)
-                        self.page_in_change = False
-                        self.key_setup()
+
+    def stop_working_apps(self):
+        for app in self.config.apps:
+            if app.in_working:
+                app.in_working = False
+
+        i = 0
+        # when app is stopped, app make stop False
+        while sum( 1 for e in self.config.working_apps()) > 0:
+            for app in self.config.working_apps():
+                if app.in_working:
+                    time.sleep(0.01)
+                    i += 1
+                    if i > 200:
+                        print(type(app), 'still waiting to stop working apps')
 
 
     # handler to notify alert
@@ -345,7 +347,6 @@ class MyStreamDeck:
     # handler to stop alert
     def handler_alert_stop(self):
         if self.current_page() == "~ALERT":
-            print("stop alert")
             self.set_alert(0)
             self.set_current_page(self.pop_last_previous_page())
 
@@ -403,7 +404,6 @@ class MyStreamDeck:
             new_result = self.get_current_window()
 
             if new_result is not None and new_result != self._previous_window:
-                print(new_result)
                 self._previous_window = new_result
                 self.handler_switch(new_result)
 
@@ -419,9 +419,6 @@ class MyStreamDeck:
                 # when no configuration for window and current_page is not started with '@', set previous_page
             elif current_page[0:1] != '@':
                 self.set_current_page(self.pop_last_previous_page())
-            else:
-                print(self.current_page())
-                print(self.previous_page())
 
     def deck_start(self):
         streamdecks = DeviceManager().enumerate()
@@ -439,8 +436,8 @@ class MyStreamDeck:
             for t in threading.enumerate():
                 try:
                     t.join()
-                except RuntimeError:
-                    pass
+                except RuntimeError as e:
+                    print("Error in deck_start", e)
 
         print("deck_start end!")
         sys.exit()
@@ -451,13 +448,29 @@ class MyStreamDeck:
             app()
 
     def threading_apps(self, apps):
-        time.sleep(0.5)
         for app in apps:
-            if app.use_thread:
+            if app.use_thread and app.is_in_target_page():
                 t = threading.Thread(target=lambda: app.start(), args=())
                 t.start()
-        t = threading.Thread(target=lambda: self.check_thread(), args=())
-        t.start()
+        if not self.is_check_thread_started:
+            self.is_check_thread_started = True
+            t = threading.Thread(target=lambda: self.check_thread(), args=())
+            t.start()
+
+            for app in self.config.not_normal_apps:
+                t = threading.Thread(target=lambda: app.start(), args=())
+                t.start()
+
+        time.sleep(0.5)
+
+        i = 0
+        while sum( 1 for e in self.config.not_working_apps() ) > 0:
+            for app in self.config.not_working_apps():
+                if app.is_in_target_page() and not app.in_working:
+                    time.sleep(0.01)
+                    i += 1
+                    if i > 200:
+                        print(type(app), 'still waiting to start app')
 
     def check_thread(self):
         while True:
@@ -479,6 +492,7 @@ class Config:
     _loaded = {}
     conf = {}
     apps = []
+    not_normal_apps = []
     mydeck = None
     def __init__(self, mydeck, file):
         self.mydeck = mydeck
@@ -489,9 +503,11 @@ class Config:
         loaded = self.load()
         if loaded is not None:
             try:
-                return self.parse(loaded)
+                self.reset_apps()
+                self.parse(loaded)
+                self.mydeck.threading_apps(self.apps)
             except Exception as e:
-                print(e)
+                print("Error in reflect_config", e)
                 return None
 
     def load(self):
@@ -503,7 +519,7 @@ class Config:
                     self._config_content = yaml.safe_load(f)
                     return self._config_content
                 except Exception as e:
-                    print(e)
+                    print("Error in load", e)
 
         return None
 
@@ -513,7 +529,6 @@ class Config:
         self.parse_apps(conf.get('apps'))
         self.parse_games(conf.get('games'))
         self.parse_alert(conf.get('alert'))
-        self.mydeck.threading_apps(self.apps)
 
     def parse_games(self, games_conf):
         for game in games_conf.keys():
@@ -526,19 +541,25 @@ class Config:
         m = self._load_module(game)
         getattr(m, game)(self.mydeck, game_conf)
 
-    def parse_apps(self, apps_conf):
+
+    def reset_apps(self):
         for app in self.apps:
             app.stop = True
 
         # destloy apps
         for app in self.apps:
             del app
+        self.mydeck.working_apps = {}
 
+    def parse_apps(self, apps_conf):
         if apps_conf is None:
             return False
 
+        i = 0
         for app_conf in apps_conf:
-            self.parse_app(app_conf)
+            app = self.parse_app(app_conf)
+            app.index = i
+            i += 1
 
     def parse_app(self, app_conf):
         if app_conf is None:
@@ -547,7 +568,10 @@ class Config:
         app = app_conf.get('app')
         m = self._load_module(app)
         o = getattr(m, app)(self.mydeck, app_conf.get('option'))
-        self.apps.append(o)
+        if o.is_normal_app:
+            self.apps.append(o)
+        else:
+            self.not_normal_apps.append(o)
         o.key_setup()
 
         return o
@@ -567,3 +591,9 @@ class Config:
             self._loaded[app] = importlib.import_module('mystreamdeck.' + module, "mystreamdeck")
 
         return self._loaded[app]
+
+    def not_working_apps(self):
+        return filter(lambda app: app.use_thread and app.is_in_target_page() and not app.in_working, self.apps)
+
+    def working_apps(self):
+        return filter(lambda app: app.use_thread and app.is_in_target_page() and app.in_working, self.apps)
