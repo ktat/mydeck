@@ -24,7 +24,7 @@ class WeatherJp(AppBase):
     def set_image_to_key(self, key, page):
         if self.is_required_process_hourly() is False:
             return False
-        print(self.is_required_process_hourly())
+
         result = JMASearch(self.jma, self.area).search()
 
         if result is not None:
