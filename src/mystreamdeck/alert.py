@@ -3,7 +3,6 @@ import os
 import sys
 
 class Alert:
-    index = 0
     # if app reuquire thread, true
     use_thread = True
     # dict: key is page name and value is key number.
@@ -17,7 +16,7 @@ class Alert:
     _previous_checke_time = 0
     in_alert = False
     in_working = False
-    is_normal_app = False
+    is_background_app = True
 
     def __init__ (self, mydeck, config):
         alert_key_config = {}
@@ -27,7 +26,7 @@ class Alert:
             self._retry_interval = config.get("retry_interval")
         if config.get("key_cofnig"):
             alert_key_config = config.get("key_cofnig")
-            
+
         self._previous_checke_time = 0
         self.mydeck = mydeck
 
@@ -58,6 +57,3 @@ class Alert:
                 break
             time.sleep(1)
         sys.exit()
-
-    def key_setup(self):
-        return True

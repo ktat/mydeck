@@ -20,7 +20,7 @@ class MyStreamDeck:
     deck = None
     config = None
     child_pid = None
-    is_check_thread_started = False
+    is_background_thread_started = False
     _alert_func = None
     _exit = False
     _current_page = '@HOME'
@@ -35,10 +35,6 @@ class MyStreamDeck:
     _GAME_KEY_CONFIG = {}
     _config_file = ''
     _config_file_mtime = 0
-    _window_title_regexps = [
-        [r'^Meet.+Google Chrome$', 'Meet - Google Chrome'],
-        [r'^(Slack \|.+?\|.+?\|).+', '\\1'],
-    ]
 
     # path of font
     font_path = "/usr/share/fonts/truetype/freefont/FreeSans.ttf"
@@ -350,21 +346,6 @@ class MyStreamDeck:
             self.set_alert(0)
             self.set_current_page(self.pop_last_previous_page())
 
-    # get curent window name
-    def get_current_window(self):
-        result = None
-        try:
-            window_ids = subprocess.check_output(["xdotool", "getwindowfocus"]).decode().rsplit()
-            if window_ids and len(window_ids) > 0:
-                window_id = window_ids[0]
-                result = subprocess.check_output(["xdotool", "getwindowname", window_id]).decode()
-                for reg in self._window_title_regexps:
-                    result = re.sub(reg[0], reg[1], result)
-                    result = re.sub(r"\n", "", result)
-            return result
-        except:
-            return result
-
     def set_key_config(self, conf):
         if conf is None:
             conf = {}
@@ -399,27 +380,6 @@ class MyStreamDeck:
             self._KEY_CONFIG[page] = {}
         self._KEY_CONFIG[page][key] = conf
 
-    def check_window_switch(self):
-        if not self.in_alert():
-            new_result = self.get_current_window()
-
-            if new_result is not None and new_result != self._previous_window:
-                self._previous_window = new_result
-                self.handler_switch(new_result)
-
-    # handler to switch window
-    def handler_switch(self, page):
-        # enabled when alert is off and not playing game
-        if not self.in_alert() and not self.in_game_status():
-            current_page = self.current_page()
-            previous_page = self.previous_page()
-
-            if self.key_config().get(page):
-                self.set_current_page(page)
-                # when no configuration for window and current_page is not started with '@', set previous_page
-            elif current_page[0:1] != '@':
-                self.set_current_page(self.pop_last_previous_page())
-
     def deck_start(self):
         streamdecks = DeviceManager().enumerate()
         print("Found {} Stream Deck(s).\n".format(len(streamdecks)))
@@ -452,12 +412,9 @@ class MyStreamDeck:
             if app.use_thread and app.is_in_target_page():
                 t = threading.Thread(target=lambda: app.start(), args=())
                 t.start()
-        if not self.is_check_thread_started:
-            self.is_check_thread_started = True
-            t = threading.Thread(target=lambda: self.check_thread(), args=())
-            t.start()
-
-            for app in self.config.not_normal_apps:
+        if not self.is_background_thread_started:
+            self.is_background_thread_started = True
+            for app in self.config.background_apps:
                 t = threading.Thread(target=lambda: app.start(), args=())
                 t.start()
 
@@ -472,19 +429,6 @@ class MyStreamDeck:
                     if i > 200:
                         print(type(app), 'still waiting to start app')
 
-    def check_thread(self):
-        while True:
-            if self.in_alert() is False:
-                self.check_window_switch()
-
-            if self._exit:
-                break
-
-            time.sleep(1)
-
-        print("check thread end!")
-        sys.exit()
-
 class Config:
     _file_mtime = 0
     _file = ''
@@ -492,7 +436,7 @@ class Config:
     _loaded = {}
     conf = {}
     apps = []
-    not_normal_apps = []
+    background_apps = []
     mydeck = None
     def __init__(self, mydeck, file):
         self.mydeck = mydeck
@@ -528,7 +472,6 @@ class Config:
         alert_config = {}
         self.parse_apps(conf.get('apps'))
         self.parse_games(conf.get('games'))
-        self.parse_alert(conf.get('alert'))
 
     def parse_games(self, games_conf):
         for game in games_conf.keys():
@@ -549,17 +492,19 @@ class Config:
         # destloy apps
         for app in self.apps:
             del app
-        self.mydeck.working_apps = {}
+        for app in self.background_apps:
+            del app
+
+        self.apps = []
+        self.background_apps = []
+        self.is_background_thread_started = False
 
     def parse_apps(self, apps_conf):
         if apps_conf is None:
             return False
 
-        i = 0
         for app_conf in apps_conf:
             app = self.parse_app(app_conf)
-            app.index = i
-            i += 1
 
     def parse_app(self, app_conf):
         if app_conf is None:
@@ -568,22 +513,16 @@ class Config:
         app = app_conf.get('app')
         m = self._load_module(app)
         o = getattr(m, app)(self.mydeck, app_conf.get('option'))
-        if o.is_normal_app:
+        if not o.is_background_app:
             self.apps.append(o)
+            o.key_setup()
         else:
-            self.not_normal_apps.append(o)
-        o.key_setup()
+            self.background_apps.append(o)
+            if app_conf['app'] == 'Alert':
+                o.set_check_func(self.mydeck._alert_func)
+                self.mydeck.set_alert_key_conf(app_conf['option']["key_config"])
 
         return o
-
-    def parse_alert(self, app_conf):
-        if app_conf is None:
-            return False
-
-        o = self.parse_app({'app': 'Alert', 'option': app_conf})
-        if o is not False:
-            o.set_check_func(self.mydeck._alert_func)
-            self.mydeck.set_alert_key_conf(app_conf["key_config"])
 
     def _load_module(self, app):
         module = re.sub('([A-Z])', r'_\1', app)[1:].lower()

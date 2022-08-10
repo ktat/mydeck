@@ -3,7 +3,6 @@ import sys
 import datetime
 
 class AppBase:
-    index = None
     # if app reuquire thread, true
     use_thread = False
     # dict: key is page name and value is key number.
@@ -19,7 +18,7 @@ class AppBase:
     # app is running now
     in_working = False
     # normaly true
-    is_normal_app = True
+    is_background_app = False
 
     def __init__(self, mydeck, option={}):
         self.temp_wait = 0
