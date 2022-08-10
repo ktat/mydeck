@@ -57,8 +57,6 @@ class GameWhacAMole:
             "label": "exit Game"
         })
 
-        self.data["answer"] = []
-
         t = threading.Thread(target=lambda : self.appear_mole(), args=())
         t.start()
 
@@ -81,7 +79,8 @@ class GameWhacAMole:
         }
         game_time = self.data['mode']
         t = time.time()
-        while True:
+        self.data["left_second"] = game_time
+        while self.data["left_second"] > 0:
             self.in_game = True
             if not mydeck.in_game_status():
                 break
@@ -104,9 +103,7 @@ class GameWhacAMole:
             mydeck.set_game_key(10, left_second_key)
 
             self.show_score()
-            if self.data["left_second"] == 0:
-                
-                break
+        self.in_game = False
 
     def show_score(self):
         mydeck = self.mydeck
@@ -140,8 +137,6 @@ class GameWhacAMole:
                     if self.data["left_second"] > 0:
                         time.sleep(1)
                     mydeck.exit_game()
-                if conf["name"] == "reset":
-                    mydeck._GAME_KEY_CONFIG["answer"] = []
                 if conf["name"] == "restart":
                     self.stop = True
                     while self.in_game:
