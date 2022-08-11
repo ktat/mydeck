@@ -7,7 +7,8 @@ import re
 # iterate through the modules in the current package
 package_dir = extend_path(__path__, __name__)
 
-for (_, module_name, _) in iter_modules(package_dir):
+for item in iter_modules(package_dir):
+    module_name = item.name
     # import the module and iterate through its attributes
     module = import_module(f"{__name__}.{module_name}")
     for attribute_name in dir(module):
