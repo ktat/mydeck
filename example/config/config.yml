@@ -27,7 +27,10 @@ apps:
        area_temp: '大阪'
        display_name: 'Osaka'
    - app: 'WindowCheckLinux'
-     option: {}
+     option:
+       window_title_regexps:
+         - ['^Meet.+Google Chrome$', 'Meet - Google Chrome']
+         - ['^(Slack \|.+?\|).+$', '\g<1>']
    - app: 'Alert'
      option:
        check_interval: 180
