@@ -11,7 +11,7 @@ class BackgroundAppBase:
     in_working = False
     is_background_app = True
 
-    def __init__ (self, mydeck, config):
+    def __init__ (self, mydeck, config={}):
         self.mydeck = mydeck
 
     def start(self):
