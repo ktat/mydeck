@@ -16,7 +16,7 @@ class WindowCheckBase(BackgroundAppBase):
         [r'^Meet.+Google Chrome$', 'Meet - Google Chrome'],
         [r'^(Slack \|.+?\|.+?\|).+', '\\1'],
     ]
-    
+
     def execute_in_thread(self):
         mydeck = self.mydeck
         if not mydeck.in_alert():
