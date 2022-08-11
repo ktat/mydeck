@@ -68,7 +68,6 @@ class MyStreamDeck:
 
     def key_config(self):
         if self._config_file != '':
-            # self.load_conf_from_file()
             self.config.reflect_config()
 
         return self._KEY_CONFIG
