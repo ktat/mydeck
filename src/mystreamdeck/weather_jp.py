@@ -1,4 +1,5 @@
-from mystreamdeck import AppBase
+from mystreamdeck import MyStreamDeck, AppBase, ImageOrFile
+from typing import NoReturn, Tuple, Optional
 from PIL import Image, ImageDraw, ImageFont
 import time
 import sys
@@ -7,21 +8,136 @@ import requests
 import re
 import datetime
 
+class Area:
+    division: str = ''
+    division_code: str = ''
+    area: str = ''
+    area_code: str = ''
+    area_temp: str = ''
+    area_temp_code: str = ''
+    display_name: str = ''
+
+    def __init__(self, args: dict):
+        self.division = args.get('division') or "" # 東京都
+        self.division_code = args.get('division_code') or "" # 130000
+        self.area = args.get('area') or "" # 東京地方
+        self.area_code = args.get('area_code') or "" # 130000
+        self.area_temp = args.get('area_temp') or "" # 東京
+        self.area_temp_code = args.get('area_temp_code') or "" # 44132
+        self.display_name = args.get('display_name') or ""
+
+        if self.division == "" and self.division_code == "":
+            self.division = '東京都'
+            self.division_code = '130000'
+
+        if self.area == "" and self.area_code == "":
+            self.area = '東京地方'
+            self.area_code = '130010'
+
+        if self.area_temp == "" and self.area_temp_code == "":
+            self.area_temp = '東京'
+            self.area_temp_code = '44132'
+
+        result = self.find(division_mapping(), self.division, self.division_code)
+        if result is None:
+            result = (None, None)
+        (self.division, self.division_code) = result
+
+        result = self.find(area_mapping(), self.area, self.area_code)
+        if result is None:
+            result = (None, None)
+        (self.area, self.area_code) = result
+
+    def find(self, mapping: dict, name: str = None, code: str = None) -> Optional[Tuple]:
+        if name is not None:
+            if mapping.get(name) is not None:
+                code = mapping[name]
+            if code is not None:
+                for item in mapping.items():
+                    if item[1] == code:
+                        name = item[0]
+                        break
+            if code is None:
+                for key in mapping.keys():
+                    if re.match(name, key):
+                        code = mapping[key]
+                        name = key
+                        break
+        if name is not None and code is not None:
+            return (name, code)
+
+        return None
+
+class JMA:
+    url: str
+    def __init__(self, area: Area):
+        self.url = 'https://www.jma.go.jp/bosai/forecast/data/forecast/{}.json'.format(area.division_code)
+
+class JMAResult:
+    image_url: str
+    weather: str
+    image_name: str
+    temp: str # 気温
+    pop: str # 降水量
+    def __init__(self, weather: str, pop: int, temp: int):
+        now = datetime.datetime.now()
+        image = forecast_mapping().get(weather)
+        if now.hour <= 18 and now.hour >= 6:
+            self.image_url = 'https://www.jma.go.jp/bosai/forecast/img/' + image[0]
+            self.image_name = image[0][0:-4]
+        else:
+            self.image_url = 'https://www.jma.go.jp/bosai/forecast/img/' + image[1]
+            self.image_name = image[1][0:-4]
+
+        self.weather = weather
+        if pop is not None:
+            self.pop = str(pop) + '%'
+        if temp is not None:
+            self.temp = str(temp) + '℃'
+
+class JMASearch:
+    area = None
+    jma = None
+    def __init__(self, jma: JMA, area: Area):
+        self.jma = jma
+        self.area = area
+
+    def search(self):
+        res = requests.get(self.jma.url)
+        if res.status_code == requests.codes.ok:
+            image_url = ''
+            weather = None
+            temp = None
+            pop = None
+            data = json.loads(res.text)
+            for area in data[0]["timeSeries"][0]["areas"]:
+                if area["area"]["name"] == self.area.area or area["area"]["code"] == self.area.area_code:
+                    weather = area["weatherCodes"][0]
+                    break
+            for area in data[0]["timeSeries"][1]["areas"]:
+                if area["area"]["name"] == self.area.area or area["area"]["code"] == self.area.area_code:
+                    pop = area["pops"][0]
+                    break
+            for area in data[0]["timeSeries"][2]["areas"]:
+                if area["area"]["name"] == self.area.area_temp or area["area"]["code"] == self.area.area_temp:
+                    temp = area["temps"][0]
+                    break
+            return JMAResult(weather, pop, temp)
+        return None
+
 class WeatherJp(AppBase):
     # if app reuquire thread, true
     use_thread = True
 
-    previous_page = ''
-    previous_date = ''
-    area = None
-    jma = None
+    area: Area
+    jma: JMA
 
-    def __init__(self, mydeck, option={}):
+    def __init__(self, mydeck: MyStreamDeck, option: dict ={}):
         super().__init__(mydeck, option)
         self.area = Area(option)
         self.jma  = JMA(self.area)
 
-    def set_image_to_key(self, key, page):
+    def set_image_to_key(self, key: int, page: str):
         if self.is_required_process_hourly() is False:
             return False
 
@@ -52,127 +168,12 @@ class WeatherJp(AppBase):
             self.mydeck.update_key_image(
                 key,
                 self.mydeck.render_key_image(
-                    im,
+                    ImageOrFile(im),
                     "",
                     'black',
                     True,
                 )
             )
-
-class Area:
-    division = ''
-    division_code = ''
-    area = ''
-    area_code = ''
-    area_temp = ''
-    area_temp_code = ''
-
-    def __init__(self, args):
-        self.division = args.get('division') # 東京都
-        self.division_code = args.get('division_code') # 130000
-        self.area = args.get('area') # 東京地方
-        self.area_code = args.get('area_code') # 130000
-        self.area_temp = args.get('area_temp') # 東京
-        self.area_temp_code = args.get('area_temp_code') # 44132
-        self.display_name = args.get('display_name')
-
-        if self.division is None and self.division_code is None:
-            self.division = '東京都'
-            self.division_code = '130000'
-
-        if self.area is None and self.area_code is None:
-            self.area = '東京地方'
-            self.area_code = '130010'
-
-        if self.area_temp is None and self.area_temp_code is None:
-            self.area_temp = '東京'
-            self.area_temp_code = '44132'
-
-        result = self.find(division_mapping(), self.division, self.division_code)
-        if result is None:
-            result = (None, None)
-        (self.division, self.division_code) = result
-
-        result = self.find(area_mapping(), self.area, self.area_code)
-        if result is None:
-            result = (None, None)
-        (self.area, self.area_code) = result
-
-    def find(self, mapping, name=None, code=None):
-        if name is not None:
-            if mapping.get(name) is not None:
-                code = mapping[name]
-            if code is not None:
-                for item in mapping.items():
-                    if item[1] == code:
-                        name = item[0]
-                        break
-            if code is None:
-                for key in mapping.keys():
-                    if re.match(name, key):
-                        code = mapping[key]
-                        name = key
-                        break
-        if name is not None and code is not None:
-            return (name, code)
-
-        return None
-
-class JMA:
-    def __init__(self, area):
-        self.url = 'https://www.jma.go.jp/bosai/forecast/data/forecast/{}.json'.format(area.division_code)
-
-class JMAResult:
-    image_url = None
-    weather = None
-    image_name = None
-    temp = None # 気温
-    pop  = None # 降水量
-    def __init__(self, weather, pop, temp):
-        now = datetime.datetime.now()
-        image = forecast_mapping().get(weather)
-        if now.hour <= 18 and now.hour >= 6:
-            self.image_url = 'https://www.jma.go.jp/bosai/forecast/img/' + image[0]
-            self.image_name = image[0][0:-4]
-        else:
-            self.image_url = 'https://www.jma.go.jp/bosai/forecast/img/' + image[1]
-            self.image_name = image[1][0:-4]
-
-        self.weather = weather
-        if pop is not None:
-            self.pop = str(pop) + '%'
-        if temp is not None:
-            self.temp = str(temp) + '℃'
-
-class JMASearch:
-    area = None
-    jma = None
-    def __init__(self, jma, area):
-        self.jma = jma
-        self.area = area
-
-    def search(self):
-        res = requests.get(self.jma.url)
-        if res.status_code == requests.codes.ok:
-            image_url = ''
-            weather = None
-            temp = None
-            pop = None
-            data = json.loads(res.text)
-            for area in data[0]["timeSeries"][0]["areas"]:
-                if area["area"]["name"] == self.area.area or area["area"]["code"] == self.area.area_code:
-                    weather = area["weatherCodes"][0]
-                    break
-            for area in data[0]["timeSeries"][1]["areas"]:
-                if area["area"]["name"] == self.area.area or area["area"]["code"] == self.area.area_code:
-                    pop = area["pops"][0]
-                    break
-            for area in data[0]["timeSeries"][2]["areas"]:
-                if area["area"]["name"] == self.area.area_temp or area["area"]["code"] == self.area.area_temp:
-                    temp = area["temps"][0]
-                    break
-            return JMAResult(weather, pop, temp)
-        return None
 
 
 def division_mapping():

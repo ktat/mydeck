@@ -1,5 +1,7 @@
 import random
 import time
+from mystreamdeck import MyStreamDeck, App
+from typing import NoReturn, List
 
 # 三目並べのビット
 # 1   2    4
@@ -49,10 +51,11 @@ PRE_WIN_CONDITION = {
     260: 32,
 }
 
-class GameTicTackToe:
-    data = {}
-    def __init__ (self, mydeck, start_key_num=0):
-        self.mydeck = mydeck
+class GameTicTackToe(App):
+    data: dict = {}
+    def __init__ (self, mydeck :MyStreamDeck, start_key_num :int = 0):
+        super().__init__(mydeck)
+
         mydeck.add_game_key_conf({
             0 + start_key_num: {
                 "command": "GameTicTacToe",
@@ -68,7 +71,7 @@ class GameTicTackToe:
         self.data = {}
         mydeck._GAME_KEY_CONFIG = {}
 
-        key_conf = {
+        key_conf: dict[int, dict] = {
             0: {
                 "name": "frame",
                 "value": 1,
@@ -122,13 +125,16 @@ class GameTicTackToe:
             }
         }
 
-        deck.reset()
         mydeck.set_current_page_without_setup("~GAME_TICK_TACK_TOE")
+        mydeck.set_game_status_on()
+
+        deck.reset()
 
         # Set initial screen brightness to 30%.
         deck.set_brightness(30)
 
-        mydeck.set_game_status(1)
+        # Set initial key images.
+        deck.set_key_callback(lambda deck, key, state: self.key_change_callback(key, state))
 
         for key in key_conf.keys():
             conf = key_conf[key]
@@ -138,15 +144,9 @@ class GameTicTackToe:
                 conf["user"] = None
             mydeck.set_game_key(key, conf)
 
-        # Set initial key images.
-        deck.set_key_callback(lambda deck, key, state: self.key_change_callback(key, state))
 
-    def key_change_callback(self, key, state):
+    def key_change_callback(self, key :int, state :bool):
         mydeck = self.mydeck
-        deck = mydeck.deck
-        # Print new key state
-        print("Deck {} Key {} = {}".format(deck.id(), key, state), flush=True)
-
 
         conf = mydeck._GAME_KEY_CONFIG.get(key)
         if state:
@@ -173,7 +173,7 @@ class GameTicTackToe:
                         self.data["reverse"] = True
                         self.cpu_turn()
 
-    def select_by_cpu(self):
+    def select_by_cpu(self) -> List:
         # [選択した場所, 勝利者(1: user, 2: cpu, -1: draw)]
         mydeck = self.mydeck
         conf = mydeck._GAME_KEY_CONFIG

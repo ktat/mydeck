@@ -1,10 +1,13 @@
 import time
 import random
+from mystreamdeck import MyStreamDeck, App, ExceptionNoDeck
+from typing import NoReturn
 
-class GameMemory:
-    data = {}
-    def __init__ (self, mydeck, start_key_num=0):
-        self.mydeck = mydeck
+class GameMemory(App):
+    data: dict = {}
+    def __init__ (self, mydeck :MyStreamDeck, start_key_num :int = 0):
+        super().__init__(mydeck)
+
         mydeck.add_game_key_conf({
             0 + start_key_num: {
                 "command": "GameMemory",
@@ -33,7 +36,7 @@ class GameMemory:
         })
         mydeck.add_game_command("GameMemory", lambda conf: self.key_setup(conf["mode"]))
 
-    def key_setup(self, wait_time):
+    def key_setup(self, wait_time: int):
         mydeck = self.mydeck
         self.data["num_of_try"] = 0
         self.data["wait_time"] = wait_time
@@ -43,28 +46,33 @@ class GameMemory:
         self.data["turn"] = None
         self.data["score"] = {1: 0, 2: 0} # 1 is user, 2 is cpu
         deck = mydeck.deck
-        deck.reset()
+
         mydeck.set_current_page_without_setup("~GAME_MEMORY")
+
+        if deck is None:
+            raise(ExceptionNoDeck)
+
+        deck.reset()
 
         # Set initial screen brightness to 30%.
         deck.set_brightness(30)
+
+        # Set initial key images.
+        deck.set_key_callback(lambda deck, key, state: self.key_change_callback(key, state))
 
         empty = {
             "image": "./src/Assets/cat.png",
             "name": "empty"
         }
 
-        mydeck.set_game_status(1)
+        mydeck.set_game_status_on()
 
         for key in range(0, 12):
             mydeck.set_game_key(key, empty)
 
-        # Set initial key images.
-        deck.set_key_callback(lambda deck, key, state: self.key_change_callback(key, state))
-
         pairs = {}
-        used = {}
-        pos = {}
+        used: dict = {}
+        pos: dict = {}
         for i in range(1, 7):
             n = random.randint(0, 11)
             while used.get(n):
@@ -130,11 +138,12 @@ class GameMemory:
                 "clicked": False,
             })
 
-    def key_change_callback(self, key, state):
+    def key_change_callback(self, key :int, state :bool):
         mydeck = self.mydeck
         deck = mydeck.deck
         # Print new key state
-        print("Deck {} Key {} = {}".format(deck.id(), key, state), flush=True)
+        if deck is not None:
+            print("Deck {} Key {} = {}".format(deck.id(), key, state), flush=True)
 
         conf = mydeck._GAME_KEY_CONFIG.get(key)
         wait_time = self.data["wait_time"]
@@ -209,9 +218,9 @@ class GameMemory:
                 clicked += 1
         return clicked
 
-    def evaluate(self, clicked, num, wait_time):
+    def evaluate(self, clicked :int, num :int, wait_time :int) -> str:
         mydeck = self.mydeck
-        keisu = 1
+        keisu: float = 1
         if wait_time == 0:
             keisu = 0.8
 
@@ -234,7 +243,7 @@ class GameMemory:
 
         return evaluate
 
-    def evaluate2label(self, evaluate):
+    def evaluate2label(self, evaluate :str):
         l = {
             "laugh": "Excelent!",
             "happy": "Good!",
@@ -245,7 +254,7 @@ class GameMemory:
         }
         return l[evaluate]
 
-    def open_and_check(self, key, conf):
+    def open_and_check(self, key :int, conf :dict) -> int:
         mydeck = self.mydeck
         self.data['memory'][key] = conf["value"]
         key_name = 'number'
@@ -284,9 +293,9 @@ class GameMemory:
                 return 0
         return -1
 
-    def open_by_cpu(self):
+    def open_by_cpu(self) -> bool:
         mydeck = self.mydeck
-        pairs = {}
+        pairs: dict = {}
         candidate = []
         can_open = []
         can_open_prior = []

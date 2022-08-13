@@ -1,7 +1,8 @@
 import time
 import os
 import sys
-from mystreamdeck import BackgroundAppBase
+from mystreamdeck import MyStreamDeck, BackgroundAppBase
+from typing import NoReturn, Callable, Optional
 
 class Alert(BackgroundAppBase):
     # if app reuquire thread, true
@@ -9,22 +10,25 @@ class Alert(BackgroundAppBase):
     # need to stop thread
     stop = False
 
-    _check_function = None
-    _check_interval = 300
-    _retry_interval = 60
-    _previous_checke_time = 0
+    _check_function: Optional[Callable] = None
+    _check_interval: int = 300
+    _retry_interval: int = 60
+    _previous_checke_time: int = 0
     in_alert = False
     in_working = False
     is_background_app = True
 
-    def __init__ (self, mydeck, config):
-        alert_key_config = {}
-        if config.get("check_interval"):
-            self._check_interval = config.get("check_interval")
-        if config.get("retry_interval"):
-            self._retry_interval = config.get("retry_interval")
-        if config.get("key_cofnig"):
-            alert_key_config = config.get("key_cofnig")
+    def __init__ (self, mydeck: MyStreamDeck, config: dict):
+        alert_key_config: dict = {}
+        check_interval = config.get("check_interval")
+        if check_interval is not None and type(check_interval) == int:
+            self._check_interval = check_interval
+        retry_interval = config.get("retry_interval")
+        if retry_interval is not None and type(retry_interval) == int:
+            self._retry_interval = retry_interval
+        conf = config.get("key_cofnig")
+        if conf is not None and type(conf) == dict:
+            alert_key_config = conf
 
         self._previous_checke_time = 0
         self.mydeck = mydeck
@@ -46,11 +50,11 @@ class Alert(BackgroundAppBase):
                 if self._check_function():
                     self.mydeck.handler_alert()
                     self.in_alert = True
-                    self.mydeck.set_alert(1)
+                    self.mydeck.set_alert_on()
                 else:
                     self.mydeck.handler_alert_stop()
                     self.in_alert =False
-                    self.mydeck.set_alert(0)
+                    self.mydeck.set_alert_off()
 
             if self.mydeck._exit:
                 break

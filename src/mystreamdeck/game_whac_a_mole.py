@@ -2,16 +2,19 @@ from PIL import Image, ImageDraw, ImageFont
 import time
 import random
 import threading
+from mystreamdeck import MyStreamDeck, ImageOrFile, App, ExceptionNoDeck
+from typing import NoReturn
 
-class GameWhacAMole:
+class GameWhacAMole(App):
     in_game = False
     stop = False
     data = {
         "score": 0,
     }
     exit = False
-    def __init__ (self, mydeck, start_key_num=0):
-        self.mydeck = mydeck
+    def __init__ (self, mydeck :MyStreamDeck, start_key_num :int = 0):
+        super().__init__(mydeck)
+
         mydeck.add_game_key_conf({
             0 + start_key_num: {
                 "command": "WhacAMole",
@@ -22,15 +25,19 @@ class GameWhacAMole:
         })
         mydeck.add_game_command("WhacAMole", lambda conf: self.key_setup(conf.get("mode")))
         
-    def key_setup(self, num):
+    def key_setup(self, num :int):
         mydeck = self.mydeck
         deck = mydeck.deck
         self.exit = False
-        deck.reset()
         mydeck.set_current_page_without_setup("~GAME_WHAC_A_MOLE")
         self.data["mode"] = num
         self.data["score"] = 0
         self.data["count"] = 0
+
+        if deck is None:
+            raise(ExceptionNoDeck)
+
+        deck.reset()
         print("Opened '{}' device (serial number: '{}', fw: '{}')".format(
             deck.deck_type(), deck.get_serial_number(), deck.get_firmware_version()
         ))
@@ -38,12 +45,12 @@ class GameWhacAMole:
         # Set initial screen brightness to 30%.
         deck.set_brightness(30)
 
-        prev = 0
-
-        mydeck.set_game_status(1)
-
         # Set initial key images.
         deck.set_key_callback(lambda deck, key, state: self.key_change_callback(key, state))
+
+        prev = 0
+
+        mydeck.set_game_status_on()
 
         mydeck.set_game_key(11, {
             "name": "restart",
@@ -116,18 +123,16 @@ class GameWhacAMole:
         self.mydeck.update_key_image(
             13,
             self.mydeck.render_key_image(
-                im,
+                ImageOrFile(im),
                 "",
                 'black',
             )
         )
 
         
-    def key_change_callback(self, key, state):
+    def key_change_callback(self, key :int, state :bool):
         mydeck = self.mydeck
         deck = mydeck.deck
-        # Print new key state
-        print("Deck {} Key {} = {}".format(deck.id(), key, state), flush=True)
 
         conf = mydeck._GAME_KEY_CONFIG.get(key)
         if state:

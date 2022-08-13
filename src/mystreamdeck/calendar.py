@@ -1,5 +1,5 @@
 from PIL import Image, ImageDraw, ImageFont
-from mystreamdeck import AppBase
+from mystreamdeck import MyStreamDeck, AppBase, ImageOrFile
 import time
 import sys
 import datetime
@@ -15,10 +15,10 @@ class Calendar(AppBase):
     previous_page = ''
     previous_date = ''
 
-    def __init__(self, mydeck, option={}):
+    def __init__(self, mydeck: MyStreamDeck, option: dict = {}):
         super().__init__(mydeck, option)
 
-    def set_image_to_key(self, key, page):
+    def set_image_to_key(self, key: int, page: str):
         if self.is_required_process_daily() is False:
             return False
 
@@ -39,7 +39,7 @@ class Calendar(AppBase):
         self.mydeck.update_key_image(
             key,
             self.mydeck.render_key_image(
-                im,
+                ImageOrFile(im),
                 "",
                 'black',
                 True,
