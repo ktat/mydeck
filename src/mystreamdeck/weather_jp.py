@@ -8,33 +8,35 @@ import requests
 import re
 import datetime
 
+OptStr = Optional[str]
+
 class Area:
-    division: str = ''
-    division_code: str = ''
-    area: str = ''
-    area_code: str = ''
-    area_temp: str = ''
-    area_temp_code: str = ''
-    display_name: str = ''
+    division: OptStr = ''
+    division_code: OptStr = ''
+    area: OptStr = ''
+    area_code: OptStr = ''
+    area_temp: OptStr = ''
+    area_temp_code: OptStr = ''
+    display_name: OptStr = ''
 
     def __init__(self, args: dict):
-        self.division = args.get('division') or "" # 東京都
-        self.division_code = args.get('division_code') or "" # 130000
-        self.area = args.get('area') or "" # 東京地方
-        self.area_code = args.get('area_code') or "" # 130000
-        self.area_temp = args.get('area_temp') or "" # 東京
-        self.area_temp_code = args.get('area_temp_code') or "" # 44132
-        self.display_name = args.get('display_name') or ""
+        self.division = args.get('division') # 東京都
+        self.division_code = args.get('division_code') # 130000
+        self.area = args.get('area') # 東京地方
+        self.area_code = args.get('area_code') # 130000
+        self.area_temp = args.get('area_temp') # 東京
+        self.area_temp_code = args.get('area_temp_code') # 44132
+        self.display_name = args.get('display_name')
 
-        if self.division == "" and self.division_code == "":
+        if self.division is None and self.division_code is None:
             self.division = '東京都'
             self.division_code = '130000'
 
-        if self.area == "" and self.area_code == "":
+        if self.area is None and self.area_code is None:
             self.area = '東京地方'
             self.area_code = '130010'
 
-        if self.area_temp == "" and self.area_temp_code == "":
+        if self.area_temp is None and self.area_temp_code is None:
             self.area_temp = '東京'
             self.area_temp_code = '44132'
 
@@ -159,11 +161,11 @@ class WeatherJp(AppBase):
                 draw.text((27, 20),  font=font, text=result.pop, fill=(0,0,255))
 
             l = 20
-            if len(self.area.display_name) >= 6:
+            if self.area.display_name is not None and len(self.area.display_name) >= 6:
                 l = int(20 / (len(self.area.display_name) / 6))
-            font = ImageFont.truetype(self.mydeck.font_path, l)
-            draw.text((11, 44 + (19-l)), font=font, text=self.area.display_name, fill=(0,0,0))
-            draw.text((10, 43 + (19-l)), font=font, text=self.area.display_name, fill=(255,255,255))
+                font = ImageFont.truetype(self.mydeck.font_path, l)
+                draw.text((11, 44 + (19-l)), font=font, text=self.area.display_name, fill=(0,0,0))
+                draw.text((10, 43 + (19-l)), font=font, text=self.area.display_name, fill=(255,255,255))
 
             self.mydeck.update_key_image(
                 key,
