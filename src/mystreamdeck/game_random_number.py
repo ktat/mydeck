@@ -34,7 +34,7 @@ class GameRandomNumber(App):
         mydeck = self.mydeck
         deck = mydeck.deck
         deck.reset()
-        mydeck.set_game_status(1)
+        mydeck.set_game_status_on()
         mydeck.set_current_page_without_setup("~GAME_RANDOM_NUMBER")
         self.data["mode"] = num
         print("Opened '{}' device (serial number: '{}', fw: '{}')".format(
