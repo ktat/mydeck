@@ -22,8 +22,6 @@ This is an alpha version software and I don't know much about Python.
 
 - Some code may be wrong for Python way
 - Exception handlings are not yet coded at all
-- I don't assume multiple STREAM DECK
-- Currently, I only assume 15 key STREAM DECK
 
 ## How to run example
 
