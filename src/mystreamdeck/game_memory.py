@@ -4,8 +4,13 @@ from mystreamdeck import MyStreamDeck, GameAppBase, ExceptionNoDeck
 from typing import NoReturn
 
 class GameMemory(GameAppBase):
+    require_key_count: int = 15
+
     def __init__ (self, mydeck :MyStreamDeck, start_key_num :int = 0):
         super().__init__(mydeck)
+
+        if self.enable == False:
+            return
 
         mydeck.add_game_key_conf({
             0 + start_key_num: {
@@ -90,7 +95,7 @@ class GameMemory(GameAppBase):
         key_name = 'number'
         if self.data["vsmode"]:
             key_name = 'number_vs'
-            mydeck.set_game_key(13, {
+            mydeck.set_game_key(-2, {
                 "name": "reverse",
                 "image": "./src/Assets/reverse.png",
                 "label": 'reverse'
@@ -109,20 +114,20 @@ class GameMemory(GameAppBase):
 
         if wait_time > 0:
             for i in range(0, wait_time + 1):
-                mydeck.set_game_key(13, {
+                mydeck.set_game_key(-2, {
                     "image": "./src/Assets/" + str(wait_time - i) + ".png",
                     "name": "num_of_wait",
                 })
                 if i < wait_time:
                     time.sleep(1)
 
-        mydeck.set_game_key(12, {
+        mydeck.set_game_key(-3, {
             "name": "restart",
             "label": "RESTART",
             "image": "./src/Assets/restart.png",
         })
 
-        mydeck.set_game_key(14, {
+        mydeck.set_game_key(-1, {
             "name": "exit",
             "image": "./src/Assets/back.png",
             "label": "exit Game"

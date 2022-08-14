@@ -52,8 +52,17 @@ PRE_WIN_CONDITION = {
 }
 
 class GameTicTackToe(GameAppBase):
+    require_key_count: int = 15
+
     def __init__ (self, mydeck :MyStreamDeck, start_key_num :int = 0):
         super().__init__(mydeck)
+
+        if self.enable == False:
+            return
+
+        self.addional_key_count = 0
+        if mydeck.key_count == 32:
+            self.addional_key_count = 3
 
         mydeck.add_game_key_conf({
             0 + start_key_num: {
@@ -70,6 +79,8 @@ class GameTicTackToe(GameAppBase):
         self.data = {}
         mydeck._GAME_KEY_CONFIG = {}
 
+        addional_key_count = self.addional_key_count
+
         key_conf: dict[int, dict] = {
             0: {
                 "name": "frame",
@@ -83,41 +94,41 @@ class GameTicTackToe(GameAppBase):
                 "name": "frame",
                 "value": 4,
             },
-            5: {
+            5 + addional_key_count: {
                 "name": "frame",
                 "value": 8,
             },
-            6: {
+            6 + addional_key_count: {
                 "name": "frame",
                 "value": 16,
             },
-            7: {
+            7 + addional_key_count: {
                 "name": "frame",
                 "value": 32,
             },
-            10: {
+            10 + addional_key_count * 2: {
                 "name": "frame",
                 "value": 64,
             },
-            11: {
+            11 + addional_key_count * 2: {
                 "name": "frame",
                 "value": 128,
             },
-            12: {
+            12 + addional_key_count * 2: {
                 "name": "frame",
                 "value": 256,
             },
-            9: {
+            9 + addional_key_count * 2: {
                 "name": "reverse",
                 "image": "./src/Assets/reverse.png",
                 "label": "Reverse",
             },
-            13: {
+            -2: {
                 "name": "restart",
                 "image": "./src/Assets/restart.png",
                 "label": "Restart",
             },
-            14: {
+            -1: {
                 "name": "exit",
                 "image": "./src/Assets/back.png",
                 "label": "exit Game"
@@ -356,5 +367,5 @@ class GameTicTackToe(GameAppBase):
                 conf["label"] = "LOOSE!!"
                 conf["image"] = "./src/Assets/sad.png"
             # Draw
-            mydeck.set_game_key(4, conf)
+            mydeck.set_game_key(4 + self.addional_key_count, conf)
 

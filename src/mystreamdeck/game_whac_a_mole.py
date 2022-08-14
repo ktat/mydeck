@@ -6,14 +6,19 @@ from mystreamdeck import MyStreamDeck, ImageOrFile, GameAppBase, ExceptionNoDeck
 from typing import NoReturn
 
 class GameWhacAMole(GameAppBase):
-    in_game = False
-    stop = False
-    data = {
-        "score": 0,
-    }
-    exit = False
+    require_key_count: int = 15
+
     def __init__ (self, mydeck :MyStreamDeck, start_key_num :int = 0):
+        self.in_game = False
+        self.stop = False
+        self.exit = False
+        self.data = {
+            "score": 0,
+        }
         super().__init__(mydeck)
+
+        if self.enable == False:
+            return
 
         mydeck.add_game_key_conf({
             0 + start_key_num: {
@@ -24,7 +29,7 @@ class GameWhacAMole(GameAppBase):
             },
         })
         mydeck.add_game_command("WhacAMole", lambda conf: self.key_setup(conf.get("mode")))
-        
+
     def key_setup(self, num :int):
         mydeck = self.mydeck
         deck = mydeck.deck
@@ -52,13 +57,13 @@ class GameWhacAMole(GameAppBase):
 
         mydeck.set_game_status_on()
 
-        mydeck.set_game_key(11, {
+        mydeck.set_game_key(-4, {
             "name": "restart",
             "label": "RESTART",
             "image": "./src/Assets/restart.png",
         })
 
-        mydeck.set_game_key(14, {
+        mydeck.set_game_key(-1, {
             "name": "exit",
             "image": "./src/Assets/back.png",
             "label": "exit Game"
@@ -86,6 +91,11 @@ class GameWhacAMole(GameAppBase):
         }
         game_time = self.data['mode']
         t = time.time()
+
+        max = 9
+        if mydeck.key_count == 32:
+            max = 23
+
         self.data["left_second"] = game_time
         while self.data["left_second"] > 0:
             self.in_game = True
@@ -97,7 +107,7 @@ class GameWhacAMole(GameAppBase):
 
             self.data["count"] += 1
             time.sleep(random.uniform(0.2, 0.7))
-            r = random.randint(0,9)
+            r = random.randint(0, max)
             if prev is not None:
                 mydeck.set_game_key(prev, empty)
             mydeck.set_game_key(r, mole)
@@ -107,7 +117,7 @@ class GameWhacAMole(GameAppBase):
                 self.data["left_second"] = 0
 
             left_second_key["image"] =  "./src/Assets/" + str(self.data["left_second"]) + ".png"
-            mydeck.set_game_key(10, left_second_key)
+            mydeck.set_game_key(-5, left_second_key)
 
             self.show_score()
         self.in_game = False
@@ -119,9 +129,9 @@ class GameWhacAMole(GameAppBase):
         draw = ImageDraw.Draw(im)
         draw.text((0, 0), font=font, text=str(self.data["score"]), fill="white")
         draw.text((30,30), font=font, text="/", fill="white")
-        draw.text((40, 60), font=font, text=str(self.data["count"]), fill="white")        
+        draw.text((40, 60), font=font, text=str(self.data["count"]), fill="white")
         self.mydeck.update_key_image(
-            13,
+            -2,
             self.mydeck.render_key_image(
                 ImageOrFile(im),
                 "",
@@ -129,7 +139,7 @@ class GameWhacAMole(GameAppBase):
             )
         )
 
-        
+
     def key_change_callback(self, key :int, state :bool):
         mydeck = self.mydeck
         deck = mydeck.deck

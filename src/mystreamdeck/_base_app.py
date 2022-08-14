@@ -37,9 +37,13 @@ class App:
             raise ExceptionNoDeck
 
 class GameAppBase(App):
+    require_key_count: int
+    enable: bool = True
     def __init__ (self, mydeck :MyStreamDeck, start_key_num :int = 0):
         super().__init__(mydeck)
         self.data: dict = {}
+        if self.require_key_count > mydeck.key_count:
+            self.enable = False
 
 class AppBase(App):
     def __init__(self, mydeck: 'MyStreamDeck', option: dict = {}):

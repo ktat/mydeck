@@ -239,6 +239,7 @@ class MyStreamDeck:
 
     # set key image and label
     def set_key(self, key: int, conf: dict):
+        key = self.abs_key(key)
         deck = self.deck
         if conf is not None:
             if conf.get('chrome'):
@@ -309,6 +310,7 @@ class MyStreamDeck:
 
     # change key image
     def update_key_image(self, key: int, image: str):
+        key = self.abs_key(key)
         deck = self.deck
         if deck is not None:
             # Update requested key with the generated image.
@@ -455,6 +457,7 @@ class MyStreamDeck:
         self._KEY_CONFIG = conf
 
     def set_game_key(self, key: int, conf: dict):
+        key = self.abs_key(key)
         self._GAME_KEY_CONFIG[key] = conf
         self.set_key(key, conf)
 
@@ -505,6 +508,12 @@ class MyStreamDeck:
                         i += 1
                         if i > 200:
                             print(type(app), 'still waiting to start app')
+
+
+    def abs_key(self, key: int):
+        if key < 0:
+            key = self.key_count + key
+        return key
 
 class Config:
     def __init__(self, mydeck: 'MyStreamDeck', file: str):
