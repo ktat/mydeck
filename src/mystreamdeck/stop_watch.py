@@ -1,5 +1,6 @@
 from PIL import Image, ImageDraw, ImageFont
-from mystreamdeck import AppBase
+from mystreamdeck import AppBase, ImageOrFile, MyStreamDeck
+from typing import NoReturn
 import math
 import datetime
 import time
@@ -7,8 +8,8 @@ import threading
 import sys
 
 # whole image size
-X = 100
-Y = 100
+X: int = 100
+Y: int = 100
 
 class StopWatch(AppBase):
     _key_conf = {
@@ -20,7 +21,7 @@ class StopWatch(AppBase):
         "MyStreamDeckStopWatchToggle": lambda app: app.toggle_count(),
     }
 
-    def __init__(self, mydeck, option={}):
+    def __init__(self, mydeck: MyStreamDeck, option: dict = {}):
         super().__init__(mydeck, option)
 
     # setup key configuration
@@ -40,7 +41,7 @@ class StopWatch(AppBase):
             t.start()
 
 
-    def count_up(self, key):
+    def count_up(self, key :int) -> NoReturn:
         t = time.time()
         font = ImageFont.truetype(self.mydeck.font_path, 35)
         while True:
@@ -59,7 +60,7 @@ class StopWatch(AppBase):
                 draw = ImageDraw.Draw(im)
                 n = "{0:02.2f}".format(int((time.time() - t) * 100) / 100)
                 draw.text((0,45), text=n, font = font, andhor="ms", fill="white")
-                self.mydeck.update_key_image(key, self.mydeck.render_key_image(im, "STOP/START", "black"))
+                self.mydeck.update_key_image(key, self.mydeck.render_key_image(ImageOrFile(im), "STOP/START", "black"))
         sys.exit()
 
     def toggle_count(self):
@@ -67,4 +68,3 @@ class StopWatch(AppBase):
             self.stop = True
         else:
             self.do_start()
-

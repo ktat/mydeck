@@ -1,4 +1,5 @@
-from mystreamdeck import AppBase
+from mystreamdeck import MyStreamDeck, AppBase, ImageOrFile
+from typing import NoReturn, Tuple, Optional
 from PIL import Image, ImageDraw, ImageFont
 import time
 import sys
@@ -7,67 +8,18 @@ import requests
 import re
 import datetime
 
-class WeatherJp(AppBase):
-    # if app reuquire thread, true
-    use_thread = True
-
-    previous_page = ''
-    previous_date = ''
-    area = None
-    jma = None
-
-    def __init__(self, mydeck, option={}):
-        super().__init__(mydeck, option)
-        self.area = Area(option)
-        self.jma  = JMA(self.area)
-
-    def set_image_to_key(self, key, page):
-        if self.is_required_process_hourly() is False:
-            return False
-
-        result = JMASearch(self.jma, self.area).search()
-
-        if result is not None:
-            icon_file = "/tmp/mystreamdeck-app-weather-" + result.image_name + ".png"
-            self.mydeck.save_image(result.image_url, icon_file)
-            im = Image.open(icon_file)
-            im = im.convert("RGB")
-            font = ImageFont.truetype(self.mydeck.font_path, 20)
-            draw = ImageDraw.Draw(im)
-            if result.temp is not None:
-                draw.text((28, 1),  font=font, text=result.temp, fill=(200,200,200))
-                draw.text((27, 0),  font=font, text=result.temp, fill=(255,0,0))
-
-            if result.pop is not None:
-                draw.text((28, 21),  font=font, text=result.pop, fill=(200,200,200))
-                draw.text((27, 20),  font=font, text=result.pop, fill=(0,0,255))
-
-            l = 20
-            if len(self.area.display_name) >= 6:
-                l = int(20 / (len(self.area.display_name) / 6))
-            font = ImageFont.truetype(self.mydeck.font_path, l)
-            draw.text((11, 44 + (19-l)), font=font, text=self.area.display_name, fill=(0,0,0))
-            draw.text((10, 43 + (19-l)), font=font, text=self.area.display_name, fill=(255,255,255))
-
-            self.mydeck.update_key_image(
-                key,
-                self.mydeck.render_key_image(
-                    im,
-                    "",
-                    'black',
-                    True,
-                )
-            )
+OptStr = Optional[str]
 
 class Area:
-    division = ''
-    division_code = ''
-    area = ''
-    area_code = ''
-    area_temp = ''
-    area_temp_code = ''
+    division: OptStr = ''
+    division_code: OptStr = ''
+    area: OptStr = ''
+    area_code: OptStr = ''
+    area_temp: OptStr = ''
+    area_temp_code: OptStr = ''
+    display_name: OptStr = ''
 
-    def __init__(self, args):
+    def __init__(self, args: dict):
         self.division = args.get('division') # 東京都
         self.division_code = args.get('division_code') # 130000
         self.area = args.get('area') # 東京地方
@@ -98,7 +50,7 @@ class Area:
             result = (None, None)
         (self.area, self.area_code) = result
 
-    def find(self, mapping, name=None, code=None):
+    def find(self, mapping: dict, name: str = None, code: str = None) -> Optional[Tuple]:
         if name is not None:
             if mapping.get(name) is not None:
                 code = mapping[name]
@@ -119,16 +71,17 @@ class Area:
         return None
 
 class JMA:
-    def __init__(self, area):
+    url: str
+    def __init__(self, area: Area):
         self.url = 'https://www.jma.go.jp/bosai/forecast/data/forecast/{}.json'.format(area.division_code)
 
 class JMAResult:
-    image_url = None
-    weather = None
-    image_name = None
-    temp = None # 気温
-    pop  = None # 降水量
-    def __init__(self, weather, pop, temp):
+    image_url: str
+    image_name: str
+    weather: OptStr # 天気
+    temp: OptStr # 気温
+    pop: OptStr # 降水量
+    def __init__(self, weather: OptStr, pop: OptStr, temp: OptStr):
         now = datetime.datetime.now()
         image = forecast_mapping().get(weather)
         if now.hour <= 18 and now.hour >= 6:
@@ -139,15 +92,13 @@ class JMAResult:
             self.image_name = image[1][0:-4]
 
         self.weather = weather
-        if pop is not None:
-            self.pop = str(pop) + '%'
-        if temp is not None:
-            self.temp = str(temp) + '℃'
+        self.pop = str(pop) + '%'
+        self.temp = str(temp) + '℃'
 
 class JMASearch:
-    area = None
-    jma = None
-    def __init__(self, jma, area):
+    area: Area
+    jma: JMA
+    def __init__(self, jma: JMA, area: Area):
         self.jma = jma
         self.area = area
 
@@ -155,10 +106,10 @@ class JMASearch:
         res = requests.get(self.jma.url)
         if res.status_code == requests.codes.ok:
             image_url = ''
-            weather = None
-            temp = None
-            pop = None
-            data = json.loads(res.text)
+            weather: OptStr = None
+            temp: OptStr = None
+            pop: OptStr = None
+            data: Dict = json.loads(res.text)
             for area in data[0]["timeSeries"][0]["areas"]:
                 if area["area"]["name"] == self.area.area or area["area"]["code"] == self.area.area_code:
                     weather = area["weatherCodes"][0]
@@ -173,6 +124,57 @@ class JMASearch:
                     break
             return JMAResult(weather, pop, temp)
         return None
+
+class WeatherJp(AppBase):
+    # if app reuquire thread, true
+    use_thread: bool = True
+
+    area: Area
+    jma: JMA
+
+    def __init__(self, mydeck: MyStreamDeck, option: dict ={}):
+        super().__init__(mydeck, option)
+        self.area = Area(option)
+        self.jma  = JMA(self.area)
+
+    def set_image_to_key(self, key: int, page: str):
+        if self.is_required_process_hourly() is False:
+            return False
+
+        result = JMASearch(self.jma, self.area).search()
+
+        if result is not None:
+            icon_file = "/tmp/mystreamdeck-app-weather-" + result.image_name + ".png"
+            self.mydeck.save_image(result.image_url, icon_file)
+            im = Image.open(icon_file)
+            im = im.convert("RGB")
+            font = ImageFont.truetype(self.mydeck.font_path, 20)
+            draw = ImageDraw.Draw(im)
+            if result.temp is not None:
+                draw.text((28, 1),  font=font, text=result.temp, fill=(200,200,200))
+                draw.text((27, 0),  font=font, text=result.temp, fill=(255,0,0))
+
+            if result.pop is not None:
+                draw.text((28, 21),  font=font, text=result.pop, fill=(200,200,200))
+                draw.text((27, 20),  font=font, text=result.pop, fill=(0,0,255))
+
+            l = 20
+            if self.area.display_name is not None:
+                if len(self.area.display_name) >= 6:
+                    l = int(20 / (len(self.area.display_name) / 6))
+                    font = ImageFont.truetype(self.mydeck.font_path, l)
+                draw.text((11, 44 + (19-l)), font=font, text=self.area.display_name, fill=(0,0,0))
+                draw.text((10, 43 + (19-l)), font=font, text=self.area.display_name, fill=(255,255,255))
+
+            self.mydeck.update_key_image(
+                key,
+                self.mydeck.render_key_image(
+                    ImageOrFile(im),
+                    "",
+                    'black',
+                    True,
+                )
+            )
 
 
 def division_mapping():

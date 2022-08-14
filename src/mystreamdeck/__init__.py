@@ -17,3 +17,18 @@ for item in iter_modules(package_dir):
         if isclass(attribute):
             # Add the class to this package's variables
             globals()[attribute_name] = attribute
+
+# for mypy: cannot use dynamic loading with mypy
+from ._base import *
+from ._base_app import *
+from .alert import *
+from .calendar import *
+from .clock import *
+from .game_memory import *
+from .game_random_number import *
+from .game_tic_tack_toe import *
+from .game_whac_a_mole import *
+from .stop_watch import *
+from .weather_jp import *
+from .window_check_base import *
+from .window_check_linux import *

@@ -1,11 +1,13 @@
 import time
 import random
 import threading
+from mystreamdeck import MyStreamDeck, App
 
-class GameRandomNumber:
-    data = {}
-    def __init__ (self, mydeck, start_key_num=0):
-        self.mydeck = mydeck
+class GameRandomNumber(App):
+    data: dict = {}
+    def __init__ (self, mydeck: MyStreamDeck, start_key_num: int = 0):
+        super().__init__(mydeck)
+
         mydeck.add_game_key_conf({
             0 + start_key_num: {
                 "command": "RandomNumber",
@@ -32,7 +34,7 @@ class GameRandomNumber:
         mydeck = self.mydeck
         deck = mydeck.deck
         deck.reset()
-        mydeck.set_game_status(1)
+        mydeck.set_game_status_on()
         mydeck.set_current_page_without_setup("~GAME_RANDOM_NUMBER")
         self.data["mode"] = num
         print("Opened '{}' device (serial number: '{}', fw: '{}')".format(
@@ -89,11 +91,13 @@ class GameRandomNumber:
         }
 
         for key in range(0, 10):
+            if not mydeck.in_game_status():
+                return
             mydeck.set_game_key(key, empty)
 
         while True:
             if not mydeck.in_game_status():
-                break
+                return
             time.sleep(0.5)
             cnt += 1
             if cnt > num:
@@ -112,6 +116,8 @@ class GameRandomNumber:
 
         i = 0
         for key in range(0, 10):
+            if not mydeck.in_game_status():
+                return
             mydeck.set_game_key(key, {
                 "image": "./src/Assets/" + str(i) + ".png",
                 "name": "number",
@@ -137,6 +143,7 @@ class GameRandomNumber:
                 if conf["name"] == "restart":
                     self.key_setup(self.data["mode"])
                 if conf["name"] == "number":
+                    print(conf["name"])
                     if conf["click"]:
                         self.data["answer"].append(conf["value"])
                     if len(self.data["answer"]) == self.data["mode"]:

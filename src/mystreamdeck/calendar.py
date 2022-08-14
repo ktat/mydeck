@@ -1,24 +1,21 @@
 from PIL import Image, ImageDraw, ImageFont
-from mystreamdeck import AppBase
+from mystreamdeck import MyStreamDeck, AppBase, ImageOrFile
 import time
 import sys
 import datetime
 
 # whole image size
-X = 100
-Y = 100
+X: int = 100
+Y: int = 100
 
 class Calendar(AppBase):
-    # if app reuquire thread, true
-    use_thread = True
+    # if app reuquires thread, true
+    use_thread: bool = True
 
-    previous_page = ''
-    previous_date = ''
-
-    def __init__(self, mydeck, option={}):
+    def __init__(self, mydeck: MyStreamDeck, option: dict = {}):
         super().__init__(mydeck, option)
 
-    def set_image_to_key(self, key, page):
+    def set_image_to_key(self, key: int, page: str):
         if self.is_required_process_daily() is False:
             return False
 
@@ -39,7 +36,7 @@ class Calendar(AppBase):
         self.mydeck.update_key_image(
             key,
             self.mydeck.render_key_image(
-                im,
+                ImageOrFile(im),
                 "",
                 'black',
                 True,
