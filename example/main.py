@@ -20,11 +20,13 @@ def check_alert():
 
 
 if __name__ == "__main__":
-    mydeck = MyStreamDeck({
-        'config': "./example/config/config.yml",
-        'alert_func': check_alert,
+    mydecks = MyStreamDecks({
+        'config': {
+            'file': "./example/config/config.yml",
+            'alert_func': check_alert,
+        }
     })
 
-    mydeck.deck_start()
+    mydecks.start_decks()
 
     os.exit()

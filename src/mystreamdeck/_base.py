@@ -1,4 +1,3 @@
-from cairosvg import svg2png
 import wand.image
 import re
 import subprocess
@@ -10,8 +9,10 @@ import threading
 import requests
 import os.path
 import importlib
-from typing import Any, NoReturn, List, TYPE_CHECKING, Optional, Callable, Dict
+import logging
 
+from cairosvg import svg2png
+from typing import Any, NoReturn, List, TYPE_CHECKING, Optional, Callable, Dict
 from PIL import Image, ImageDraw, ImageFont
 from StreamDeck.ImageHelpers import PILHelper
 from StreamDeck.DeviceManager import DeviceManager
@@ -19,11 +20,85 @@ from StreamDeck.Devices import StreamDeckOriginalV2
 if TYPE_CHECKING:
     from mystreamdeck import App, AppBase, BackgroundAppBase
 
+class MyStreamDecks:
+    mystreamdecks: Dict[str, 'MyStreamDeck'] = {}
+    one_deck_only: bool = False
+    decks: Optional[dict]
+    configs: Optional[dict]
+    conifg: Optional[dict]
+    def __init__(self, config: dict):
+        self.decks: Optional[dict] = config.get('decks')
+        self.configs: Optional[dict] = config.get('configs')
+        if self.decks is None and self.configs is None:
+            self.config = config.get('config')
+            self.one_deck_only = True
+
+    def start_decks(self) -> NoReturn:
+        streamdecks = DeviceManager().enumerate()
+        print("Found {} Stream Deck(s).\n".format(len(streamdecks)))
+
+        for index, deck in enumerate(streamdecks):
+            if not deck.is_visual():
+                continue
+
+            deck.open()
+            serial_number: str = deck.get_serial_number()
+
+            if self.one_deck_only:
+                if self.config is not None:
+                    alert_func :Optional[Callable] = self.config.get('alert_func')
+                    config_file: Optional[str] = self.config.get('file')
+                    mydeck = MyStreamDeck({
+                        "deck": deck,
+                        'alert_func': alert_func,
+                        'config': config_file
+                    })
+                    self.mystreamdecks[serial_number] = mydeck
+                    mydeck.init_deck(deck)
+                    break
+                else:
+                    logging.warning("config{file: '/path/to/config_file'} is required")
+                    raise(ExceptionNoConfig)
+            elif self.decks is not None:
+                sn_alias = self.decks.get(serial_number)
+                configs = self.configs
+                if sn_alias is not None and configs is not None:
+                    sn_config = configs.get(sn_alias)
+                    if sn_config is not None:
+                        mydeck = MyStreamDeck({
+                            "deck": deck,
+                            'alert_func': sn_config.get('alert_func'),
+                            'config': sn_config.get('file'),
+                        })
+                        self.mystreamdecks[sn_alias] = mydeck
+                        mydeck.init_deck(deck)
+                else:
+                    logging.warning("configs are required with decks definition")
+                    raise(ExceptionNoConfig)
+            else:
+                logging.warning("config or (decks and configs) is required")
+                raise(ExceptionNoConfig)
+
+        # Wait until all application threads have terminated (for this example,
+        # this is when all deck handles are closed).
+        for t in threading.enumerate():
+            try:
+                t.join()
+            except RuntimeError as e:
+                print("Error in start_decks", e)
+
+        print("start_decks end!")
+        sys.exit()
+
+class ExceptionNoConfig(Exception):
+    pass
+
 class MyStreamDeck:
     """STREAM DECK Configuration"""
     deck: StreamDeckOriginalV2 = None
     config: Optional['Config'] = None
     is_background_thread_started: bool = False
+    key_count: int
     _alert_func: Optional[Callable] = None
     _exit: bool = False
     _current_page: str = '@HOME'
@@ -54,8 +129,7 @@ class MyStreamDeck:
 
     def init_deck(self, deck: StreamDeckOriginalV2):
         self.deck = deck
-
-        deck.open()
+        self.key_count = deck.key_count()
 
         if self.config is not None:
             self.config.reflect_config()
@@ -137,14 +211,21 @@ class MyStreamDeck:
 
         current_page = self.current_page()
 
+        key_count = self.key_count
         # Set initial key images.
         for key in range(deck.key_count()):
-            page_configuration = self.key_config().get(self.current_page())
-            if page_configuration is not None and page_configuration.get(key):
-                self.set_key(key, page_configuration.get(key))
 
-        # Register callback function for the time when a key state changes.
-        deck.set_key_callback(lambda deck, key, state: self.key_change_callback(key, state))
+            page_configuration = self.key_config().get(self.current_page())
+            if page_configuration is not None:
+                config_key = key
+                if page_configuration.get(config_key) is None:
+                    config_key = (key_count - key) * -1
+
+                if page_configuration.get(config_key) is not None:
+                    self.set_key(key, page_configuration.get(config_key))
+
+                    # Register callback function for the time when a key state changes.
+                    deck.set_key_callback(lambda deck, key, state: self.key_change_callback(key, state))
 
     # set key image and label
     def set_key(self, key: int, conf: dict):
@@ -269,6 +350,10 @@ class MyStreamDeck:
         # Check if the key is changing to the pressed state.
         if state:
             conf = self.key_config().get(self.current_page()).get(key)
+            if conf is None:
+                config_key = (self.key_count - key) * -1
+                conf = self.key_config().get(self.current_page()).get(config_key)
+
             # When an exit button is pressed, close the application.
             if conf is not None:
                 if conf.get("exit") == 1:
@@ -391,28 +476,6 @@ class MyStreamDeck:
         if self._KEY_CONFIG.get(page) is None:
             self._KEY_CONFIG[page] = {}
         self._KEY_CONFIG[page][key] = conf
-
-    def deck_start(self) -> NoReturn:
-        streamdecks = DeviceManager().enumerate()
-        print("Found {} Stream Deck(s).\n".format(len(streamdecks)))
-
-        for index, deck in enumerate(streamdecks):
-            # This example only works with devices that have screens.
-            if not deck.is_visual():
-                continue
-
-            self.init_deck(deck)
-
-            # Wait until all application threads have terminated (for this example,
-            # this is when all deck handles are closed).
-            for t in threading.enumerate():
-                try:
-                    t.join()
-                except RuntimeError as e:
-                    print("Error in deck_start", e)
-
-        print("deck_start end!")
-        sys.exit()
 
     def threading_apps(self, apps: List['AppBase'], background_apps: List['BackgroundAppBase']):
         for app in apps:
