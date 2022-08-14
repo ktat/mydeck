@@ -1,10 +1,9 @@
 import time
 import random
-from mystreamdeck import MyStreamDeck, App, ExceptionNoDeck
+from mystreamdeck import MyStreamDeck, GameAppBase, ExceptionNoDeck
 from typing import NoReturn
 
-class GameMemory(App):
-    data: dict = {}
+class GameMemory(GameAppBase):
     def __init__ (self, mydeck :MyStreamDeck, start_key_num :int = 0):
         super().__init__(mydeck)
 

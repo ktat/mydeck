@@ -49,6 +49,7 @@ class MyStreamDecks:
                     alert_func :Optional[Callable] = self.config.get('alert_func')
                     config_file: Optional[str] = self.config.get('file')
                     mydeck = MyStreamDeck({
+                        'mydecks': self,
                         "deck": deck,
                         'alert_func': alert_func,
                         'config': config_file
@@ -66,6 +67,7 @@ class MyStreamDecks:
                     sn_config = configs.get(sn_alias)
                     if sn_config is not None:
                         mydeck = MyStreamDeck({
+                            'mydecks': self,
                             "deck": deck,
                             'alert_func': sn_config.get('alert_func'),
                             'config': sn_config.get('file'),
@@ -73,8 +75,7 @@ class MyStreamDecks:
                         self.mystreamdecks[sn_alias] = mydeck
                         mydeck.init_deck(deck)
                 else:
-                    logging.warning("configs are required with decks definition")
-                    raise(ExceptionNoConfig)
+                    logging.warning("config is not found for device: {}".format(serial_number))
             else:
                 logging.warning("config or (decks and configs) is required")
                 raise(ExceptionNoConfig)
@@ -90,34 +91,50 @@ class MyStreamDecks:
         print("start_decks end!")
         sys.exit()
 
+    def mydeck (self, name: str) -> 'MyStreamDeck':
+        mydeck = self.mystreamdecks.get(name)
+        if mydeck is not None:
+            return mydeck
+        else:
+            logging.warning('mydeck is None')
+            raise(ExceptionNoDevice)
+
 class ExceptionNoConfig(Exception):
+    pass
+
+class ExceptionNoDevice(Exception):
     pass
 
 class MyStreamDeck:
     """STREAM DECK Configuration"""
-    deck: StreamDeckOriginalV2 = None
-    config: Optional['Config'] = None
-    is_background_thread_started: bool = False
-    key_count: int
-    _alert_func: Optional[Callable] = None
-    _exit: bool = False
-    _current_page: str = '@HOME'
-    _previous_pages: list[str] = ['@HOME']
-    _previous_window: str =  ''
-    _in_alert: bool = False
-    _game_status: bool = False
-    _game_command: dict = {}
-    _KEY_CONFIG: dict = {}
-    _KEY_CONFIG_GAME: dict = {}
-    _KEY_ACTION_APP: dict  = {}
-    _GAME_KEY_CONFIG: dict = {}
-    _config_file: str = ''
-    _config_file_mtime: int = 0
-
+    mydecks: MyStreamDecks
     # path of font
-    font_path = "/usr/share/fonts/truetype/freefont/FreeSans.ttf"
 
     def __init__ (self, opt: dict):
+        deck = opt.get('deck')
+        self.deck: StreamDeckOriginalV2 = deck
+        self.key_count = self.deck.key_count()
+        self.font_path = "/usr/share/fonts/truetype/freefont/FreeSans.ttf"
+        self.config: Optional['Config'] = None
+        self.is_background_thread_started: bool = False
+        self.key_count: int
+        self._alert_func: Optional[Callable] = None
+        self._exit: bool = False
+        self._current_page: str = '@HOME'
+        self._previous_pages: list[str] = ['@HOME']
+        self._previous_window: str =  ''
+        self._in_alert: bool = False
+        self._game_status: bool = False
+        self._game_command: dict = {}
+        self._KEY_CONFIG: dict = {}
+        self._KEY_CONFIG_GAME: dict = {}
+        self._KEY_ACTION_APP: dict  = {}
+        self._GAME_KEY_CONFIG: dict = {}
+        self._config_file: str = ''
+        self._config_file_mtime: int = 0
+
+        if opt.get('mydecks') is not None:
+            self.mydecks = opt.get('mydecks')
         if opt.get('alert_func') is not None:
             self._alert_func = opt['alert_func']
         if opt.get("font_path") is not None:
@@ -128,9 +145,6 @@ class MyStreamDeck:
             self.config = Config(self, self._config_file)
 
     def init_deck(self, deck: StreamDeckOriginalV2):
-        self.deck = deck
-        self.key_count = deck.key_count()
-
         if self.config is not None:
             self.config.reflect_config()
 
@@ -202,8 +216,8 @@ class MyStreamDeck:
     # display keys and set key callbacks
     def key_setup(self):
         deck = self.deck
-        print("Opened '{}' device (serial number: '{}', fw: '{}')".format(
-            deck.deck_type(), deck.get_serial_number(), deck.get_firmware_version()
+        print("Opened '{}' device (serial number: '{}', fw: '{}', page: '{}')".format(
+            deck.deck_type(), deck.get_serial_number(), deck.get_firmware_version(), self.current_page()
         ))
 
         # Set initial screen brightness to 30%.
@@ -217,12 +231,8 @@ class MyStreamDeck:
 
             page_configuration = self.key_config().get(self.current_page())
             if page_configuration is not None:
-                config_key = key
-                if page_configuration.get(config_key) is None:
-                    config_key = (key_count - key) * -1
-
-                if page_configuration.get(config_key) is not None:
-                    self.set_key(key, page_configuration.get(config_key))
+                if page_configuration.get(key) is not None:
+                    self.set_key(key, page_configuration.get(key))
 
                     # Register callback function for the time when a key state changes.
                     deck.set_key_callback(lambda deck, key, state: self.key_change_callback(key, state))
@@ -344,16 +354,12 @@ class MyStreamDeck:
         deck = self.deck
         if deck is not None:
             # Print new key state
-            print("Deck {} Key {} = {}".format(deck.id(), key, state), flush=True)
+            print("Deck {} Key {} = {}, page = {}".format(deck.id(), key, state, self.current_page()), flush=True)
 
 
         # Check if the key is changing to the pressed state.
         if state:
             conf = self.key_config().get(self.current_page()).get(key)
-            if conf is None:
-                config_key = (self.key_count - key) * -1
-                conf = self.key_config().get(self.current_page()).get(config_key)
-
             # When an exit button is pressed, close the application.
             if conf is not None:
                 if conf.get("exit") == 1:
@@ -398,7 +404,7 @@ class MyStreamDeck:
                         if self.config is not None:
                             for app in self.config.apps:
                                 if app.page_key is not None and app.page_key.get(self.current_page()):
-                                    for key in app.key_command:
+                                    for key in app.key_command.keys():
                                         if command == key:
                                             found = True
                                             cmd = app.key_command[key]
@@ -501,16 +507,17 @@ class MyStreamDeck:
                             print(type(app), 'still waiting to start app')
 
 class Config:
-    _file_mtime: int = 0
-    _file: str = ''
-    _config_content: dict = {}
-    _loaded: dict = {}
-    conf: dict = {}
-    apps: List['AppBase'] = []
-    background_apps: List['BackgroundAppBase'] = []
-    mydeck: 'MyStreamDeck'
     def __init__(self, mydeck: 'MyStreamDeck', file: str):
+        self._file_mtime: int = 0
+        self._file: str = ''
+        self._config_content: dict = {}
+        self._loaded: dict = {}
+        self.conf: dict = {}
+        self.apps: List['AppBase'] = []
+        self.background_apps: List['BackgroundAppBase'] = []
+        self.mydeck: 'MyStreamDeck'
         self.mydeck = mydeck
+        self.key_count = mydeck.key_count
         self._file = file
 
     def reflect_config(self):
@@ -539,7 +546,7 @@ class Config:
 
     def parse(self, conf: dict):
         if self.mydeck is not None:
-            self.mydeck.set_key_config(conf.get('key_config'))
+            self.mydeck.set_key_config(self.modify_key_config_with_page(conf.get('key_config')))
             # alert_config: dict = {}
         apps_conf = conf.get('apps')
         if apps_conf is not None:
@@ -595,7 +602,7 @@ class Config:
                 self.background_apps.append(o)
                 if app_conf['app'] == 'Alert' and self.mydeck is not None:
                     o.set_check_func(self.mydeck._alert_func)
-                    self.mydeck.set_alert_key_conf(app_conf['option']["key_config"])
+                    self.mydeck.set_alert_key_conf(self.modify_key_config(app_conf['option']["key_config"]))
 
         return o
 
@@ -612,6 +619,21 @@ class Config:
     def working_apps(self):
         return filter(lambda app: app.use_thread and app.is_in_target_page() and app.in_working, self.apps)
 
+    def modify_key_config_with_page(self, conf: dict):
+        new_config = {}
+        for page in conf.keys():
+            new_config[page] = self.modify_key_config(conf[page])
+        return new_config
+
+    def modify_key_config(self, conf: dict):
+        key_count = self.key_count
+        new_config = {}
+        for _key in conf.keys():
+            key = _key
+            if _key < 0:
+                key = key_count + _key
+            new_config[key] = conf[_key]
+        return new_config
 
 class ImageOrFile:
     file: str = ''
@@ -619,8 +641,8 @@ class ImageOrFile:
     is_file = False
     def __init__(self, file_or_image: Any):
         if type(file_or_image) != str and type(file_or_image) != Image.Image:
-            print(file_or_image)
-            raise ExceptionWrongTypeGiven
+            logging.warning(file_or_image)
+            raise(ExceptionWrongTypeGiven)
 
         if type(file_or_image) == str:
             self.file = file_or_image

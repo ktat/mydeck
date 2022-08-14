@@ -9,7 +9,8 @@ class WindowCheckBase(BackgroundAppBase):
     ]
 
     def __init__ (self, mydeck: MyStreamDeck, config: dict = {}):
-        self.mydeck = mydeck
+        super().__init__(mydeck)
+
         if config is not None and config.get('window_title_regexps'):
             self.window_title_regexps = config['window_title_regexps']
 

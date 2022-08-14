@@ -2,10 +2,10 @@ from PIL import Image, ImageDraw, ImageFont
 import time
 import random
 import threading
-from mystreamdeck import MyStreamDeck, ImageOrFile, App, ExceptionNoDeck
+from mystreamdeck import MyStreamDeck, ImageOrFile, GameAppBase, ExceptionNoDeck
 from typing import NoReturn
 
-class GameWhacAMole(App):
+class GameWhacAMole(GameAppBase):
     in_game = False
     stop = False
     data = {

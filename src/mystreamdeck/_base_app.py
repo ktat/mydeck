@@ -8,33 +8,38 @@ class ExceptionNoDeck(Exception):
     pass
 
 class App:
-    mydeck: 'MyStreamDeck'
-
     # if app reuquires thread, true
     use_thread: bool = False
-    # sleep sec in thread
-    time_to_sleep: int = 1
-    # execute command when button pushed
-    command = None
-    # not in target page
-    in_other_page: bool = True
-    # app is running now
-    in_working: bool = False
-    # normaly true
+    # if app works in background, set True
     is_background_app: bool = False
-    # need to stop thread
-    stop: bool = False
-    # dict: key is page name and value is key number.
-    page_key: dict = {}
+
     key_command: dict = {}
 
-    previous_page: str = ''
-    previous_date: str = ''
-
     def __init__(self, mydeck: 'MyStreamDeck'):
+        self.mydeck: 'MyStreamDeck'
+        # sleep sec in thread
+        self.time_to_sleep: int = 1
+        # execute command when button pushed
+        self.command = None
+        # not in target page
+        self.in_other_page: bool = True
+        # app is running now
+        self.in_working: bool = False
+        # need to stop thread
+        self.stop: bool = False
+        # dict: key is page name and value is key number.
+        self.page_key: dict = {}
+
+        self.previous_page: str = ''
+        self.previous_date: str = ''
         self.mydeck = mydeck
         if self.mydeck.deck is None:
             raise ExceptionNoDeck
+
+class GameAppBase(App):
+    def __init__ (self, mydeck :MyStreamDeck, start_key_num :int = 0):
+        super().__init__(mydeck)
+        self.data: dict = {}
 
 class AppBase(App):
     def __init__(self, mydeck: 'MyStreamDeck', option: dict = {}):
@@ -76,8 +81,7 @@ class AppBase(App):
                 if key is not None:
                     self.set_image_to_key(key, page)
             except Exception as e:
-                print('Error in app_base.is_in_target', type(self), e)
-                print(type(self), self.in_other_page, page,key)
+                print('Error in app_base.start', type(self), e)
 
             # exit when main process is finished
             if self.check_to_stop():
@@ -133,16 +137,16 @@ class AppBase(App):
 
 class BackgroundAppBase(App):
     use_thread: bool = True
-    # need to stop thread
-    stop: bool = False
-    # sleep time in thread
-    sleep: int  = 1
-
-    in_working = False
-    is_background_app = True
 
     def __init__ (self, mydeck, config={}):
         super().__init__(mydeck)
+        # need to stop thread
+        self.stop: bool = False
+        # sleep time in thread
+        self.sleep: int  = 1
+
+        self.in_working = False
+        self.is_background_app = True
 
     def execute_in_thread(self):
         print("implement in subclass")
