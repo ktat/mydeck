@@ -5,15 +5,12 @@ import sys
 import datetime
 
 # whole image size
-X = 100
-Y = 100
+X: int = 100
+Y: int = 100
 
 class Calendar(AppBase):
-    # if app reuquire thread, true
-    use_thread = True
-
-    previous_page = ''
-    previous_date = ''
+    # if app reuquires thread, true
+    use_thread: bool = True
 
     def __init__(self, mydeck: MyStreamDeck, option: dict = {}):
         super().__init__(mydeck, option)

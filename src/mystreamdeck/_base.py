@@ -10,22 +10,22 @@ import threading
 import requests
 import os.path
 import importlib
-from typing import Any, NoReturn, List
-from mystreamdeck import App, AppBase, BackgroundAppBase
+from typing import Any, NoReturn, List, TYPE_CHECKING, Optional, Callable, Dict
 
 from PIL import Image, ImageDraw, ImageFont
 from StreamDeck.ImageHelpers import PILHelper
 from StreamDeck.DeviceManager import DeviceManager
 from StreamDeck.Devices import StreamDeckOriginalV2
+if TYPE_CHECKING:
+    from mystreamdeck import App, AppBase, BackgroundAppBase
 
 class MyStreamDeck:
     """STREAM DECK Configuration"""
-    deck = None
-    config = None
-    child_pid = None
-    is_background_thread_started = False
-    _alert_func = None
-    _exit = False
+    deck: StreamDeckOriginalV2 = None
+    config: Optional['Config'] = None
+    is_background_thread_started: bool = False
+    _alert_func: Optional[Callable] = None
+    _exit: bool = False
     _current_page: str = '@HOME'
     _previous_pages: list[str] = ['@HOME']
     _previous_window: str =  ''
@@ -224,7 +224,7 @@ class MyStreamDeck:
             deck.set_key_image(key, image)
 
     # render key image and label
-    def render_key_image(self, icon_filename_or_object: ImageOrFile, label: str = '', bg_color: str = '', no_label: bool = False):
+    def render_key_image(self, icon_filename_or_object: 'ImageOrFile', label: str = '', bg_color: str = '', no_label: bool = False):
         deck = self.deck
         font_bg_color = "white"
         if bg_color == '' or bg_color == "black":
@@ -414,7 +414,7 @@ class MyStreamDeck:
         print("deck_start end!")
         sys.exit()
 
-    def threading_apps(self, apps: list[AppBase], background_apps: list[BackgroundAppBase]):
+    def threading_apps(self, apps: List['AppBase'], background_apps: List['BackgroundAppBase']):
         for app in apps:
             if app.use_thread and app.is_in_target_page():
                 t = threading.Thread(target=lambda: app.start(), args=())
@@ -438,15 +438,15 @@ class MyStreamDeck:
                             print(type(app), 'still waiting to start app')
 
 class Config:
-    _file_mtime = 0
-    _file = ''
+    _file_mtime: int = 0
+    _file: str = ''
     _config_content: dict = {}
     _loaded: dict = {}
     conf: dict = {}
-    apps: list[AppBase] = []
-    background_apps: list[BackgroundAppBase] = []
-    mydeck = None
-    def __init__(self, mydeck: MyStreamDeck, file: str):
+    apps: List['AppBase'] = []
+    background_apps: List['BackgroundAppBase'] = []
+    mydeck: 'MyStreamDeck'
+    def __init__(self, mydeck: 'MyStreamDeck', file: str):
         self.mydeck = mydeck
         self._file = file
 
@@ -548,6 +548,7 @@ class Config:
 
     def working_apps(self):
         return filter(lambda app: app.use_thread and app.is_in_target_page() and app.in_working, self.apps)
+
 
 class ImageOrFile:
     file: str = ''

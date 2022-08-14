@@ -1,17 +1,17 @@
-from mystreamdeck import MyStreamDeck
 import time
 import sys
 import datetime
-from typing import NoReturn
+from typing import NoReturn, TYPE_CHECKING
+from mystreamdeck import MyStreamDeck
 
 class ExceptionNoDeck(Exception):
     pass
 
 class App:
-    mydeck :MyStreamDeck
+    mydeck: 'MyStreamDeck'
 
-    # if app reuquire thread, true
-    use_thread = False
+    # if app reuquires thread, true
+    use_thread: bool = False
     # sleep sec in thread
     time_to_sleep: int = 1
     # execute command when button pushed
@@ -31,13 +31,13 @@ class App:
     previous_page: str = ''
     previous_date: str = ''
 
-    def __init__(self, mydeck: MyStreamDeck):
+    def __init__(self, mydeck: 'MyStreamDeck'):
         self.mydeck = mydeck
         if self.mydeck.deck is None:
             raise ExceptionNoDeck
 
 class AppBase(App):
-    def __init__(self, mydeck: MyStreamDeck, option: dict = {}):
+    def __init__(self, mydeck: 'MyStreamDeck', option: dict = {}):
         super().__init__(mydeck)
 
         self.temp_wait = 0

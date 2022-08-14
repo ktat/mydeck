@@ -77,11 +77,11 @@ class JMA:
 
 class JMAResult:
     image_url: str
-    weather: str
     image_name: str
-    temp: str # 気温
-    pop: str # 降水量
-    def __init__(self, weather: str, pop: int, temp: int):
+    weather: OptStr # 天気
+    temp: OptStr # 気温
+    pop: OptStr # 降水量
+    def __init__(self, weather: OptStr, pop: OptStr, temp: OptStr):
         now = datetime.datetime.now()
         image = forecast_mapping().get(weather)
         if now.hour <= 18 and now.hour >= 6:
@@ -92,14 +92,12 @@ class JMAResult:
             self.image_name = image[1][0:-4]
 
         self.weather = weather
-        if pop is not None:
-            self.pop = str(pop) + '%'
-        if temp is not None:
-            self.temp = str(temp) + '℃'
+        self.pop = str(pop) + '%'
+        self.temp = str(temp) + '℃'
 
 class JMASearch:
-    area = None
-    jma = None
+    area: Area
+    jma: JMA
     def __init__(self, jma: JMA, area: Area):
         self.jma = jma
         self.area = area
@@ -108,10 +106,10 @@ class JMASearch:
         res = requests.get(self.jma.url)
         if res.status_code == requests.codes.ok:
             image_url = ''
-            weather = None
-            temp = None
-            pop = None
-            data = json.loads(res.text)
+            weather: OptStr = None
+            temp: OptStr = None
+            pop: OptStr = None
+            data: Dict = json.loads(res.text)
             for area in data[0]["timeSeries"][0]["areas"]:
                 if area["area"]["name"] == self.area.area or area["area"]["code"] == self.area.area_code:
                     weather = area["weatherCodes"][0]
@@ -129,7 +127,7 @@ class JMASearch:
 
 class WeatherJp(AppBase):
     # if app reuquire thread, true
-    use_thread = True
+    use_thread: bool = True
 
     area: Area
     jma: JMA
@@ -161,9 +159,10 @@ class WeatherJp(AppBase):
                 draw.text((27, 20),  font=font, text=result.pop, fill=(0,0,255))
 
             l = 20
-            if self.area.display_name is not None and len(self.area.display_name) >= 6:
-                l = int(20 / (len(self.area.display_name) / 6))
-                font = ImageFont.truetype(self.mydeck.font_path, l)
+            if self.area.display_name is not None:
+                if len(self.area.display_name) >= 6:
+                    l = int(20 / (len(self.area.display_name) / 6))
+                    font = ImageFont.truetype(self.mydeck.font_path, l)
                 draw.text((11, 44 + (19-l)), font=font, text=self.area.display_name, fill=(0,0,0))
                 draw.text((10, 43 + (19-l)), font=font, text=self.area.display_name, fill=(255,255,255))
 

@@ -8,8 +8,8 @@ import threading
 import sys
 
 # whole image size
-X = 100
-Y = 100
+X: int = 100
+Y: int = 100
 
 class StopWatch(AppBase):
     _key_conf = {
@@ -21,7 +21,7 @@ class StopWatch(AppBase):
         "MyStreamDeckStopWatchToggle": lambda app: app.toggle_count(),
     }
 
-    def __init__(self, mydeck :MyStreamDeck, option :dict = {}):
+    def __init__(self, mydeck: MyStreamDeck, option: dict = {}):
         super().__init__(mydeck, option)
 
     # setup key configuration
@@ -68,4 +68,3 @@ class StopWatch(AppBase):
             self.stop = True
         else:
             self.do_start()
-
