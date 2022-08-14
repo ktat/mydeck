@@ -226,7 +226,7 @@ def check_alert():
     return False
 
 if __name__ == "__main__":
-    mydeck = MyStreamDecks(
+    mydecks = MyStreamDecks(
         {
             'config': {
                'file': "./example/config/config.yml",
@@ -235,9 +235,32 @@ if __name__ == "__main__":
 	}
     )
 
-    mydeck.start_decks()
+    mydecks.start_decks()
 
     os.exit()
+```
+
+If you have multi devices.
+
+```python
+if __name__ == "__main__":
+    mydecks = MyStreamDecks({
+        'decks': {
+            'SERIAL_KEY_1': 'name1',
+            'SERIAL_KEY_2': 'name2',
+        },
+        'configs': {
+            'name1': {
+                'file': "/path/to/config1.yml",
+                'alert_func': check_alert,
+            },
+            'name2': {
+                'file': "/path/to/config2.yml",
+            },
+        }
+    })
+
+    mydecks.start_decks()
 ```
 
 ## LICENSE
