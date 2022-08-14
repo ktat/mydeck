@@ -1,4 +1,3 @@
-from cairosvg import svg2png
 import wand.image
 import re
 import subprocess
@@ -10,8 +9,10 @@ import threading
 import requests
 import os.path
 import importlib
-from typing import Any, NoReturn, List, TYPE_CHECKING, Optional, Callable, Dict
+import logging
 
+from cairosvg import svg2png
+from typing import Any, NoReturn, List, TYPE_CHECKING, Optional, Callable, Dict
 from PIL import Image, ImageDraw, ImageFont
 from StreamDeck.ImageHelpers import PILHelper
 from StreamDeck.DeviceManager import DeviceManager
@@ -44,18 +45,25 @@ class MyStreamDecks:
             serial_number: str = deck.get_serial_number()
 
             if self.one_deck_only:
-                mydeck = MyStreamDeck({
-                    "deck": deck,
-                    'alert_func': self.config.get('alert_func'),
-                    'config': self.config.get('file'),
-                })
-                self.mystreamdecks[serial_number] = mydeck
-                mydeck.init_deck(deck)
-                break
-            else:
+                if self.config is not None:
+                    alert_func :Optional[Callable] = self.config.get('alert_func')
+                    config_file: Optional[str] = self.config.get('file')
+                    mydeck = MyStreamDeck({
+                        "deck": deck,
+                        'alert_func': alert_func,
+                        'config': config_file
+                    })
+                    self.mystreamdecks[serial_number] = mydeck
+                    mydeck.init_deck(deck)
+                    break
+                else:
+                    logging.warning("config{file: '/path/to/config_file'} is required")
+                    raise(ExceptionNoConfig)
+            elif self.decks is not None:
                 sn_alias = self.decks.get(serial_number)
-                if sn_alias is not None:
-                    sn_config = self.configs.get(sn_alias)
+                configs = self.configs
+                if sn_alias is not None and configs is not None:
+                    sn_config = configs.get(sn_alias)
                     if sn_config is not None:
                         mydeck = MyStreamDeck({
                             "deck": deck,
@@ -64,6 +72,12 @@ class MyStreamDecks:
                         })
                         self.mystreamdecks[sn_alias] = mydeck
                         mydeck.init_deck(deck)
+                else:
+                    logging.warning("configs are required with decks definition")
+                    raise(ExceptionNoConfig)
+            else:
+                logging.warning("config or (decks and configs) is required")
+                raise(ExceptionNoConfig)
 
         # Wait until all application threads have terminated (for this example,
         # this is when all deck handles are closed).
@@ -71,10 +85,13 @@ class MyStreamDecks:
             try:
                 t.join()
             except RuntimeError as e:
-                print("Error in deck_start", e)
+                print("Error in start_decks", e)
 
-        print("deck_start end!")
+        print("start_decks end!")
         sys.exit()
+
+class ExceptionNoConfig(Exception):
+    pass
 
 class MyStreamDeck:
     """STREAM DECK Configuration"""
