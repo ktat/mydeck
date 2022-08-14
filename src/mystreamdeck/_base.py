@@ -113,11 +113,10 @@ class MyStreamDeck:
     def __init__ (self, opt: dict):
         deck = opt.get('deck')
         self.deck: StreamDeckOriginalV2 = deck
-        self.key_count = self.deck.key_count()
+        self.key_count: int = self.deck.key_count()
         self.font_path = "/usr/share/fonts/truetype/freefont/FreeSans.ttf"
         self.config: Optional['Config'] = None
         self.is_background_thread_started: bool = False
-        self.key_count: int
         self._alert_func: Optional[Callable] = None
         self._exit: bool = False
         self._current_page: str = '@HOME'
@@ -133,8 +132,9 @@ class MyStreamDeck:
         self._config_file: str = ''
         self._config_file_mtime: int = 0
 
-        if opt.get('mydecks') is not None:
-            self.mydecks = opt.get('mydecks')
+        mydecks = opt.get('mydecks')
+        if mydecks is not None:
+            self.mydecks = mydecks
         if opt.get('alert_func') is not None:
             self._alert_func = opt['alert_func']
         if opt.get("font_path") is not None:
@@ -555,8 +555,9 @@ class Config:
 
     def parse(self, conf: dict):
         if self.mydeck is not None:
-            self.mydeck.set_key_config(self.modify_key_config_with_page(conf.get('key_config')))
-            # alert_config: dict = {}
+            key_config = conf.get('key_config')
+            if key_config is not None:
+                self.mydeck.set_key_config(self.modify_key_config_with_page(key_config))
         apps_conf = conf.get('apps')
         if apps_conf is not None:
             self.parse_apps(apps_conf)
