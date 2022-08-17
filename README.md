@@ -1,9 +1,16 @@
 # MySteamDeck
 
-To use [STREAM DECK](https://www.elgato.com/ja/stream-deck) on Linux enviroment easily.
+To use [STREAM DECK](https://www.elgato.com/ja/stream-deck) easily.
 
 Check the following instruction at first when you haven't setup STREAM DECK.
-https://onlinux.systems/guides/20220520_how-to-set-up-elgatos-stream-deck-on-ubuntu-linux-2204
+
+- https://onlinux.systems/guides/20220520_how-to-set-up-elgatos-stream-deck-on-ubuntu-linux-2204
+
+This package is intended primarily for Linux environments.
+However, with the exception of one module (app_window_check_linux),
+it does not depend on Linux at all.
+It has not been tested on environments other than Ubuntu 22.04,
+but I believe it can be used on other environments as well.
 
 ## Dependency
 
@@ -15,6 +22,8 @@ apt install xdotool
 apt install python3-wand
 apt install python3-cairosvg
 ```
+
+xdotool is used for active window checking.
 
 ## CAUTION
 
