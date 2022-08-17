@@ -1,3 +1,5 @@
+"""Base module to handle STREAM DECK devices"""
+
 import wand.image
 import re
 import subprocess
@@ -18,24 +20,62 @@ from StreamDeck.ImageHelpers import PILHelper
 from StreamDeck.DeviceManager import DeviceManager
 from StreamDeck.Devices import StreamDeckOriginalV2
 if TYPE_CHECKING:
-    from mystreamdeck import App, AppBase, BackgroundAppBase
+    from . import App, AppBase, BackgroundAppBase
 
 class MyStreamDecks:
-    mystreamdecks: Dict[str, 'MyStreamDeck'] = {}
-    one_deck_only: bool = False
+    """The class to manage several TREAM DECK devices.
+
+    This class manages insteaces of MyStreamDeck class.
+    """
     decks: Optional[dict]
+    mystreamdecks: Dict[str, 'MyStreamDeck'] = {}
+    _one_deck_only: bool = False
     configs: Optional[dict]
     conifg: Optional[dict]
     def __init__(self, config: dict):
+        """
+        config dict takes the following keys:
+        - log_level
+        - decks and configs or config
+
+        If you have only one STREAM DECK device, use config. If you have several devices, use decks and configs.
+        decks is the following structure.
+        {
+           name1: 'serial number of deck1',
+           name2: 'serial number of deck2',
+        }
+
+        configs is the following structure.
+        {
+           name1: {
+             alert_func: function_name_for_alert,
+             file: '/path/to/config1.yml'
+           },
+           name2: {
+             file: '/path/to/config2.yml'
+           },
+        }
+
+        config is the following structure.
+        {
+           alert_func: function_name_for_alert,
+           file: '/path/to/config1.yml'
+        }
+
+        """
         self.decks: Optional[dict] = config.get('decks')
         self.configs: Optional[dict] = config.get('configs')
         if self.decks is None and self.configs is None:
             self.config = config.get('config')
-            self.one_deck_only = True
+            self._one_deck_only = True
+        log_level: Optional[str] = config.get('log_level')
+        if log_level is not None:
+            logging.basicConfig(level=log_level)
 
     def start_decks(self) -> NoReturn:
+        """Start and display images to STREAM DECK buttons according to configuration."""
         streamdecks = DeviceManager().enumerate()
-        print("Found {} Stream Deck(s).\n".format(len(streamdecks)))
+        logging.debug("Found {} Stream Deck(s).\n".format(len(streamdecks)))
 
         for index, deck in enumerate(streamdecks):
             if not deck.is_visual():
@@ -44,18 +84,19 @@ class MyStreamDecks:
             deck.open()
             serial_number: str = deck.get_serial_number()
 
-            if self.one_deck_only:
+            if self._one_deck_only:
                 if self.config is not None:
                     alert_func :Optional[Callable] = self.config.get('alert_func')
                     config_file: Optional[str] = self.config.get('file')
                     mydeck = MyStreamDeck({
                         'mydecks': self,
+                        'myname': 'mydeck',
                         "deck": deck,
                         'alert_func': alert_func,
                         'config': config_file
                     })
                     self.mystreamdecks[serial_number] = mydeck
-                    mydeck.init_deck(deck)
+                    mydeck.init_deck()
                     break
                 else:
                     logging.warning("config{file: '/path/to/config_file'} is required")
@@ -68,12 +109,13 @@ class MyStreamDecks:
                     if sn_config is not None:
                         mydeck = MyStreamDeck({
                             'mydecks': self,
+                            'myname': sn_alias,
                             "deck": deck,
                             'alert_func': sn_config.get('alert_func'),
                             'config': sn_config.get('file'),
                         })
                         self.mystreamdecks[sn_alias] = mydeck
-                        mydeck.init_deck(deck)
+                        mydeck.init_deck()
                 else:
                     logging.warning("config is not found for device: {}".format(serial_number))
             else:
@@ -91,22 +133,21 @@ class MyStreamDecks:
         print("start_decks end!")
         sys.exit()
 
-    def mydeck (self, name: str) -> 'MyStreamDeck':
+    def mydeck (self, name: str) -> Optional['MyStreamDeck']:
+        """Pass name of the device and return the correspond MyStreamDeck instance."""
         mydeck = self.mystreamdecks.get(name)
         if mydeck is not None:
             return mydeck
         else:
-            logging.warning('mydeck is None')
-            raise(ExceptionNoDevice)
+            logging.warning('mydeck is None: {}'.format(name))
+        return None
 
 class ExceptionNoConfig(Exception):
-    pass
-
-class ExceptionNoDevice(Exception):
+    """Exception when no configuration is given"""
     pass
 
 class MyStreamDeck:
-    """STREAM DECK Configuration"""
+    """Class to control a STREAM DECK device."""
     mydecks: MyStreamDecks
     # path of font
 
@@ -132,6 +173,9 @@ class MyStreamDeck:
         self._config_file: str = ''
         self._config_file_mtime: int = 0
 
+        myname: Optional[str] = opt.get('myname')
+        if myname is not None:
+            self.myname = myname
         mydecks = opt.get('mydecks')
         if mydecks is not None:
             self.mydecks = mydecks
@@ -144,61 +188,76 @@ class MyStreamDeck:
             self._KEY_CONFIG_GAME = {}
             self.config = Config(self, self._config_file)
 
-    def init_deck(self, deck: StreamDeckOriginalV2):
+    def init_deck(self):
+        """Initialize deck. Reflect configuration and setup keys."""
         if self.config is not None:
             self.config.reflect_config()
 
         self.key_setup()
 
-    def in_game_status(self):
-        return self._game_status == 1
+    def in_game_status(self) -> bool:
+        """True if deck is in game mode"""
+        return self._game_status
 
-    def in_alert(self):
-        return self._in_alert == 1
+    def in_alert(self) -> bool:
+        """True if deck is in alert mode"""
+        return self._in_alert
 
     def key_config(self):
+        """Return deck key configuration"""
         if self._config_file != '':
             self.config.reflect_config()
 
         return self._KEY_CONFIG
 
     def set_alert_on(self):
+        """Set deck alert status on"""
         self._in_alert = True
 
     def set_alert_off(self):
+        """Set deck alert status off"""
         self._in_alert = False
 
     def set_game_status_on(self):
+        """Set deck game status on"""
         self._game_status = True
 
     def set_game_status_off(self):
+        """Set deck game status off"""
         self._game_status = False
 
-    def previous_page(self):
+    def previous_page(self) -> str:
+        """Return previous page"""
         if len(self._previous_pages) > 0:
             return self._previous_pages[-1]
         else:
             return ''
 
-    def pop_last_previous_page(self):
+    def pop_last_previous_page(self) -> str:
+        """Return and remove last previous page."""
         if len(self._previous_pages) > 0:
             return self._previous_pages.pop(-1)
         else:
             return '@HOME'
 
     def set_previous_page(self, name: str):
-        if  name[0] != '~' and (len(self._previous_pages) == 0 or self._previous_pages[-1] != name):
+        """Set given page name as previous page"""
+        if  name[0] != '~' and (len(self._previous_pages) == 0 or self._previous_pages[-1] != name) and (len(self._previous_pages) > 0 and self._previous_pages[-1][0] != '@'):
             self._previous_pages.append(name)
+        logging.debug(self._previous_pages)
 
-    def current_page(self):
+    def current_page(self) -> str:
+        """Return current page name"""
         return self._current_page
 
     def set_current_page_without_setup(self, name: str):
+        """Set given page name as current_page. but don't setup keys."""
         self.set_previous_page(name)
         self.set_alert_off()
         self._current_page = name
 
     def set_current_page(self, name: str):
+        """Set given page name as current_page and setup keys."""
         self.set_previous_page(self._current_page)
 
         if name[0] != "~ALERT":
@@ -215,8 +274,9 @@ class MyStreamDeck:
 
     # display keys and set key callbacks
     def key_setup(self):
+        """setup keys"""
         deck = self.deck
-        print("Opened '{}' device (serial number: '{}', fw: '{}', page: '{}')".format(
+        logging.debug("Opened '{}' device (serial number: '{}', fw: '{}', page: '{}')".format(
             deck.deck_type(), deck.get_serial_number(), deck.get_firmware_version(), self.current_page()
         ))
 
@@ -239,6 +299,7 @@ class MyStreamDeck:
 
     # set key image and label
     def set_key(self, key: int, conf: dict):
+        """Set a key and its configuration."""
         key = self.abs_key(key)
         deck = self.deck
         if conf is not None:
@@ -255,32 +316,40 @@ class MyStreamDeck:
             if conf.get('no_image') is None:
                 self.update_key_image(key, self.render_key_image(ImageOrFile(conf["image"]), conf.get("label") or '', conf.get("background_color") or ''))
 
-
-    def image_url_to_image(self, conf: dict = {}, url: str = ''):
-        image_url = conf.get('image_url')
-        icon_name = ''
+    def determine_image_url(self, image_url: Optional[str], url: Optional[str]) -> Optional[str]:
+        """Return url for key image"""
         if image_url is None and url is not None:
-            image_url = re.sub(r'^(https?://[^/]+).*$', '\\1/favicon.ico', url)
-            icon = re.sub(r'^https?://([^/]+).*$', '\\1', url)
-            icon_name = icon + '.ico'
-        elif image_url is not None:
-            icon_name = ""
-            if url is None:
-                icon_name = re.sub(r'^https?://', '', image_url)
-                icon_name = re.sub(r'[&=?/.]', '-', icon_name)
-            else:
-                icon_name = re.sub(r'^https?://([^/]+).*$', '\\1', url)
-            ext = re.sub(r'.+(\.\w+)$', '\\1', image_url)
-            icon_name += ext
+            image_url = re.sub(r'^(https?://[^/]+).*$', '\g<1>/favicon.ico', url)
 
-        icon_file = self.save_image(image_url, '/tmp/' + 'mystreamdeck-' + icon_name)
+        return image_url
+
+    def image_url_to_file_name(self, image_url: str) -> str:
+        """Return file name from url"""
+        icon_name = re.sub(r'^https?://', '', image_url)
+        icon_name = re.sub(r'[&=?/.]', '-', icon_name)
+        ext = re.sub(r'.+(\.\w+)$', '\g<1>', image_url)
+        return '/tmp/' + 'mystreamdeck-' + self.myname + icon_name + ext
+
+    def image_url_to_image(self, conf: Optional[dict], url: Optional[str] = None):
+        """If conf has image_url and get it and then save as the file and set its name as image of conf."""
+        image_url = None
+        icon_file = None
+        if conf is not None:
+            image_url = self.determine_image_url(conf.get('image_url'), url)
+        else:
+            conf = {}
+
+        if image_url is not None:
+            icon_file_name = self.image_url_to_file_name(image_url)
+            icon_file = self.save_image(image_url, icon_file_name)
 
         if icon_file is not None:
             conf["image"] = icon_file
         else:
             conf["image"] = "./src/Assets/world.png"
 
-    def save_image(self, icon_url: str, icon_file: str):
+    def save_image(self, icon_url: str, icon_file: str) -> Optional[str]:
+        """Get image from icon_url and save it to icon_file"""
         if os.path.exists(icon_file) is False:
             res = requests.get(icon_url)
             if res.status_code == requests.codes.ok:
@@ -298,7 +367,8 @@ class MyStreamDeck:
 
         return None
 
-    def check_icon_file(self, file_path: str):
+    def check_icon_file(self, file_path: str) -> bool:
+        """Check whether file_path is image or not"""
         try:
             print("file: {}".format(file_path))
             with wand.image.Image(filename=file_path):
@@ -310,6 +380,7 @@ class MyStreamDeck:
 
     # change key image
     def update_key_image(self, key: int, image: str):
+        """Update image of key"""
         key = self.abs_key(key)
         deck = self.deck
         if deck is not None:
@@ -318,6 +389,7 @@ class MyStreamDeck:
 
     # render key image and label
     def render_key_image(self, icon_filename_or_object: 'ImageOrFile', label: str = '', bg_color: str = '', no_label: bool = False):
+        """Render key image with image, label and background color."""
         deck = self.deck
         font_bg_color = "white"
         if bg_color == '' or bg_color == "black":
@@ -353,6 +425,7 @@ class MyStreamDeck:
     # Prints key state change information, updates rhe key image and performs any
     # associated actions when a key is pressed.
     def key_change_callback(self, key: int, state: bool):
+        """Call a callback according to a key is pushed"""
         deck = self.deck
         if deck is not None:
             # Print new key state
@@ -425,6 +498,7 @@ class MyStreamDeck:
 
 
     def stop_working_apps(self):
+        """Try to stop working apps and wait until all of them are stopped."""
         for app in self.config.apps:
             if app.in_working:
                 app.in_working = False
@@ -442,26 +516,31 @@ class MyStreamDeck:
 
     # handler to notify alert
     def handler_alert(self):
+        """Handling alert is caused."""
         self.set_alert_on()
         self.set_current_page("~ALERT")
 
     # handler to stop alert
     def handler_alert_stop(self):
+        """Handling alert is stopped."""
         if self.current_page() == "~ALERT":
             self.set_alert_off()
             self.set_current_page(self.pop_last_previous_page())
 
     def set_key_config(self, conf):
+        """Set key configuration."""
         if conf is None:
             conf = {}
         self._KEY_CONFIG = conf
 
     def set_game_key(self, key: int, conf: dict):
+        """Set game key configuration for one key"""
         key = self.abs_key(key)
         self._GAME_KEY_CONFIG[key] = conf
         self.set_key(key, conf)
 
     def add_game_key_conf(self, conf: dict):
+        """Add game confiruration for keys"""
         key_config = self.key_config()
         if key_config.get('@GAME') is None:
             key_config['@GAME'] = {}
@@ -470,23 +549,28 @@ class MyStreamDeck:
             self._KEY_CONFIG_GAME[key] = conf[key]
 
     def add_game_command(self, name: str, command):
+        """Add command for a game"""
         self._game_command[name] = command
 
     def set_alert_key_conf(self, conf: dict):
+        """Set configuration of keys on alert"""
         key_config = self.key_config()
         key_config['~ALERT'] = conf
 
     def exit_game(self):
+        """call it on exiting game"""
         self.set_game_status_off()
         self.set_current_page("@GAME")
         self._GAME_KEY_CONFIG = {}
 
     def set_key_conf(self, page: str, key: int, conf: dict):
+        """Set a configuration of a key"""
         if self._KEY_CONFIG.get(page) is None:
             self._KEY_CONFIG[page] = {}
         self._KEY_CONFIG[page][key] = conf
 
     def threading_apps(self, apps: List['AppBase'], background_apps: List['BackgroundAppBase']):
+        """Run apps in thread"""
         for app in apps:
             if app.use_thread and app.is_in_target_page():
                 t = threading.Thread(target=lambda: app.start(), args=())
@@ -510,13 +594,16 @@ class MyStreamDeck:
                             print(type(app), 'still waiting to start app')
 
 
-    def abs_key(self, key: int):
+    def abs_key(self, key: int) -> int:
+        """If key is negative number, chnage it as positive number"""
         if key < 0:
             key = self.key_count + key
         return key
 
 class Config:
+    """STREAM DECK Configuration Class"""
     def __init__(self, mydeck: 'MyStreamDeck', file: str):
+        """Pass MyStreamDeck instance as mydeck and configuration file as file"""
         self._file_mtime: int = 0
         self._file: str = ''
         self._config_content: dict = {}
@@ -530,6 +617,7 @@ class Config:
         self._file = file
 
     def reflect_config(self):
+        """Read configuration file and reset applications and parse content of the configuration file and run apps"""
         loaded = self.load()
         if loaded is not None:
             try:
@@ -541,6 +629,7 @@ class Config:
                 return None
 
     def load(self):
+        """Load the configuration file, If the file is newer than read before, return the content of the configuration file. Or return None."""
         statinfo = os.stat(self._file)
         if self._file_mtime < statinfo.st_mtime:
             self._file_mtime = statinfo.st_mtime
@@ -554,6 +643,7 @@ class Config:
         return None
 
     def parse(self, conf: dict):
+        """Parse configuration file."""
         if self.mydeck is not None:
             key_config = conf.get('key_config')
             if key_config is not None:
@@ -566,10 +656,12 @@ class Config:
             self.parse_games(games_conf)
 
     def parse_games(self, games_conf: dict):
+        """Apply the configuration of games"""
         for game in games_conf.keys():
             self.parse_game(game, games_conf[game])
 
     def parse_game(self, game: str, game_conf: dict = {}):
+        """Apply the configuration of a game"""
         if game_conf is None:
             return False
         game = 'Game' + game
@@ -577,6 +669,7 @@ class Config:
         getattr(m, game)(self.mydeck, game_conf)
 
     def reset_apps(self):
+        """Reset apps"""
         for app in self.apps:
             app.stop = True
 
@@ -591,6 +684,7 @@ class Config:
         self.is_background_thread_started = False
 
     def parse_apps(self, apps_conf: List[dict]):
+        """Apply the configuration of apss"""
         if apps_conf is None:
             return False
 
@@ -598,6 +692,7 @@ class Config:
             app = self.parse_app(app_conf)
 
     def parse_app(self, app_conf: dict):
+        """Apply the configuration of an aps"""
         if app_conf is None:
             return False
 
@@ -623,19 +718,23 @@ class Config:
 
         return self._loaded[app]
 
-    def not_working_apps(self):
-        return filter(lambda app: app.use_thread and app.is_in_target_page() and not app.in_working, self.apps)
+    def not_working_apps(self) -> List['AppBase']:
+        """Return the list of the apps not working"""
+        return list(filter(lambda app: app.use_thread and app.is_in_target_page() and not app.in_working, self.apps))
 
-    def working_apps(self):
-        return filter(lambda app: app.use_thread and app.is_in_target_page() and app.in_working, self.apps)
+    def working_apps(self) -> List['AppBase']:
+        """Return the list of the working apps"""
+        return list(filter(lambda app: app.use_thread and app.is_in_target_page() and app.in_working, self.apps))
 
     def modify_key_config_with_page(self, conf: dict):
+        """Modify key configuration according to conf whose key is page name and value is configuration dict."""
         new_config = {}
         for page in conf.keys():
             new_config[page] = self.modify_key_config(conf[page])
         return new_config
 
     def modify_key_config(self, conf: dict):
+        """Modify key configuration with conf whose key is number of key and value is configuration dict."""
         key_count = self.key_count
         new_config = {}
         for _key in conf.keys():
@@ -646,10 +745,13 @@ class Config:
         return new_config
 
 class ImageOrFile:
-    file: str = ''
-    image: Image.Image
+    """Class to represent Image instannce or a file path."""
     is_file = False
     def __init__(self, file_or_image: Any):
+        """Constructor. Pass Image.Image instance or file path."""
+        self.image: Image.Image
+        self.file: str = ''
+
         if type(file_or_image) != str and type(file_or_image) != Image.Image:
             logging.warning(file_or_image)
             raise(ExceptionWrongTypeGiven)
@@ -661,4 +763,5 @@ class ImageOrFile:
             self.image = file_or_image
 
 class ExceptionWrongTypeGiven(Exception):
+    """Exception when wrong type is given to ImageOrFile constructor."""
     pass

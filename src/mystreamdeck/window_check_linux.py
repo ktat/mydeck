@@ -4,7 +4,7 @@ from typing import Optional
 from mystreamdeck import WindowCheckBase
 
 class WindowCheckLinux(WindowCheckBase):
-    # get curent window name
+    """Get curent window name for Linux environment using xdotool"""
     def _get_current_window(self) -> Optional[str]:
         try:
             window_ids: list[str] = subprocess.check_output(["xdotool", "getwindowfocus"]).decode().rsplit()

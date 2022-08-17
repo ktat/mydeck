@@ -1,10 +1,11 @@
-from PIL import Image, ImageDraw
-from typing import NoReturn, Tuple
-from mystreamdeck import MyStreamDeck, AppBase, ImageOrFile
 import math
 import datetime
 import time
 import sys
+
+from PIL import Image, ImageDraw
+from typing import NoReturn, Tuple
+from mystreamdeck import MyStreamDeck, AppBase, ImageOrFile
 
 # whole image size
 X: int = 100
@@ -14,6 +15,8 @@ XY = tuple[float, float]
 HMS = tuple[int, int, int]
 
 class Clock(AppBase):
+    """Show an analog clock on a key"""
+
     # if app reuquire thread, true
     use_thread: bool = True
 

@@ -1,11 +1,12 @@
-from PIL import Image, ImageDraw, ImageFont
-from mystreamdeck import AppBase, ImageOrFile, MyStreamDeck
-from typing import NoReturn
 import math
 import datetime
 import time
 import threading
 import sys
+
+from PIL import Image, ImageDraw, ImageFont
+from mystreamdeck import AppBase, ImageOrFile, MyStreamDeck
+from typing import NoReturn
 
 # whole image size
 X: int = 100

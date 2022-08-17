@@ -2,7 +2,6 @@ from inspect import isclass
 from pkgutil import iter_modules,extend_path
 from pathlib import Path
 from importlib import import_module
-import re
 
 # iterate through the modules in the current package
 package_dir = extend_path(__path__, __name__)
