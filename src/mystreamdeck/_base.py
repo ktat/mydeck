@@ -242,7 +242,7 @@ class MyStreamDeck:
 
     def set_previous_page(self, name: str):
         """Set given page name as previous page"""
-        if  name[0] != '~' and (len(self._previous_pages) == 0 or self._previous_pages[-1] != name) and (len(self._previous_pages) > 0 and self._previous_pages[-1][0] != '@'):
+        if  name[0] != '~' and (len(self._previous_pages) == 0 or self._previous_pages[-1] != name):
             self._previous_pages.append(name)
         logging.debug(self._previous_pages)
 
@@ -256,8 +256,9 @@ class MyStreamDeck:
         self.set_alert_off()
         self._current_page = name
 
-    def set_current_page(self, name: str):
+    def set_current_page(self, name: str, add_previous: bool = True):
         """Set given page name as current_page and setup keys."""
+
         self.set_previous_page(self._current_page)
 
         if name[0] != "~ALERT":
@@ -492,7 +493,7 @@ class MyStreamDeck:
                     with deck:
                         page_name = conf.get("change_page")
                         if page_name == "@previous":
-                            self.set_current_page(self.pop_last_previous_page())
+                            self.set_current_page(self.pop_last_previous_page(), False)
                         else:
                             self.set_current_page(page_name)
 
@@ -518,14 +519,14 @@ class MyStreamDeck:
     def handler_alert(self):
         """Handling alert is caused."""
         self.set_alert_on()
-        self.set_current_page("~ALERT")
+        self.set_current_page("~ALERT", False)
 
     # handler to stop alert
     def handler_alert_stop(self):
         """Handling alert is stopped."""
         if self.current_page() == "~ALERT":
             self.set_alert_off()
-            self.set_current_page(self.pop_last_previous_page())
+            self.set_current_page(self.pop_last_previous_page(), False)
 
     def set_key_config(self, conf):
         """Set key configuration."""
@@ -560,7 +561,7 @@ class MyStreamDeck:
     def exit_game(self):
         """call it on exiting game"""
         self.set_game_status_off()
-        self.set_current_page("@GAME")
+        self.set_current_page("@GAME", False)
         self._GAME_KEY_CONFIG = {}
 
     def set_key_conf(self, page: str, key: int, conf: dict):
@@ -698,6 +699,7 @@ class Config:
 
         app = app_conf.get('app')
         if app is not None:
+            app = 'App' + app
             m = self._load_module(app)
             o = getattr(m, app)(self.mydeck, app_conf.get('option'))
             if not o.is_background_app:

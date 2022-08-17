@@ -3,7 +3,7 @@ import subprocess
 from typing import Optional
 from mystreamdeck import WindowCheckBase
 
-class WindowCheckLinux(WindowCheckBase):
+class AppWindowCheckLinux(WindowCheckBase):
     """Get curent window name for Linux environment using xdotool"""
     def _get_current_window(self) -> Optional[str]:
         try:

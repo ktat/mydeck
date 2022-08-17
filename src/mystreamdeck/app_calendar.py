@@ -8,7 +8,7 @@ import datetime
 X: int = 100
 Y: int = 100
 
-class Calendar(AppBase):
+class AppCalendar(AppBase):
     # if app reuquires thread, true
     use_thread: bool = True
 

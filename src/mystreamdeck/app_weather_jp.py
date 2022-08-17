@@ -125,7 +125,7 @@ class JMASearch:
             return JMAResult(weather, pop, temp)
         return None
 
-class WeatherJp(AppBase):
+class AppWeatherJp(AppBase):
     # if app reuquire thread, true
     use_thread: bool = True
 

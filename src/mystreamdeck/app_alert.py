@@ -4,7 +4,7 @@ import sys
 from mystreamdeck import MyStreamDeck, BackgroundAppBase
 from typing import NoReturn, Callable, Optional
 
-class Alert(BackgroundAppBase):
+class AppAlert(BackgroundAppBase):
     # if app reuquire thread, true
     use_thread = True
     # need to stop thread

@@ -12,7 +12,7 @@ from typing import NoReturn
 X: int = 100
 Y: int = 100
 
-class StopWatch(AppBase):
+class AppStopWatch(AppBase):
     _key_conf = {
         "app_command": "MyStreamDeckStopWatchToggle",
         "image": "./src/Assets/stopwatch.png",

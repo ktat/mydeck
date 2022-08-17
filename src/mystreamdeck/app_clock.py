@@ -14,7 +14,7 @@ Y: int = 100
 XY = tuple[float, float]
 HMS = tuple[int, int, int]
 
-class Clock(AppBase):
+class AppClock(AppBase):
     """Show an analog clock on a key"""
 
     # if app reuquire thread, true
