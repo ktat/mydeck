@@ -27,11 +27,6 @@ class MyStreamDecks:
 
     This class manages insteaces of MyStreamDeck class.
     """
-    decks: Optional[dict]
-    mystreamdecks: Dict[str, 'MyStreamDeck'] = {}
-    _one_deck_only: bool = False
-    configs: Optional[dict]
-    conifg: Optional[dict]
     def __init__(self, config: dict):
         """
         config dict takes the following keys:
@@ -63,6 +58,9 @@ class MyStreamDecks:
         }
 
         """
+        self.mystreamdecks: Dict[str, 'MyStreamDeck'] = {}
+        self._one_deck_only: bool = False
+        self.config: Optional[dict]
         self.decks: Optional[dict] = config.get('decks')
         self.configs: Optional[dict] = config.get('configs')
         if self.decks is None and self.configs is None:
