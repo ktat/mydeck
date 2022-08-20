@@ -41,20 +41,22 @@ PYTHONPATH=src python3 example/main.py
 ## configuration rule
 
 ```yaml
-PAGE_LABEL:
-  key_number:
-    "command": ["command", "options"]
-    "chrome": ["profile name", "url"]
-    "image_url": "https://example.com/path/to/image"
-    "change_page: "ANOTHER_PAGE_NAME"
-    "image": "image to display"
-    "label": "label to display"
-    "background_color": "white"
-    "exit": 1
+page_config:
+  PAGE_LABEL:
+    keys:
+      KEY_NUMBER:
+        "command": ["command", "options"]
+        "chrome": ["profile name", "url"]
+        "image_url": "https://example.com/path/to/image"
+        "change_page: "ANOTHER_PAGE_NAME"
+        "image": "image to display"
+        "label": "label to display"
+        "background_color": "white"
+        "exit": 1
 ```
 
 - PAGE_LABEL ... Name of the page or name of active window
-- key_number ... It should be number, start from 0
+- KEY_NUMBER ... It should be number, start from 0
 - command ... OS command
 - chrome ... launch chrome with profile. if image & image_url is not set, check url root path + /faviocn.ico and use it as image if it exists.
 - image_url ... use url instead of image file path
@@ -111,112 +113,118 @@ If you set window title as PAGE_LABEL, page is changed according to active windo
   Memory: 3
   TicTackToe: 7
   WhacAMole: 8
-"key_config":
+"page_config":
   "@HOME":
-    0:
-      "change_page": "@PRIVATE"
-      "label": "Private"
-      "image": "./src/Assets/ktat.png"
-    1:
-      "change_page": "@JOB"
-      "label": "Job"
-      "image": "./src/Assets/job.png"
-    2:
-      "change_page": "@GAME"
-      "label": "Game"
-      "image": "./src/Assets/game.png"
-    10:
-      "label": "Config"
-      "image": "./src/Assets/settings.png"
-      "change_page": "@CONFIG"
-    14:
-      "exit": 1
-      "image": "./src/Assets/exit.png"
-      "label": "Exit"
+    keys:
+      0:
+        "change_page": "@PRIVATE"
+        "label": "Private"
+        "image": "./src/Assets/ktat.png"
+      1:
+        "change_page": "@JOB"
+        "label": "Job"
+        "image": "./src/Assets/job.png"
+      2:
+        "change_page": "@GAME"
+        "label": "Game"
+        "image": "./src/Assets/game.png"
+      10:
+        "label": "Config"
+        "image": "./src/Assets/settings.png"
+        "change_page": "@CONFIG"
+      14:
+        "exit": 1
+        "image": "./src/Assets/exit.png"
+        "label": "Exit"
   "@PRIVATE":
-    0:
-      "command": ["google-chrome", "--profile-directory=Default"]
-      "image": "/usr/share/icons/hicolor/256x256/apps/google-chrome.png"
-      "label": "Chrome(PRIVATE)"
-    10:
-      "label": "Config"
-      "image": "./src/Assets/settings.png"
-      "change_page": "@CONFIG"
-    14:
-      "change_page": "@HOME"
-      "image": "./src/Assets/home.png"
+    keys:
+      0:
+        "command": ["google-chrome", "--profile-directory=Default"]
+        "image": "/usr/share/icons/hicolor/256x256/apps/google-chrome.png"
+        "label": "Chrome(PRIVATE)"
+      10:
+        "label": "Config"
+        "image": "./src/Assets/settings.png"
+        "change_page": "@CONFIG"
+      14:
+        "change_page": "@HOME"
+        "image": "./src/Assets/home.png"
   "@JOB":
-    0:
-      "command": ["google-chrome", '--profile-directory=Profile 1']
-      "image": "/usr/share/icons/hicolor/256x256/apps/google-chrome.png"
-      "label": "Chrome(JOB)"
+    keys:
+      0:
+        "command": ["google-chrome", '--profile-directory=Profile 1']
+        "image": "/usr/share/icons/hicolor/256x256/apps/google-chrome.png"
+        "label": "Chrome(JOB)"
   "@CONFIG":
-    0:
-      "label": "Audio"
-      "command": ["pavucontrol", "--tab=4"]
-      "image": "./src/Assets/audio.png"
-    1:
-      "label": "Sound"
-      "command": ["gnome-control-center", "sound"]
-      "image": "./src/Assets/sound.png"
-    2:
-      "label": "Display"
-      "command": ["gnome-control-center", "display"]
-      "image": "./src/Assets/display.png"
-    14:
-      "change_page": "@previous"
-      "image": "./src/Assets/back.png"
-      "label": "Back"
+    keys:
+      0:
+        "label": "Audio"
+        "command": ["pavucontrol", "--tab=4"]
+        "image": "./src/Assets/audio.png"
+      1:
+        "label": "Sound"
+        "command": ["gnome-control-center", "sound"]
+        "image": "./src/Assets/sound.png"
+      2:
+        "label": "Display"
+        "command": ["gnome-control-center", "display"]
+        "image": "./src/Assets/display.png"
+      14:
+        "change_page": "@previous"
+        "image": "./src/Assets/back.png"
+        "label": "Back"
   "Meet - Google Chrome":
-    0:
-      "command": ["echo", "meet"]
-      "image": "./src/Assets/meet.png"
-      "label": "Google Meet"
-    1:
-      "command": ["xdotool", "key", "ctrl+d"]
-      "image": "./src/Assets/mute.png"
-      "label": "mute"
-    2:
-      "command": ["xdotool", "key", "ctrl+e"]
-      "image": "./src/Assets/video.png"
-      "label": "camera"
-    10:
-      "label": "Audio"
-      "command": ["pavucontrol", "--tab=4"]
-      "image": "./src/Assets/audio.png"
-    11:
-      "label": "Sound"
-      "command": ["gnome-control-center", "sound"]
-      "image": "./src/Assets/sound.png"
-    14:
-      "change_page": "@JOB"
-      "label": "Back"
-      "image": "./src/Assets/back.png"
+    keys:
+      0:
+        "command": ["echo", "meet"]
+        "image": "./src/Assets/meet.png"
+        "label": "Google Meet"
+      1:
+        "command": ["xdotool", "key", "ctrl+d"]
+        "image": "./src/Assets/mute.png"
+        "label": "mute"
+      2:
+        "command": ["xdotool", "key", "ctrl+e"]
+        "image": "./src/Assets/video.png"
+        "label": "camera"
+      10:
+        "label": "Audio"
+        "command": ["pavucontrol", "--tab=4"]
+        "image": "./src/Assets/audio.png"
+      11:
+        "label": "Sound"
+        "command": ["gnome-control-center", "sound"]
+        "image": "./src/Assets/sound.png"
+      14:
+        "change_page": "@JOB"
+        "label": "Back"
+        "image": "./src/Assets/back.png"
   "Zoom Meeting":
-    0:
-      "command": ["echo", "zoom"]
-      "image": "./src/Assets/zoom.png"
-      "label": "Zoom"
-    1:
-      "command": ["xdotool", "key", "alt+a"]
-      "image": "./src/Assets/mute.png"
-      "label": "mute"
-    2:
-      "command": ["xdotool", "key", "alt+v"]
-      "image": "./src/Assets/video.png"
-      "label": "camera"
-    10:
-      "label": "Audio"
-      "command": ["pavucontrol", "--tab=4"]
-      "image": "./src/Assets/audio.png"
-    11:
-      "label": "Sound"
-      "command": ["gnome-control-center", "sound"]
-      "image": "./src/Assets/sound.png"
-    14:
-      "change_page": "@JOB"
-      "label": "Back"
-      "image": "./src/Assets/back.png"
+    kyes:
+      0:
+        "command": ["echo", "zoom"]
+        "image": "./src/Assets/zoom.png"
+        "label": "Zoom"
+      1:
+        "command": ["xdotool", "key", "alt+a"]
+        "image": "./src/Assets/mute.png"
+        "label": "mute"
+      2:
+        "command": ["xdotool", "key", "alt+v"]
+        "image": "./src/Assets/video.png"
+        "label": "camera"
+      10:
+        "label": "Audio"
+        "command": ["pavucontrol", "--tab=4"]
+        "image": "./src/Assets/audio.png"
+      11:
+        "label": "Sound"
+        "command": ["gnome-control-center", "sound"]
+        "image": "./src/Assets/sound.png"
+      14:
+        "change_page": "@JOB"
+        "label": "Back"
+        "image": "./src/Assets/back.png"
 ```
 
 ### main script

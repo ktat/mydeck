@@ -12,6 +12,7 @@ import requests
 import os.path
 import importlib
 import logging
+import traceback
 
 from cairosvg import svg2png
 from typing import Any, NoReturn, List, TYPE_CHECKING, Optional, Callable, Dict
@@ -164,7 +165,10 @@ class MyStreamDeck:
         self._in_alert: bool = False
         self._game_status: bool = False
         self._game_command: dict = {}
-        self._KEY_CONFIG: dict = {}
+        self._PAGE_CONFIG: dict = {
+            'keys': {},
+            'commands': {},
+        }
         self._KEY_CONFIG_GAME: dict = {}
         self._KEY_ACTION_APP: dict  = {}
         self._GAME_KEY_CONFIG: dict = {}
@@ -206,7 +210,16 @@ class MyStreamDeck:
         if self._config_file != '':
             self.config.reflect_config()
 
-        return self._KEY_CONFIG
+        return self._PAGE_CONFIG.get('keys')
+
+    def run_page_command(self, page):
+        """Return deck page command configuration"""
+        page_commands = self._PAGE_CONFIG.get('commands')
+        if page_commands is not None:
+            commands = page_commands.get(page)
+            if commands is not None:
+                for cmd in commands:
+                    subprocess.Popen(cmd)
 
     def set_alert_on(self):
         """Set deck alert status on"""
@@ -268,6 +281,7 @@ class MyStreamDeck:
             self.set_game_status_off()
             self.deck.reset()
             self.key_setup()
+            self.run_page_command(name)
             if self.config is not None:
                 self.threading_apps(self.config.apps, self.config.background_apps)
 
@@ -530,7 +544,13 @@ class MyStreamDeck:
         """Set key configuration."""
         if conf is None:
             conf = {}
-        self._KEY_CONFIG = conf
+        self._PAGE_CONFIG['keys'] = conf
+
+    def set_command_config(self, page: str, conf):
+        """Set page command configuration."""
+        if conf is None:
+            conf = {}
+        self._PAGE_CONFIG['commands'][page] = conf
 
     def set_game_key(self, key: int, conf: dict):
         """Set game key configuration for one key"""
@@ -564,9 +584,11 @@ class MyStreamDeck:
 
     def set_key_conf(self, page: str, key: int, conf: dict):
         """Set a configuration of a key"""
-        if self._KEY_CONFIG.get(page) is None:
-            self._KEY_CONFIG[page] = {}
-        self._KEY_CONFIG[page][key] = conf
+        if self._PAGE_CONFIG.get('keys') is None:
+            self._PAGE_CONFIG['keys'] = {}
+        if self._PAGE_CONFIG['keys'].get(page) is None:
+            self._PAGE_CONFIG['keys'][page] = {}
+        self._PAGE_CONFIG['keys'][page][key] = conf
 
     def threading_apps(self, apps: List['AppBase'], background_apps: List['BackgroundAppBase']):
         """Run apps in thread"""
@@ -625,6 +647,7 @@ class Config:
                 self.mydeck.threading_apps(self.apps, self.background_apps)
             except Exception as e:
                 print("Error in reflect_config", e)
+                print(traceback.format_exc())
                 return None
 
     def load(self):
@@ -638,15 +661,23 @@ class Config:
                     return self._config_content
                 except Exception as e:
                     print("Error in load", e)
+                    print(traceback.format_exc())
 
         return None
 
     def parse(self, conf: dict):
         """Parse configuration file."""
         if self.mydeck is not None:
-            key_config = conf.get('key_config')
-            if key_config is not None:
-                self.mydeck.set_key_config(self.modify_key_config_with_page(key_config))
+            page_config = conf.get('page_config')
+            if page_config is not None:
+                for page in page_config.keys():
+                    key_config = page_config[page].get('keys')
+                    if key_config is not None:
+                        self.mydeck.set_key_config(self.modify_key_config_with_page(page, key_config))
+                    command_config = page_config[page].get('commands')
+                    if command_config is not None:
+                        self.mydeck.set_command_config(page, command_config)
+
         apps_conf = conf.get('apps')
         if apps_conf is not None:
             self.parse_apps(apps_conf)
@@ -726,12 +757,15 @@ class Config:
         """Return the list of the working apps"""
         return list(filter(lambda app: app.use_thread and app.is_in_target_page() and app.in_working, self.apps))
 
-    def modify_key_config_with_page(self, conf: dict):
+    def modify_key_config_with_page(self, page: str, conf: dict):
         """Modify key configuration according to conf whose key is page name and value is configuration dict."""
-        new_config = {}
-        for page in conf.keys():
-            new_config[page] = self.modify_key_config(conf[page])
-        return new_config
+
+        if self.mydeck._PAGE_CONFIG['keys'].get(page) is None:
+            self.mydeck._PAGE_CONFIG['keys'][page] = {}
+
+        self.mydeck._PAGE_CONFIG['keys'][page] = self.modify_key_config(conf)
+
+        return self.mydeck._PAGE_CONFIG['keys']
 
     def modify_key_config(self, conf: dict):
         """Modify key configuration with conf whose key is number of key and value is configuration dict."""

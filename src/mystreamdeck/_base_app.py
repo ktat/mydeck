@@ -124,6 +124,9 @@ class AppBase(App):
         if self.command is not None:
             key_config =self.mydeck.key_config()
             for page_value in self.page_key.items():
+                if key_config.get(page_value[0]) is None:
+                    key_config[page_value[0]] = {}
+
                 key_config[page_value[0]][page_value[1]] = {
                     "command": self.command,
                     "no_image": True,
