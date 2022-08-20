@@ -21,7 +21,7 @@ from StreamDeck.ImageHelpers import PILHelper
 from StreamDeck.DeviceManager import DeviceManager
 from StreamDeck.Devices import StreamDeckOriginalV2
 if TYPE_CHECKING:
-    from . import App, AppBase, BackgroundAppBase
+    from . import App, AppBase, BackgroundAppBase, HookAppBase
 
 class MyStreamDecks:
     """The class to manage several TREAM DECK devices.
@@ -131,6 +131,10 @@ class MyStreamDecks:
 
         print("start_decks end!")
         sys.exit()
+
+    def list_mydecks(self) -> List['MyStreamDeck']:
+        """return list of MyStreamDeck instances"""
+        return list(self.mystreamdecks.values())
 
     def mydeck (self, name: str) -> Optional['MyStreamDeck']:
         """Pass name of the device and return the correspond MyStreamDeck instance."""
@@ -270,20 +274,27 @@ class MyStreamDeck:
     def set_current_page(self, name: str, add_previous: bool = True):
         """Set given page name as current_page and setup keys."""
 
-        self.set_previous_page(self._current_page)
-
         if name[0] != "~ALERT":
             self.set_alert_off()
 
-        if name != self._current_page and self.deck is not None:
+        if self.deck is not None and name != self._current_page and self.has_page_key_config(name):
+            self.set_previous_page(self._current_page)
             self.stop_working_apps()
             self._current_page = name
             self.set_game_status_off()
             self.deck.reset()
             self.key_setup()
             self.run_page_command(name)
+            self.run_hook_apps('page_change')
             if self.config is not None:
                 self.threading_apps(self.config.apps, self.config.background_apps)
+
+        # run hook page_change_any whenever set_current_page is called.
+        self.run_hook_apps('page_change_any')
+
+    def has_page_key_config(self, name: str) -> bool:
+        """return true when page key config exists"""
+        return self._PAGE_CONFIG['keys'].get(name) is not None
 
     # display keys and set key callbacks
     def key_setup(self):
@@ -501,9 +512,9 @@ class MyStreamDeck:
                                 if found:
                                     break
 
-                if conf.get("change_page") is not None:
-                    with deck:
-                        page_name = conf.get("change_page")
+                with deck:
+                    page_name = conf.get("change_page")
+                    if page_name is not None:
                         if page_name == "@previous":
                             self.set_current_page(self.pop_last_previous_page(), False)
                         else:
@@ -621,6 +632,14 @@ class MyStreamDeck:
             key = self.key_count + key
         return key
 
+    def run_hook_apps(self, on: str):
+        hook_apps :List['HookAppBase'] = []
+        if self.config is not None:
+            apps = self.config.hook_apps.get(on)
+            if apps is not None:
+                for app in apps:
+                    app.execute_on_hook()
+
 class Config:
     """STREAM DECK Configuration Class"""
     def __init__(self, mydeck: 'MyStreamDeck', file: str):
@@ -711,6 +730,7 @@ class Config:
 
         self.apps = []
         self.background_apps = []
+        self.hook_apps: Dict[str, List['HookAppBase']] = {}
         self.is_background_thread_started = False
 
     def parse_apps(self, apps_conf: List[dict]):
@@ -720,6 +740,14 @@ class Config:
 
         for app_conf in apps_conf:
             app = self.parse_app(app_conf)
+
+    def append_hook_app(self, app: 'HookAppBase'):
+        """Append hook apps"""
+        on = app.on
+        on_apps = self.hook_apps.get(on)
+        if on_apps is None:
+            self.hook_apps[on] = []
+        self.hook_apps[on].append(app)
 
     def parse_app(self, app_conf: dict):
         """Apply the configuration of an aps"""
@@ -731,14 +759,16 @@ class Config:
             app = 'App' + app
             m = self._load_module(app)
             o = getattr(m, app)(self.mydeck, app_conf.get('option'))
-            if not o.is_background_app:
-                self.apps.append(o)
-                o.key_setup()
-            else:
+            if o.is_background_app:
                 self.background_apps.append(o)
                 if app_conf['app'] == 'Alert' and self.mydeck is not None:
                     o.set_check_func(self.mydeck._alert_func)
                     self.mydeck.set_alert_key_conf(self.modify_key_config(app_conf['option']["key_config"]))
+            elif o.is_hook_app:
+                self.append_hook_app(o)
+            else:
+                self.apps.append(o)
+                o.key_setup()
 
         return o
 

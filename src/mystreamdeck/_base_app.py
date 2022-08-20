@@ -15,6 +15,8 @@ class App:
     use_thread: bool = False
     # if app works in background, set True
     is_background_app: bool = False
+    # if app works on a specfic timing, set True
+    is_hook_app: bool = False
 
     key_command: dict = {}
 
@@ -22,7 +24,7 @@ class App:
         """Constructor pass MyStreamDeck instance."""
         self.mydeck: 'MyStreamDeck'
         # sleep sec in thread
-        self.time_to_sleep: int = 1
+        self.time_to_sleep: float = 1
         # execute command when button pushed
         self.command = None
         # not in target page
@@ -166,7 +168,7 @@ class BackgroundAppBase(App):
         # need to stop thread
         self.stop: bool = False
         # sleep time in thread
-        self.sleep: int  = 1
+        self.sleep: float  = 1
 
         self.in_working = False
         self.is_background_app = True
@@ -187,5 +189,32 @@ class BackgroundAppBase(App):
                 break
 
             time.sleep(self.sleep)
+
+        sys.exit()
+
+class HookAppBase(App):
+    """Base class of the application which works is a specific timing."""
+    use_thread: bool = False
+    on: str
+
+    def __init__ (self, mydeck: MyStreamDeck, config: dict = {}):
+        """Pass MyStreamDeck instance and configuration"""
+        super().__init__(mydeck)
+        if config is not None:
+            on = config.get('on')
+            if on is not None:
+                self.on = on
+        self.in_working = False
+        self.is_hook_app = True
+
+    def execute_on_hook(self):
+        """Execute the app on hook point. It should be imlemented in subclass."""
+        print("implement in subclass")
+        raise Exception
+
+    def do(self, hookname: str):
+        """Run application on a hook."""
+        if self.on == hookname:
+            self.execute_on_hook()
 
         sys.exit()

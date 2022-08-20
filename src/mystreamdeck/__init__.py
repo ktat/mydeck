@@ -32,3 +32,4 @@ from .app_stop_watch import *
 from .app_weather_jp import *
 from .app_window_check_linux import *
 from .app_communicate_deck import *
+from .app_sync_deck_page import *
