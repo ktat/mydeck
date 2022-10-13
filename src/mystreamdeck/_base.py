@@ -20,6 +20,8 @@ from PIL import Image, ImageDraw, ImageFont
 from StreamDeck.ImageHelpers import PILHelper
 from StreamDeck.DeviceManager import DeviceManager
 from StreamDeck.Devices import StreamDeckOriginalV2
+from ._my_decks import MyDecks
+
 if TYPE_CHECKING:
     from . import App, AppBase, BackgroundAppBase, HookAppBase
 
@@ -59,6 +61,7 @@ class MyStreamDecks:
         }
 
         """
+        self.vdeck_config = config.get('vdeck_config')
         self.mystreamdecks: Dict[str, 'MyStreamDeck'] = {}
         self._one_deck_only: bool = False
         self.config: Optional[dict]
@@ -71,14 +74,14 @@ class MyStreamDecks:
         if log_level is not None:
             logging.basicConfig(level=log_level)
 
-    def start_decks(self) -> NoReturn:
+    def start_decks(self, no_real_device: bool = False) -> NoReturn:
         """Start and display images to STREAM DECK buttons according to configuration."""
-        streamdecks = DeviceManager().enumerate()
+        streamdecks = MyDecks(self.vdeck_config, no_real_device).devices
         logging.debug("Found {} Stream Deck(s).\n".format(len(streamdecks)))
 
         for index, deck in enumerate(streamdecks):
-            if not deck.is_visual():
-                continue
+            # if not deck.is_visual():
+            # continue
 
             deck.open()
             serial_number: str = deck.get_serial_number()
@@ -132,9 +135,25 @@ class MyStreamDecks:
         print("start_decks end!")
         sys.exit()
 
+        # Wait until all application threads have terminated (for this example,
+        # this is when all deck handles are closed).
+        for t in threading.enumerate():
+            try:
+                t.join()
+            except RuntimeError as e:
+                print("Error in start_decks", e)
+
+        print("start_decks end!")
+        sys.exit()
+
     def list_mydecks(self) -> List['MyStreamDeck']:
         """return list of MyStreamDeck instances"""
         return list(self.mystreamdecks.values())
+
+    def list_other_mydecks(self, mydeck: 'MyStreamDeck') -> List['MyStreamDeck']:
+        """return list of MyStreamDeck instances"""
+        myname = mydeck.myname
+        return list(filter(lambda mydeck: mydeck.myname != myname, self.mystreamdecks.values()))
 
     def mydeck (self, name: str) -> Optional['MyStreamDeck']:
         """Pass name of the device and return the correspond MyStreamDeck instance."""
@@ -300,7 +319,7 @@ class MyStreamDeck:
     def key_setup(self):
         """setup keys"""
         deck = self.deck
-        logging.debug("Opened '{}' device (serial number: '{}', fw: '{}', page: '{}')".format(
+        logging.warn("Opened '{}' device (serial number: '{}', fw: '{}', page: '{}')".format(
             deck.deck_type(), deck.get_serial_number(), deck.get_firmware_version(), self.current_page()
         ))
 
@@ -443,7 +462,10 @@ class MyStreamDeck:
             font = ImageFont.truetype(self.font_path, font_size)
             draw.text((image.width / 2, image.height - 5), font=font, text=label, anchor="ms", fill=font_bg_color)
 
-        return PILHelper.to_native_format(deck, image)
+        if hasattr(self.deck, 'is_virtual'):
+            return image
+        else:
+            return PILHelper.to_native_format(deck, image)
 
 
     # Prints key state change information, updates rhe key image and performs any
@@ -459,6 +481,7 @@ class MyStreamDeck:
         # Check if the key is changing to the pressed state.
         if state:
             conf = self.key_config().get(self.current_page()).get(key)
+
             # When an exit button is pressed, close the application.
             if conf is not None:
                 if conf.get("exit") == 1:
@@ -512,13 +535,12 @@ class MyStreamDeck:
                                 if found:
                                     break
 
-                with deck:
-                    page_name = conf.get("change_page")
-                    if page_name is not None:
-                        if page_name == "@previous":
-                            self.set_current_page(self.pop_last_previous_page(), False)
-                        else:
-                            self.set_current_page(page_name)
+                page_name = conf.get("change_page")
+                if page_name is not None:
+                    if page_name == "@previous":
+                        self.set_current_page(self.pop_last_previous_page(), False)
+                    else:
+                        self.set_current_page(page_name)
 
 
     def stop_working_apps(self):

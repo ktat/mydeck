@@ -1,12 +1,7 @@
 from mystreamdeck import *
 
 import os
-import sys
-import time
-import psutil
 import requests
-import json
-import threading
 
 from StreamDeck.DeviceManager import DeviceManager
 
