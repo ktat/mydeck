@@ -1,6 +1,7 @@
 # MySteamDeck
 
-To use [STREAM DECK](https://www.elgato.com/ja/stream-deck) easily.
+- To use [STREAM DECK](https://www.elgato.com/ja/stream-deck) easily
+- To use  virtual devices compatible with STREAM DECK
 
 Check the following instruction at first when you haven't setup STREAM DECK.
 
@@ -34,11 +35,50 @@ This is an alpha version software and I don't know much about Python.
 
 ## How to run example
 
+### If you have STREAM DECK device
+
 ```
 PYTHONPATH=src python3 example/main.py
 ```
+### If you don't have STREAM DECK device
 
-## configuration rule
+```
+PYTHONPATH=src python3 example/main_virtual.py
+```
+
+and open the following URL with browser.
+
+http://localhost:3000/
+
+## Configuration
+
+### Virutal Deck Configuration
+
+```yaml
+1: # ID
+  key_count: 4
+  columns: 2
+  serial_number: 'dummy1'
+  output:
+    use_web: 1
+2: # ID
+  key_count: 6
+  columns: 3
+  serial_number: 'dummy2'
+  output:
+    use_web: 1
+```
+
+If you use virtual deck on web browser,
+you have to use WebServer app.
+
+```yaml
+   - app: WebServer
+     option:
+       port: 8080
+```
+
+### Page Configuration Rule
 
 ```yaml
 page_config:
@@ -72,7 +112,7 @@ In the case, command is executed and then page is changed.
 configuration is live reload,
 when you change yaml file, it is loaded when page is changed.
 
-### PAGE_LABEL
+#### PAGE_LABEL
 
 - `@HOME` is special label. This configuration is used for first page.
 - `@GAME` is reserved label for the page to collect games.
@@ -80,9 +120,9 @@ when you change yaml file, it is loaded when page is changed.
 
 If you set window title as PAGE_LABEL, page is changed according to active window.
 
-## example
+#### example
 
-### configuration
+##### configuration
 
 ```yaml
 ---
@@ -278,6 +318,38 @@ if __name__ == "__main__":
     })
 
     mydecks.start_decks()
+```
+
+If you don't have real devices.
+
+```yaml
+if __name__ == "__main__":
+    mydecks = MyStreamDecks({
+        'vdeck_config': "example/config/vdeck.yml",
+        'decks': {
+            'dummy1': '4key-dummy',
+            'dummy2': '6key-dummy',
+            'dummy3': '15key-dummy',
+        },
+        'configs': {
+            '6key': {
+                'file': "example/config/config2.yml",
+            },
+            '4key-dummy': {
+                'file': "example/config/config-d1.yml",
+            },
+            '6key-dummy': {
+                'file': "example/config/config-d2.yml",
+            },
+            '15key-dummy': {
+                'file': "example/config/config.yml",
+                'alert_func': check_alert,
+            },
+        }
+
+    })
+
+    mydecks.start_decks(True)
 ```
 
 ## LICENSE

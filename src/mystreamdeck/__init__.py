@@ -18,6 +18,7 @@ for item in iter_modules(package_dir):
             globals()[attribute_name] = attribute
 
 # for mypy: cannot use dynamic loading with mypy
+from ._my_decks import *
 from ._base import *
 from ._base_app import *
 from ._window_check_base import *

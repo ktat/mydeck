@@ -1,0 +1,109 @@
+<html>
+<head>
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Virtual Decks</title>
+  <script src="https://unpkg.com/axios/dist/axios.min.js"></script>
+  <style>
+    body,div {
+        margin-left: 0px;
+        margin-right: 0px;
+        padding: 0px;
+    }
+    div {
+        margin-left: 0px;
+        margin-right: 0px;
+        margin-hight: 5px;
+        padding: 0px;
+    }
+    span {
+        margin-left: 0px;
+        list-style: none;
+                padding: 5px;
+    }
+    .mod0::after {
+        content: "\A";
+        white-space: pre;
+    }
+    img {
+        border-radius: 10px;
+    }
+    div.app {
+        padding-bottom:5px;
+    }
+    div.app h1 {
+        font-size: 1.5em;
+        margin: 0px;
+	padding-left: 5px;
+        padding-bottom: 5px;
+    }
+  </style>
+</head>
+<body>
+  <div id="app1">
+    <div class="app">
+      <h1>Deck {{ id }}</h1>
+      <span v-for="i in deviceInfo.key_count">
+        <img :src="'data:image/png;base64,' + items.data[i - 1]" :onclick="'tap(this, ' + id + ', ' + (i - 1) + ')'">
+        <span :class="'mod' + (i % columns)"></span>
+      </span>
+    </div>
+  </div>
+<script src="https://cdn.jsdelivr.net/npm/vue@2.7.10/dist/vue.js"></script>
+<script>
+  const baseURL = location.href;
+
+  axios.get(baseURL + "/device_info").then(
+      (res) => {
+          let keys = Object.keys(res.data).sort()
+          keys.forEach((i,v) => {
+              if (i > 1) {
+                  const div = document.createElement('div')
+                  div.innerHTML = document.getElementById('app1').innerHTML;
+                  div.id = 'app' + i
+                  document.body.appendChild(div)
+              }
+          })
+          keys.forEach((i,v) => {
+              var app = new Vue({
+                  el: '#app' + i,
+                  data: {
+                      items: {},
+                      id: i,
+                      deviceInfo: res.data[i],
+                      columns: res.data[i].columns
+                  },
+                  methods: {
+                      loadData: function () {
+                          axios.get(baseURL + '/' + i).then(
+                              (response) => {
+                                  this.items = response;
+                              })
+                      }
+                  },
+                  mounted: function () {
+                      this.loadData();
+                      setInterval(function () {
+                          this.loadData();
+                      }.bind(this), 200);
+                  }
+              });
+          })
+      }
+  )
+
+  function tap(e, id, key) {
+      setTimeout(() => {buttonOpacity(e, 50)})
+      axios.get(baseURL + '/' + id + '/' + key);
+  }
+
+  function buttonOpacity(e, o) {
+      if (o >= 0) {
+	  e.style = "opacity: " + o + "%";
+	  setTimeout(() => { buttonOpacity(e, o - 10) }, 25);
+      } else {
+	  e.style = "";
+      }
+  }
+</script>
+</body>
+</html>
