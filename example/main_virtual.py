@@ -2,13 +2,13 @@ from mystreamdeck import MyStreamDecks
 import os
 import requests
 
-CHECK_URL = 'https://www.rwds.net/xx'
-
-def check_alert():
-    res = requests.get(CHECK_URL)
-    if res.status_code != requests.codes.ok:
-        return True
-    return False
+#CHECK_URL = 'https://www.rwds.net/xx'
+#
+#def check_alert():
+#    res = requests.get(CHECK_URL)
+#    if res.status_code != requests.codes.ok:
+#        return True
+#    return False
 
 
 if __name__ == "__main__":
@@ -31,7 +31,7 @@ if __name__ == "__main__":
             },
             '15key-dummy': {
                 'file': "example/config/config.yml",
-                'alert_func': check_alert,
+#                'alert_func': check_alert,
             },
         }
 
