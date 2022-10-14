@@ -31,14 +31,14 @@ apps:
        window_title_regexps:
          - ['^Meet.+Google Chrome$', 'Meet - Google Chrome']
          - ['^(Slack \|.+?\|).+$', '\g<1>']
-   - app: 'Alert'
-     option:
-       check_interval: 180
-       key_config:
-         7:
-           command: ["google-chrome", '--profile-directory=Profile 1', 'https://example.com/nagios/cgi-bin/status.cgi?host=all&servicestatustypes=16&hoststatustypes=15']
-           image: "./src/Assets/cat.png"
-           change_page: '@previous'
+#   - app: 'Alert'
+#     option:
+#       check_interval: 180
+#       key_config:
+#         7:
+#           command: ["google-chrome", '--profile-directory=Profile 1', 'https://example.com/nagios/cgi-bin/status.cgi?host=all&servicestatustypes=16&hoststatustypes=15']
+#           image: "./src/Assets/cat.png"
+#           change_page: '@previous'
 games:
   RandomNumber: 0
   Memory: 3
