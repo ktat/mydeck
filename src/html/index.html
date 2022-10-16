@@ -42,7 +42,7 @@
   <div id="app1">
     <div class="app">
       <h1>Deck {{ id }}</h1>
-      <span v-for="i in deviceInfo.key_count">
+      <span v-for="i in key_count">
         <img :src="'data:image/png;base64,' + items.data[i - 1]" :onclick="'tap(this, ' + id + ', ' + (i - 1) + ')'">
         <span :class="'mod' + (i % columns)"></span>
       </span>
@@ -67,6 +67,7 @@
               var app = new Vue({
                   el: '#app' + i,
                   data: {
+                      key_count: [],
                       items: {},
                       id: i,
                       deviceInfo: res.data[i],
@@ -74,8 +75,9 @@
                   },
                   methods: {
                       loadData: function () {
-                          axios.get(baseURL + '/' + i).then(
+                          axios.get(baseURL + i).then(
                               (response) => {
+                                  this.key_count = this.deviceInfo.key_count;
                                   this.items = response;
                               })
                       }
@@ -93,7 +95,7 @@
 
   function tap(e, id, key) {
       setTimeout(() => {buttonOpacity(e, 50)})
-      axios.get(baseURL + '/' + id + '/' + key);
+      axios.get(baseURL + id + '/' + key);
   }
 
   function buttonOpacity(e, o) {
