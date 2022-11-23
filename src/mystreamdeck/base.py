@@ -22,7 +22,7 @@ from PIL import Image, ImageDraw, ImageFont
 from StreamDeck.ImageHelpers import PILHelper
 from StreamDeck.DeviceManager import DeviceManager
 from StreamDeck.Devices import StreamDeckOriginalV2
-from ._my_decks import MyDecks
+from .my_decks import MyDecks
 
 if TYPE_CHECKING:
     from . import App, AppBase, BackgroundAppBase, HookAppBase

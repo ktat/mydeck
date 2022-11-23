@@ -3,11 +3,18 @@ from pkgutil import iter_modules,extend_path
 from pathlib import Path
 from importlib import import_module
 
+from .my_decks import *
+from .base import *
+from .base_app import *
+from .window_check_base import *
+
 # iterate through the modules in the current package
 package_dir = extend_path(__path__, __name__)
 
 for item in iter_modules(package_dir):
     module_name = item.name
+    if module_name in ["my_decks", "base", "base_app", "window_check_base"]:
+        continue
     # import the module and iterate through its attributes
     module = import_module(f"{__name__}.{module_name}")
     for attribute_name in dir(module):
@@ -18,10 +25,6 @@ for item in iter_modules(package_dir):
             globals()[attribute_name] = attribute
 
 # for mypy: cannot use dynamic loading with mypy
-from ._my_decks import *
-from ._base import *
-from ._base_app import *
-from ._window_check_base import *
 from .app_alert import *
 from .app_calendar import *
 from .app_clock import *
