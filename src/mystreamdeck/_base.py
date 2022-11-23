@@ -1,5 +1,6 @@
 """Base module to handle STREAM DECK devices"""
 
+from copy import deepcopy
 import wand.image
 import re
 import subprocess
@@ -13,9 +14,10 @@ import os.path
 import importlib
 import logging
 import traceback
+import shutil
 
 from cairosvg import svg2png
-from typing import Any, NoReturn, List, TYPE_CHECKING, Optional, Callable, Dict
+from typing import Any, NoReturn, List, TYPE_CHECKING, Optional, Callable, Dict, Union
 from PIL import Image, ImageDraw, ImageFont
 from StreamDeck.ImageHelpers import PILHelper
 from StreamDeck.DeviceManager import DeviceManager
@@ -25,8 +27,11 @@ from ._my_decks import MyDecks
 if TYPE_CHECKING:
     from . import App, AppBase, BackgroundAppBase, HookAppBase
 
+class ExceptionInvalidMyStreamDecksConfig(Exception):
+    pass
+
 class MyStreamDecks:
-    """The class to manage several TREAM DECK devices.
+    """The class to manage several STREAM DECK devices.
 
     This class manages insteaces of MyStreamDeck class.
     """
@@ -61,7 +66,10 @@ class MyStreamDecks:
         }
 
         """
-        self.vdeck_config = config.get('vdeck_config')
+        vdeck_config = config.get('vdeck_config')
+        if type(vdeck_config) is not str:
+            raise(ExceptionInvalidMyStreamDecksConfig)
+        self.vdeck_config: str = vdeck_config
         self.mystreamdecks: Dict[str, 'MyStreamDeck'] = {}
         self._one_deck_only: bool = False
         self.config: Optional[dict]
@@ -196,7 +204,7 @@ class MyStreamDeck:
         self._KEY_ACTION_APP: dict  = {}
         self._GAME_KEY_CONFIG: dict = {}
         self._config_file: str = ''
-        self._config_file_mtime: int = 0
+        self._config_file_mtime: float = 0
 
         myname: Optional[str] = opt.get('myname')
         if myname is not None:
@@ -635,6 +643,9 @@ class MyStreamDeck:
                 t = threading.Thread(target=lambda: bg_app.start(), args=())
                 t.start()
 
+        t = threading.Thread(target=lambda: self.update_config(), args=())
+        t.start()
+
         time.sleep(0.5)
 
         i = 0
@@ -662,12 +673,23 @@ class MyStreamDeck:
                 for app in apps:
                     app.execute_on_hook()
 
+    def update_config(self):
+        while True:
+            sn = self.deck.get_serial_number()
+            if MyDecks.ConfigQueue.get(sn) is not None:
+                data = MyDecks.ConfigQueue[sn].get()
+                if self.config.update_page_config_content(self.current_page(), data):
+                    self.config.save_config()
+                    self.config.reflect_config(True)
+
 class Config:
     """STREAM DECK Configuration Class"""
+
     def __init__(self, mydeck: 'MyStreamDeck', file: str):
         """Pass MyStreamDeck instance as mydeck and configuration file as file"""
-        self._file_mtime: int = 0
+        self._file_mtime: float = 0
         self._file: str = ''
+        self._config_content_origin: dict = {}
         self._config_content: dict = {}
         self._loaded: dict = {}
         self.conf: dict = {}
@@ -678,33 +700,71 @@ class Config:
         self.key_count = mydeck.key_count
         self._file = file
 
-    def reflect_config(self):
+    def save_config(self):
+        shutil.copy(self._file, self._file + '.backup')
+
+        with open(self._file, 'w') as f:
+            try:
+                yaml.safe_dump(self._config_content_origin, f)
+                f.close()
+            except Exception as e:
+                shutil.move(self._file + '.backup', self._file)
+                print("Error in load", e)
+                print(traceback.format_exc())
+
+
+    def reflect_config(self, force: bool = False):
         """Read configuration file and reset applications and parse content of the configuration file and run apps"""
-        loaded = self.load()
+        loaded = self.load(force)
         if loaded is not None:
             try:
                 self.reset_apps()
                 self.parse(loaded)
                 self.mydeck.threading_apps(self.apps, self.background_apps)
+                self.mydeck.key_setup()
             except Exception as e:
                 print("Error in reflect_config", e)
                 print(traceback.format_exc())
                 return None
 
-    def load(self):
+    def load(self, force :bool = False):
         """Load the configuration file, If the file is newer than read before, return the content of the configuration file. Or return None."""
         statinfo = os.stat(self._file)
-        if self._file_mtime < statinfo.st_mtime:
+        if force or self._file_mtime < statinfo.st_mtime:
             self._file_mtime = statinfo.st_mtime
             with open(self._file) as f:
                 try:
-                    self._config_content = yaml.safe_load(f)
+                    self._config_content_origin = yaml.safe_load(f)
+                    self._config_content = deepcopy(self._config_content_origin)
                     return self._config_content
                 except Exception as e:
                     print("Error in load", e)
                     print(traceback.format_exc())
 
         return None
+
+    def update_page_config_content(self, page: str, data: dict) -> bool:
+        key = data.pop('key', None)
+        if key is None or re.match('\D', str(key)) is not None:
+            print(key)
+            return False
+        key = int(key)
+        print("{} - {} - {}".format(page,key,data))
+        page_config: Optional[dict] = self._config_content_origin.get('page_config')
+        if page_config is None or type(page_config) is not dict:
+            print(page_config)
+            return False
+        current_page_config: Optional[dict] = page_config.get(page)
+        if current_page_config is None or type(current_page_config) is not dict:
+            print(current_page_config)
+            return False
+        key_config: Optional[dict] = current_page_config.get('keys')
+        if key_config is None and type(key_config) is not dict:
+            print(key_config)
+            return False
+
+        self._config_content_origin['page_config'][page]['keys'][key] = data
+        return True
 
     def parse(self, conf: dict):
         """Parse configuration file."""
