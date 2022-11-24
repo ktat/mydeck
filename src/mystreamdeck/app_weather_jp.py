@@ -1,8 +1,6 @@
-from mystreamdeck import MyStreamDeck, AppBase, ImageOrFile
-from typing import NoReturn, Tuple, Optional
+from mystreamdeck import MyStreamDeck, TriggerAppBase, ImageOrFile
+from typing import Tuple, Optional
 from PIL import Image, ImageDraw, ImageFont
-import time
-import sys
 import json
 import requests
 import re
@@ -11,22 +9,14 @@ import datetime
 OptStr = Optional[str]
 
 class Area:
-    division: OptStr = ''
-    division_code: OptStr = ''
-    area: OptStr = ''
-    area_code: OptStr = ''
-    area_temp: OptStr = ''
-    area_temp_code: OptStr = ''
-    display_name: OptStr = ''
-
     def __init__(self, args: dict):
-        self.division = args.get('division') # 東京都
-        self.division_code = args.get('division_code') # 130000
-        self.area = args.get('area') # 東京地方
-        self.area_code = args.get('area_code') # 130000
-        self.area_temp = args.get('area_temp') # 東京
-        self.area_temp_code = args.get('area_temp_code') # 44132
-        self.display_name = args.get('display_name')
+        self.division: OptStr = args.get('division') # 東京都
+        self.division_code: OptStr  = args.get('division_code') # 130000
+        self.area: OptStr  = args.get('area') # 東京地方
+        self.area_code: OptStr  = args.get('area_code') # 130000
+        self.area_temp: OptStr  = args.get('area_temp') # 東京
+        self.area_temp_code: OptStr  = args.get('area_temp_code') # 44132
+        self.display_name: OptStr  = args.get('display_name')
 
         if self.division is None and self.division_code is None:
             self.division = '東京都'
@@ -71,17 +61,16 @@ class Area:
         return None
 
 class JMA:
-    url: str
     def __init__(self, area: Area):
-        self.url = 'https://www.jma.go.jp/bosai/forecast/data/forecast/{}.json'.format(area.division_code)
+        self.url: str = 'https://www.jma.go.jp/bosai/forecast/data/forecast/{}.json'.format(area.division_code)
 
 class JMAResult:
-    image_url: str
-    image_name: str
-    weather: OptStr # 天気
-    temp: OptStr # 気温
-    pop: OptStr # 降水量
     def __init__(self, weather: OptStr, pop: OptStr, temp: OptStr):
+        self.image_url: str
+        self.image_name: str
+        self.weather: OptStr # 天気
+        self.temp: OptStr # 気温
+        self.pop: OptStr # 降水量
         now = datetime.datetime.now()
         image = forecast_mapping().get(weather)
         if now.hour <= 18 and now.hour >= 6:
@@ -96,11 +85,9 @@ class JMAResult:
         self.temp = str(temp) + '℃'
 
 class JMASearch:
-    area: Area
-    jma: JMA
     def __init__(self, jma: JMA, area: Area):
-        self.jma = jma
-        self.area = area
+        self.jma: Area = jma
+        self.area: JMA = area
 
     def search(self):
         res = requests.get(self.jma.url)
@@ -125,22 +112,15 @@ class JMASearch:
             return JMAResult(weather, pop, temp)
         return None
 
-class AppWeatherJp(AppBase):
-    # if app reuquire thread, true
-    use_thread: bool = True
-
-    area: Area
-    jma: JMA
+class AppWeatherJp(TriggerAppBase):
+    use_hour_trigger: bool = True
 
     def __init__(self, mydeck: MyStreamDeck, option: dict ={}):
         super().__init__(mydeck, option)
-        self.area = Area(option)
-        self.jma  = JMA(self.area)
+        self.area: Area = Area(option)
+        self.jma: JMA = JMA(self.area)
 
     def set_image_to_key(self, key: int, page: str):
-        if self.is_required_process_hourly() is False:
-            return False
-
         result = JMASearch(self.jma, self.area).search()
 
         if result is not None:
@@ -183,8 +163,8 @@ def division_mapping():
 	'上川地方': '012010',
 	'留萌地方': '012020',
 	'網走地方': '013000',
-        '北見地方': '013000',
-        '紋別地方': '013000',
+    '北見地方': '013000',
+    '紋別地方': '013000',
 	'根室地方': '014010',
 	'釧路地方': '014020',
 	'十勝地方': '014030',

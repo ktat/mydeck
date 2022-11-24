@@ -22,6 +22,7 @@ class App:
     use_day_trigger: bool = False
     use_hour_trigger: bool = False
     use_minute_trigger: bool = False
+    use_trigger :bool = False
 
     key_command: dict = {}
 
@@ -169,7 +170,36 @@ class TriggerAppBase(AppBase):
     use_thread: bool = True
     def __init__(self, mydeck: MyStreamDeck, config: dict = {}):
         super().__init__(mydeck, config)
+        if self.use_day_trigger or self.use_hour_trigger or self.use_minute_trigger:
+            self.use_trigger = True
         self.trigger = Event()
+
+    # if use_thread is true, this method is call in thread
+    def start(self) -> NoReturn:
+        """Start application when the current page is the target of the app."""
+        if not self.is_in_target_page():
+            sys.exit()
+
+        while True:
+            self.in_working = True
+
+            try:
+                page = self.mydeck.current_page()
+                key  = self.page_key.get(page)
+                if key is not None:
+                    self.set_image_to_key(key, page)
+            except Exception as e:
+                print('Error in app_base.start', type(self), e)
+                print(traceback.format_exc())
+
+            # exit when main process is finished
+            if self.check_to_stop():
+                break
+
+            self.trigger.wait()
+            self.trigger.clear()
+
+        sys.exit()
 
 class BackgroundAppBase(App):
     """Base class of the application which works in background."""

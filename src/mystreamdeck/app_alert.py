@@ -1,8 +1,7 @@
 import time
-import os
 import sys
 from mystreamdeck import MyStreamDeck, BackgroundAppBase
-from typing import NoReturn, Callable, Optional
+from typing import Callable, Optional
 
 class AppAlert(BackgroundAppBase):
     # if app reuquire thread, true
@@ -40,6 +39,9 @@ class AppAlert(BackgroundAppBase):
         self.mydeck.key_config()['~ALERT'] = conf
 
     def start(self):
+        if self._check_function is None:
+            return
+
         while True:
             current = time.time()
             interval = self._check_interval

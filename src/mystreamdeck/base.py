@@ -20,9 +20,9 @@ from cairosvg import svg2png
 from typing import Any, NoReturn, List, TYPE_CHECKING, Optional, Callable, Dict, Union
 from PIL import Image, ImageDraw, ImageFont
 from StreamDeck.ImageHelpers import PILHelper
-from StreamDeck.DeviceManager import DeviceManager
 from StreamDeck.Devices import StreamDeckOriginalV2
 from .my_decks import MyDecks
+from filelock import FileLock
 
 if TYPE_CHECKING:
     from . import App, AppBase, BackgroundAppBase, HookAppBase
@@ -85,7 +85,7 @@ class MyStreamDecks:
     def start_decks(self, no_real_device: bool = False) -> NoReturn:
         """Start and display images to STREAM DECK buttons according to configuration."""
         streamdecks = MyDecks(self.vdeck_config, no_real_device).devices
-        logging.debug("Found {} Stream Deck(s).\n".format(len(streamdecks)))
+        logging.info("Found {} Stream Deck(s).\n".format(len(streamdecks)))
 
         for index, deck in enumerate(streamdecks):
             # if not deck.is_visual():
@@ -405,14 +405,16 @@ class MyStreamDeck:
             res = requests.get(icon_url)
             if res.status_code == requests.codes.ok:
                 icon_data = res.content
-                if icon_url[-3:len(icon_url)] == 'svg':
-                    icon_file = icon_file[0:-4] + '.png'
-                    svg2png(bytestring=icon_data,write_to=icon_file)
-                else:
-                    with open(icon_file, mode="wb") as f:
-                        f.write(icon_data)
-                if self.check_icon_file(icon_file):
-                    return icon_file
+                lock = FileLock(icon_file + '.lock')
+                with lock:
+                    if icon_url[-3:len(icon_url)] == 'svg':
+                        icon_file = icon_file[0:-4] + '.png'
+                        svg2png(bytestring=icon_data,write_to=icon_file)
+                    else:
+                        with open(icon_file, mode="wb") as f:
+                            f.write(icon_data)
+                    if self.check_icon_file(icon_file):
+                        return icon_file
         else:
             return icon_file
 
@@ -432,11 +434,15 @@ class MyStreamDeck:
     # change key image
     def update_key_image(self, key: int, image: str):
         """Update image of key"""
-        key = self.abs_key(key)
-        deck = self.deck
-        if deck is not None:
-            # Update requested key with the generated image.
-            deck.set_key_image(key, image)
+        # to prevent corrupt image is drawn in key.
+        lock = FileLock("/tmp/mydeck.update_key_image" + self.myname)
+        with lock:
+            key = self.abs_key(key)
+            deck = self.deck
+            if deck is not None:
+                # Update requested key with the generated image.
+                deck.set_key_image(key, image)
+
 
     # render key image and label
     def render_key_image(self, icon_filename_or_object: 'ImageOrFile', label: str = '', bg_color: str = '', no_label: bool = False):
@@ -555,6 +561,8 @@ class MyStreamDeck:
         """Try to stop working apps and wait until all of them are stopped."""
         for app in self.config.apps:
             if app.in_working:
+                if app.use_trigger:
+                    app.trigger.set()
                 app.in_working = False
 
         i = 0

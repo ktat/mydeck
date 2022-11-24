@@ -1,5 +1,5 @@
 from PIL import Image, ImageDraw, ImageFont
-from mystreamdeck import MyStreamDeck, AppBase, ImageOrFile
+from mystreamdeck import MyStreamDeck, TriggerAppBase, ImageOrFile
 import time
 import sys
 import datetime
@@ -8,17 +8,10 @@ import datetime
 X: int = 100
 Y: int = 100
 
-class AppCalendar(AppBase):
-    # if app reuquires thread, true
-    use_thread: bool = True
-
-    def __init__(self, mydeck: MyStreamDeck, option: dict = {}):
-        super().__init__(mydeck, option)
+class AppCalendar(TriggerAppBase):
+    use_day_trigger: bool = True
 
     def set_image_to_key(self, key: int, page: str):
-        if self.is_required_process_daily() is False:
-            return False
-
         now = datetime.datetime.now()
         im = Image.new('RGB', (X, Y), (0, 0, 0))
         font = ImageFont.truetype(self.mydeck.font_path, 29)
