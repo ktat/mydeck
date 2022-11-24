@@ -821,7 +821,9 @@ class Config:
             return False
 
         for app_conf in apps_conf:
-            app = self.parse_app(app_conf)
+            self.parse_app(app_conf)
+
+        self.parse_app({"app": "Trigger"})
 
     def append_hook_app(self, app: 'HookAppBase'):
         """Append hook apps"""

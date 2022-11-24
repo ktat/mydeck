@@ -2,8 +2,9 @@ import time
 import sys
 import datetime
 import traceback
+from threading import Event
 
-from typing import NoReturn, TYPE_CHECKING
+from typing import NoReturn, TYPE_CHECKING, Any
 from . import MyStreamDeck
 
 class ExceptionNoDeck(Exception):
@@ -17,6 +18,10 @@ class App:
     is_background_app: bool = False
     # if app works on a specfic timing, set True
     is_hook_app: bool = False
+    # if use day, hour, minute trigger, set True
+    use_day_trigger: bool = False
+    use_hour_trigger: bool = False
+    use_minute_trigger: bool = False
 
     key_command: dict = {}
 
@@ -35,6 +40,8 @@ class App:
         self.stop: bool = False
         # dict: key is page name and value is key number.
         self.page_key: dict = {}
+        # trigger for trigger app
+        self.trigger: Any[None, Event] = None
 
         self.previous_page: str = ''
         self.previous_date: str = ''
@@ -157,6 +164,12 @@ class AppBase(App):
             return True
         else:
             return False
+
+class TriggerAppBase(AppBase):
+    use_thread: bool = True
+    def __init__(self, mydeck: MyStreamDeck, config: dict = {}):
+        super().__init__(mydeck, config)
+        self.trigger = Event()
 
 class BackgroundAppBase(App):
     """Base class of the application which works in background."""
