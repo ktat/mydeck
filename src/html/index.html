@@ -57,6 +57,7 @@
     }
     #closeModal {
         float: right;
+        margin-right: 10px;
     }
     .path, .url {
         width: 450px;
@@ -79,10 +80,35 @@
     .icon_image img {
         width: 50px;
     }
+    div#container {
+        overflow: scroll;
+    }
+    div[id^="block"].on {
+        float: left;
+        position: absolute;
+        left: 0px;
+        top: 0px;
+        width: 100%;
+        height: 100%;
+        z-index: 999;
+        background-color: #999;
+        opacity: 75%;
+    }
+    div[id^="block"].off {
+        float: left;
+        position: absolute;
+        left: 0px;
+        top: 0px;
+        width: 0px;
+        height: 0px;
+        z-index: 0;
+    }
   </style>
 </head>
 <body>
+<div id="container">
   <div id="app1">
+    <div id="block1" :class="modal_block_class" @click.left="closeSettingModal()"></div>
     <div class="app">
       <h1>Deck {{ id }}</h1>
       <span v-for="i in key_count">
@@ -154,22 +180,24 @@
         </form>
     </div>
   </div>
+</div>
 <script src="https://cdn.jsdelivr.net/npm/vue@2.7.10/dist/vue.js"></script>
 <script>
+"use strict";
 const baseURL = location.href;
-let images = [];
 axios.get(baseURL + "/images").then((res) => {
-    images = res.data;
+    let images = res.data;
 
     axios.get(baseURL + "/device_info").then(
         (res) => {
             const keys = Object.keys(res.data).sort()
             keys.forEach((i,v) => {
                 if (i > 1) {
-                  const div = document.createElement('div')
+                  const div = document.createElement('div');
                   div.innerHTML = document.getElementById('app1').innerHTML;
-                  div.id = 'app' + i
-                  document.body.appendChild(div)
+                  div.innerHTML = div.innerHTML.replace('id="block1"', 'id="block' + i + '"');
+                  div.id = 'app' + i;
+                  document.getElementById('container').appendChild(div);
                 }
             });
             // default data for settingData.
@@ -236,6 +264,7 @@ axios.get(baseURL + "/images").then((res) => {
                   el: '#app' + i,
                   data: {
                         ok: false,
+                        modal_block_class: 'off',
                         images: images,
                         iconImage: "",
                         key_count: [],
@@ -251,33 +280,32 @@ axios.get(baseURL + "/images").then((res) => {
                     },
                     methods: {
                     fillRequired: function() {
-                        this.checkResult = {}
-                        const data = this.settingData[this.settingType]
+                        this.checkResult = {};
+                        const data = this.settingData[this.settingType];
                         let valid = true;
-                        const keys = Object.keys(required[this.settingType])
+                        const keys = Object.keys(required[this.settingType]);
                         for (let i = 0;  i < keys.length; i++) {
                             let v = required[this.settingType][keys[i]];
                             const rule = required[this.settingType][keys[i]];
                             if (rule) {
                                 let result = this.checkRule(keys[i], data[keys[i]], rule);
                                 if (!result) {
-                                    valid = result
+                                    valid = result;
                                 }
                             }
                         }
-                        return valid
+                        return valid;
                     },
                     checkRule: function (name, data, rule) {
-                        console.log(this)
                         let valid = true;
                         let r = rule[0].type.replace(/\?$/, '');
                         let optional = r != rule[0].type;
 			            if (!rule[0].name) {
                             rule[0].name = name;
 			            }
-                        this.checkResult[rule[0].name] = optional ? 'yet' : 'valid'
+                        this.checkResult[rule[0].name] = optional ? 'yet' : 'valid';
                         const invalidString = (data, optional) => {
-                            return (!optional && !data) || (!optional && typeof(data) !== 'string') || (!optional && data.length === 0)
+                            return (!optional && !data) || (!optional && typeof(data) !== 'string') || (!optional && data.length === 0);
                         }
                         if (r === 'string') {
                             valid = !invalidString(data, optional);
@@ -301,9 +329,8 @@ axios.get(baseURL + "/images").then((res) => {
                                 }
                                 if (valid) {
                                    for (let i = 0; i < rule[1].length; i++) {
-                                        console.log("check", data[i],rule[1][i])
-                                        let result = this.checkRule(null, data[i], rule[1][i])
-                                        if (!result) valid = false
+                                        let result = this.checkRule(null, data[i], rule[1][i]);
+                                        if (!result) valid = false;
                                     }
                                 }
                             } else {
@@ -311,30 +338,29 @@ axios.get(baseURL + "/images").then((res) => {
                             }
                         }
                         if (valid) {
-                            console.log("valid", optional, valid, data, rule)
+                            console.log("valid", optional, valid, data, rule);
                         } else {
-                            console.log("invalid", optional, valid, data, rule)
+                            console.log("invalid", optional, valid, data, rule);
                         }
                         this.checkResult[rule[0].name] = valid ? 'valid' : 'invalid';
                         return valid;
                     },
                     openSettingModal: function (i) {
-                        console.log(this.settingData)
                         this.initializeModal();
-                        console.log(this.settingData)
                         this.settingMode = true;
                         this.settingKey = i - 1;
+                        this.modal_block_class = 'on';
                     },
                     closeSettingModal: function () {
                         this.initializeModal();
                         this.settingMode = false;
+                        this.modal_block_class = 'off';
                     },
                     initializeModal: function () {
-                        console.log(this)
                         this.settingType = null;
                         this.checkResult = {};
                         this.settingData = defaultData();
-                        this.settingKey = null
+                        this.settingKey = null;
                         this.ok = false;
                     },
                     settingDone: function () {
@@ -342,7 +368,6 @@ axios.get(baseURL + "/images").then((res) => {
                         if (dataModifier[this.settingType]) {
                             dataModifier[this.settingType](data);
                         }
-                        console.log(data)
                         data.id = this.id;
                         data.key = this.settingKey;
                         axios.post(baseURL + 'key_setting/', data);
@@ -369,7 +394,7 @@ axios.get(baseURL + "/images").then((res) => {
 });
 
 function tap(e, id, key) {
-    setTimeout(() => {buttonOpacity(e, 50)})
+    setTimeout(() => {buttonOpacity(e, 50)});
     axios.get(baseURL + id + '/' + key);
 }
 
