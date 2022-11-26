@@ -621,7 +621,7 @@ class MyStreamDeck:
         """Set game key configuration for one key"""
         key = self.abs_key(key)
         self._GAME_KEY_CONFIG[key] = conf
-        self.set_key(key, conf, False)
+        self.set_key(key, conf, True)
 
     def add_game_key_conf(self, conf: dict):
         """Add game confiruration for keys"""
