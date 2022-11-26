@@ -44,6 +44,8 @@ class App:
         self.page_key: dict = {}
         # trigger for trigger app
         self.trigger: Any[None, Event] = None
+        # if first time in loop
+        self.is_first: bool = True
 
         self.previous_page: str = ''
         self.previous_date: str = ''
@@ -121,6 +123,7 @@ class AppBase(App):
                 self.trigger.clear()
 
             time.sleep(self.time_to_sleep)
+            self.is_first = False
         sys.exit()
 
     def check_to_stop(self) -> bool:
@@ -136,6 +139,7 @@ class AppBase(App):
             if self.use_trigger:
                 self.trigger.set()
             self.stop = False
+            self.is_first = True
             self.in_working = False
 
     def key_setup(self):
