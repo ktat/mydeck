@@ -22,7 +22,6 @@ from PIL import Image, ImageDraw, ImageFont
 from StreamDeck.ImageHelpers import PILHelper
 from StreamDeck.Devices import StreamDeckOriginalV2
 from .my_decks import MyDecks
-from filelock import FileLock
 
 if TYPE_CHECKING:
     from . import App, AppBase, BackgroundAppBase, HookAppBase
@@ -66,10 +65,10 @@ class MyStreamDecks:
         }
 
         """
-        vdeck_config = config.get('vdeck_config')
-        if type(vdeck_config) is not str:
+        self.vdeck_config: Any[None, str] = config.get('vdeck_config')
+        if self.vdeck_config is not None and type(vdeck_config) is not str:
             raise(ExceptionInvalidMyStreamDecksConfig)
-        self.vdeck_config: str = vdeck_config
+
         self.mystreamdecks: Dict[str, 'MyStreamDeck'] = {}
         self._one_deck_only: bool = False
         self.config: Optional[dict]
@@ -183,6 +182,7 @@ class MyStreamDeck:
 
     def __init__ (self, opt: dict):
         deck = opt.get('deck')
+        self.locking: dict = {}
         self.deck: StreamDeckOriginalV2 = deck
         self.key_count: int = self.deck.key_count()
         self.font_path = "/usr/share/fonts/truetype/freefont/FreeSans.ttf"
@@ -343,13 +343,13 @@ class MyStreamDeck:
             page_configuration = self.key_config().get(self.current_page())
             if page_configuration is not None:
                 if page_configuration.get(key) is not None:
-                    self.set_key(key, page_configuration.get(key))
+                    self.set_key(key, page_configuration.get(key), False)
 
                     # Register callback function for the time when a key state changes.
                     deck.set_key_callback(lambda deck, key, state: self.key_change_callback(key, state))
 
     # set key image and label
-    def set_key(self, key: int, conf: dict):
+    def set_key(self, key: int, conf: dict, use_lock: bool = True):
         """Set a key and its configuration."""
         key = self.abs_key(key)
         deck = self.deck
@@ -365,7 +365,7 @@ class MyStreamDeck:
                 self.image_url_to_image(conf)
 
             if conf.get('no_image') is None:
-                self.update_key_image(key, self.render_key_image(ImageOrFile(conf["image"]), conf.get("label") or '', conf.get("background_color") or ''))
+                self.update_key_image(key, self.render_key_image(ImageOrFile(conf["image"]), conf.get("label") or '', conf.get("background_color") or ''), use_lock)
 
     def determine_image_url(self, image_url: Optional[str], url: Optional[str]) -> Optional[str]:
         """Return url for key image"""
@@ -405,16 +405,17 @@ class MyStreamDeck:
             res = requests.get(icon_url)
             if res.status_code == requests.codes.ok:
                 icon_data = res.content
-                lock = FileLock(icon_file + '.lock')
-                with lock:
-                    if icon_url[-3:len(icon_url)] == 'svg':
-                        icon_file = icon_file[0:-4] + '.png'
-                        svg2png(bytestring=icon_data,write_to=icon_file)
-                    else:
-                        with open(icon_file, mode="wb") as f:
-                            f.write(icon_data)
-                    if self.check_icon_file(icon_file):
-                        return icon_file
+                self.wait_can_lock(icon_file)
+                if icon_url[-3:len(icon_url)] == 'svg':
+                    icon_file = icon_file[0:-4] + '.png'
+                    svg2png(bytestring=icon_data,write_to=icon_file)
+                    self.unlock(icon_file)
+                else:
+                    with open(icon_file, mode="wb") as f:
+                        f.write(icon_data)
+                        self.unlock(icon_file)
+                if self.check_icon_file(icon_file):
+                    return icon_file
         else:
             return icon_file
 
@@ -432,17 +433,32 @@ class MyStreamDeck:
             return False
 
     # change key image
-    def update_key_image(self, key: int, image: str):
+    def update_key_image(self, key: int, image: str, use_lock: bool = True):
         """Update image of key"""
-        # to prevent corrupt image is drawn in key.
-        lock = FileLock("/tmp/mydeck.update_key_image" + self.myname)
-        with lock:
+        # to prevent corrupt image drawn in key.
+        if (deck := self.deck) is not None:
             key = self.abs_key(key)
-            deck = self.deck
-            if deck is not None:
+            if use_lock:
+                logging.debug("%s => %d" % (self.myname, key))
+                self.wait_can_lock(self.myname)
                 # Update requested key with the generated image.
                 deck.set_key_image(key, image)
+                self.unlock(self.myname)
+            else:
+                deck.set_key_image(key, image)
 
+    def locked(self, lock: str) -> bool:
+        return self.locking.get(lock) is not None
+
+    def wait_can_lock(self, lock: str, wait: float = 0.5):
+        while self.locked(lock):
+            logging.debug("waiting lock for " + lock)
+            time.sleep(wait)
+        self.locking[lock] = True
+
+    def unlock(self, lock):
+        if self.locking.get(lock) is not None:
+            del self.locking[lock]
 
     # render key image and label
     def render_key_image(self, icon_filename_or_object: 'ImageOrFile', label: str = '', bg_color: str = '', no_label: bool = False):
@@ -605,7 +621,7 @@ class MyStreamDeck:
         """Set game key configuration for one key"""
         key = self.abs_key(key)
         self._GAME_KEY_CONFIG[key] = conf
-        self.set_key(key, conf)
+        self.set_key(key, conf, False)
 
     def add_game_key_conf(self, conf: dict):
         """Add game confiruration for keys"""
@@ -645,6 +661,9 @@ class MyStreamDeck:
             if app.use_thread and app.is_in_target_page():
                 t = threading.Thread(target=lambda: app.start(), args=())
                 t.start()
+                if app.use_trigger:
+                    app.trigger.set()
+
         if not self.is_background_thread_started:
             self.is_background_thread_started = True
             for bg_app in background_apps:

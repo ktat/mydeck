@@ -136,7 +136,8 @@ class GameWhacAMole(GameAppBase):
                 ImageOrFile(im),
                 "",
                 'black',
-            )
+            ),
+            False
         )
 
 

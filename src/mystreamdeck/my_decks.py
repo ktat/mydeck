@@ -29,9 +29,10 @@ class MyDecks:
         if no_real_device is False:
             real_decks = DeviceManager().enumerate()
         self.devices: list = []
+        virtual_devices: list = []
         if config_file is not None:
-            virutal_devices = self.devices_from_config(config_file)
-        for l in [real_decks, virutal_devices]:
+            virtual_devices = self.devices_from_config(config_file)
+        for l in [real_decks, virtual_devices]:
             if len(l) > 0:
                 self.devices[len(self.devices):] = l
 
@@ -418,6 +419,8 @@ class DeckOutputWebHandler(http.server.BaseHTTPRequestHandler):
     def do_GET(self):
         if self.path == '/':
             return self.res_vdeck_html()
+        elif self.path == '/apps':
+            return self.res_apps()
         elif self.path == '/device_info':
             return self.res_device_info()
         elif self.path == '/images':
@@ -490,6 +493,11 @@ class DeckOutputWebHandler(http.server.BaseHTTPRequestHandler):
                 "columns": deck.columns(),
             }
         self.api_json_response(json_data)
+
+    def res_apps(self):
+        pass
+        #for key in self.idDeckMap.keys():
+        #    deck: VirtualDeck = self.idDeckMap[key]
 
     def res_images(self):
         json_data: list = glob.glob("./src/Assets/*.png", recursive=False)

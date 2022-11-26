@@ -95,7 +95,6 @@ class AppBase(App):
         """Start application when the current page is the target of the app."""
         if not self.is_in_target_page():
             sys.exit()
-            return
 
         while True:
             self.in_working = True
@@ -112,6 +111,11 @@ class AppBase(App):
             # exit when main process is finished
             if self.check_to_stop():
                 break
+
+            is_first = False
+            if self.use_trigger:
+                self.trigger.wait()
+                self.trigger.clear()
 
             time.sleep(self.time_to_sleep)
         sys.exit()
@@ -173,34 +177,6 @@ class TriggerAppBase(AppBase):
         if self.use_day_trigger or self.use_hour_trigger or self.use_minute_trigger:
             self.use_trigger = True
         self.trigger = Event()
-
-    # if use_thread is true, this method is call in thread
-    def start(self) -> NoReturn:
-        """Start application when the current page is the target of the app."""
-        if not self.is_in_target_page():
-            sys.exit()
-
-        while True:
-            self.in_working = True
-
-            try:
-                page = self.mydeck.current_page()
-                key  = self.page_key.get(page)
-                if key is not None:
-                    self.set_image_to_key(key, page)
-            except Exception as e:
-                print('Error in app_base.start', type(self), e)
-                print(traceback.format_exc())
-
-            # exit when main process is finished
-            if self.check_to_stop():
-                break
-
-            self.trigger.wait()
-            self.trigger.clear()
-
-        sys.exit()
-
 class BackgroundAppBase(App):
     """Base class of the application which works in background."""
     use_thread: bool = True
