@@ -1,4 +1,4 @@
-from mystreamdeck import *
+from mydeck import *
 
 import os
 import requests
@@ -15,7 +15,7 @@ def check_alert():
 
 
 if __name__ == "__main__":
-    mydecks = MyStreamDecks({
+    mydecks = MyDecks({
         'config': {
             'file': "./example/config/config.yml",
             'alert_func': check_alert,

@@ -1,6 +1,6 @@
 import datetime
 import time
-from mystreamdeck import MyStreamDeck, BackgroundAppBase
+from mydeck import MyDeck, BackgroundAppBase
 
 class AppTrigger(BackgroundAppBase):
     # if app reuquire thread, true
@@ -8,7 +8,7 @@ class AppTrigger(BackgroundAppBase):
     # need to stop thread
     stop = False
 
-    def __init__(self, mydeck: MyStreamDeck, config: dict = {}):
+    def __init__(self, mydeck: MyDeck, config: dict = {}):
         super().__init__(mydeck)
         self.now = datetime.datetime.now()
 

@@ -1,12 +1,12 @@
 import time
 import random
 import threading
-from mystreamdeck import MyStreamDeck, GameAppBase
+from mydeck import MyDeck, GameAppBase
 
 class GameRandomNumber(GameAppBase):
     require_key_count: int = 0
 
-    def __init__ (self, mydeck: MyStreamDeck, start_key_num: int = 0):
+    def __init__ (self, mydeck: MyDeck, start_key_num: int = 0):
         super().__init__(mydeck)
 
         self.data: dict = {}

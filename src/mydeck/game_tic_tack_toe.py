@@ -1,6 +1,6 @@
 import random
 import time
-from mystreamdeck import MyStreamDeck, GameAppBase
+from mydeck import MyDeck, GameAppBase
 from typing import NoReturn, List
 
 # 三目並べのビット
@@ -54,7 +54,7 @@ PRE_WIN_CONDITION = {
 class GameTicTackToe(GameAppBase):
     require_key_count: int = 15
 
-    def __init__ (self, mydeck :MyStreamDeck, start_key_num :int = 0):
+    def __init__ (self, mydeck :MyDeck, start_key_num :int = 0):
         super().__init__(mydeck)
 
         if self.enable == False:

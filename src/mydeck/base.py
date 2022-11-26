@@ -21,18 +21,18 @@ from typing import Any, NoReturn, List, TYPE_CHECKING, Optional, Callable, Dict,
 from PIL import Image, ImageDraw, ImageFont
 from StreamDeck.ImageHelpers import PILHelper
 from StreamDeck.Devices import StreamDeckOriginalV2
-from .my_decks import MyDecks
+from .my_decks import MyDecksManager
 
 if TYPE_CHECKING:
     from . import App, AppBase, BackgroundAppBase, HookAppBase
 
-class ExceptionInvalidMyStreamDecksConfig(Exception):
+class ExceptionInvalidMyDecksConfig(Exception):
     pass
 
-class MyStreamDecks:
-    """The class to manage several STREAM DECK devices.
+class MyDecks:
+    """The class to manage several STREAM DECK like devices.
 
-    This class manages insteaces of MyStreamDeck class.
+    This class manages insteaces of MyDeck class.
     """
     def __init__(self, config: dict):
         """
@@ -66,10 +66,10 @@ class MyStreamDecks:
 
         """
         self.vdeck_config: Any[None, str] = config.get('vdeck_config')
-        if self.vdeck_config is not None and type(vdeck_config) is not str:
-            raise(ExceptionInvalidMyStreamDecksConfig)
+        if self.vdeck_config is not None and type(self.vdeck_config) is not str:
+            raise(ExceptionInvalidMyDecksConfig)
 
-        self.mystreamdecks: Dict[str, 'MyStreamDeck'] = {}
+        self.mydecks: Dict[str, 'MyDeck'] = {}
         self._one_deck_only: bool = False
         self.config: Optional[dict]
         self.decks: Optional[dict] = config.get('decks')
@@ -82,8 +82,8 @@ class MyStreamDecks:
             logging.basicConfig(level=log_level)
 
     def start_decks(self, no_real_device: bool = False) -> NoReturn:
-        """Start and display images to STREAM DECK buttons according to configuration."""
-        streamdecks = MyDecks(self.vdeck_config, no_real_device).devices
+        """Start and display images to buttons according to configuration."""
+        streamdecks = MyDecksManager(self.vdeck_config, no_real_device).devices
         logging.info("Found {} Stream Deck(s).\n".format(len(streamdecks)))
 
         for index, deck in enumerate(streamdecks):
@@ -97,14 +97,14 @@ class MyStreamDecks:
                 if self.config is not None:
                     alert_func :Optional[Callable] = self.config.get('alert_func')
                     config_file: Optional[str] = self.config.get('file')
-                    mydeck = MyStreamDeck({
+                    mydeck = MyDeck({
                         'mydecks': self,
                         'myname': 'mydeck',
                         "deck": deck,
                         'alert_func': alert_func,
                         'config': config_file
                     })
-                    self.mystreamdecks[serial_number] = mydeck
+                    self.mydecks[serial_number] = mydeck
                     mydeck.init_deck()
                     break
                 else:
@@ -116,14 +116,14 @@ class MyStreamDecks:
                 if sn_alias is not None and configs is not None:
                     sn_config = configs.get(sn_alias)
                     if sn_config is not None:
-                        mydeck = MyStreamDeck({
+                        mydeck = MyDeck({
                             'mydecks': self,
                             'myname': sn_alias,
                             "deck": deck,
                             'alert_func': sn_config.get('alert_func'),
                             'config': sn_config.get('file'),
                         })
-                        self.mystreamdecks[sn_alias] = mydeck
+                        self.mydecks[sn_alias] = mydeck
                         mydeck.init_deck()
                 else:
                     logging.warning("config is not found for device: {}".format(serial_number))
@@ -142,29 +142,18 @@ class MyStreamDecks:
         print("start_decks end!")
         sys.exit()
 
-        # Wait until all application threads have terminated (for this example,
-        # this is when all deck handles are closed).
-        for t in threading.enumerate():
-            try:
-                t.join()
-            except RuntimeError as e:
-                print("Error in start_decks", e)
+    def list_mydecks(self) -> List['MyDeck']:
+        """return list of MyDeck instances"""
+        return list(self.mydecks.values())
 
-        print("start_decks end!")
-        sys.exit()
-
-    def list_mydecks(self) -> List['MyStreamDeck']:
-        """return list of MyStreamDeck instances"""
-        return list(self.mystreamdecks.values())
-
-    def list_other_mydecks(self, mydeck: 'MyStreamDeck') -> List['MyStreamDeck']:
-        """return list of MyStreamDeck instances"""
+    def list_other_mydecks(self, mydeck: 'MyDeck') -> List['MyDeck']:
+        """return list of MyDeck instances"""
         myname = mydeck.myname
-        return list(filter(lambda mydeck: mydeck.myname != myname, self.mystreamdecks.values()))
+        return list(filter(lambda mydeck: mydeck.myname != myname, self.mydecks.values()))
 
-    def mydeck (self, name: str) -> Optional['MyStreamDeck']:
-        """Pass name of the device and return the correspond MyStreamDeck instance."""
-        mydeck = self.mystreamdecks.get(name)
+    def mydeck (self, name: str) -> Optional['MyDeck']:
+        """Pass name of the device and return the correspond MyDeck instance."""
+        mydeck = self.mydecks.get(name)
         if mydeck is not None:
             return mydeck
         else:
@@ -175,9 +164,9 @@ class ExceptionNoConfig(Exception):
     """Exception when no configuration is given"""
     pass
 
-class MyStreamDeck:
-    """Class to control a STREAM DECK device."""
-    mydecks: MyStreamDecks
+class MyDeck:
+    """Class to control a device like STREAM DECK."""
+    mydecks: MyDecks
     # path of font
 
     def __init__ (self, opt: dict):
@@ -379,7 +368,7 @@ class MyStreamDeck:
         icon_name = re.sub(r'^https?://', '', image_url)
         icon_name = re.sub(r'[&=?/.]', '-', icon_name)
         ext = re.sub(r'.+(\.\w+)$', '\g<1>', image_url)
-        return '/tmp/' + 'mystreamdeck-' + self.myname + icon_name + ext
+        return '/tmp/' + 'mydeck-' + self.myname + icon_name + ext
 
     def image_url_to_image(self, conf: Optional[dict], url: Optional[str] = None):
         """If conf has image_url and get it and then save as the file and set its name as image of conf."""
@@ -703,8 +692,8 @@ class MyStreamDeck:
     def update_config(self):
         while True:
             sn = self.deck.get_serial_number()
-            if MyDecks.ConfigQueue.get(sn) is not None:
-                data = MyDecks.ConfigQueue[sn].get()
+            if MyDecksManager.ConfigQueue.get(sn) is not None:
+                data = MyDecksManager.ConfigQueue[sn].get()
                 if self.config.update_page_config_content(self.current_page(), data):
                     self.config.save_config()
                     self.config.reflect_config(True)
@@ -712,8 +701,8 @@ class MyStreamDeck:
 class Config:
     """STREAM DECK Configuration Class"""
 
-    def __init__(self, mydeck: 'MyStreamDeck', file: str):
-        """Pass MyStreamDeck instance as mydeck and configuration file as file"""
+    def __init__(self, mydeck: 'MyDeck', file: str):
+        """Pass MyDeck instance as mydeck and configuration file as file"""
         self._file_mtime: float = 0
         self._file: str = ''
         self._config_content_origin: dict = {}
@@ -722,7 +711,7 @@ class Config:
         self.conf: dict = {}
         self.apps: List['AppBase'] = []
         self.background_apps: List['BackgroundAppBase'] = []
-        self.mydeck: 'MyStreamDeck'
+        self.mydeck: 'MyDeck'
         self.mydeck = mydeck
         self.key_count = mydeck.key_count
         self._file = file
@@ -886,7 +875,7 @@ class Config:
     def _load_module(self, app: str):
         module = re.sub('([A-Z])', r'_\1', app)[1:].lower()
         if self._loaded.get(app) is None:
-            self._loaded[app] = importlib.import_module('mystreamdeck.' + module, "mystreamdeck")
+            self._loaded[app] = importlib.import_module('mydeck.' + module, "mydeck")
 
         return self._loaded[app]
 

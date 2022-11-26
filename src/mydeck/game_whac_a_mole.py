@@ -2,13 +2,13 @@ from PIL import Image, ImageDraw, ImageFont
 import time
 import random
 import threading
-from mystreamdeck import MyStreamDeck, ImageOrFile, GameAppBase, ExceptionNoDeck
+from mydeck import MyDeck, ImageOrFile, GameAppBase, ExceptionNoDeck
 from typing import NoReturn
 
 class GameWhacAMole(GameAppBase):
     require_key_count: int = 15
 
-    def __init__ (self, mydeck :MyStreamDeck, start_key_num :int = 0):
+    def __init__ (self, mydeck :MyDeck, start_key_num :int = 0):
         self.in_game = False
         self.stop = False
         self.exit = False

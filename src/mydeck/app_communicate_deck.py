@@ -1,22 +1,22 @@
-from mystreamdeck import AppBase, ImageOrFile, MyStreamDeck
+from mydeck import AppBase, ImageOrFile, MyDeck
 from typing import Optional, Dict
 
 class AppCommunicateDeck(AppBase):
     """Sample application to communicate other deck"""
     _key_conf = {
-        "app_command": "MyStreamDeckCommunicateDeck",
+        "app_command": "MyDeckCommunicateDeck",
         "image": "./src/Assets/world.png",
         "label": "Communicate",
     }
     key_command = {
-        "MyStreamDeckCommunicateDeck": lambda app: app.communicate(),
+        "MyDeckCommunicateDeck": lambda app: app.communicate(),
     }
 
-    def __init__(self, mydeck: MyStreamDeck, option: dict = {}):
+    def __init__(self, mydeck: MyDeck, option: dict = {}):
         super().__init__(mydeck, option)
         self.index: Dict[str, Dict[int, int]] = {}
         self.page_cache: Dict[str, dict] = {}
-        self.to_deck: MyStreamDeck
+        self.to_deck: MyDeck
         self.to_deck_name: Optional[str] = option.get('to_deck')
         self.to_deck_config: Optional[dict] = option.get('to_deck_config')
 

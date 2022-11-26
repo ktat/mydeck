@@ -1,4 +1,4 @@
-from mystreamdeck import MyStreamDecks
+from mydeck import MyDecks
 import os
 import requests
 
@@ -12,7 +12,7 @@ import requests
 
 
 if __name__ == "__main__":
-    mydecks = MyStreamDecks({
+    mydecks = MyDecks({
         'vdeck_config': "example/config/vdeck.yml",
         'decks': {
             'dummy1': '4key-dummy',
