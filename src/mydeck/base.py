@@ -35,6 +35,7 @@ class MyDecks:
 
     This class manages insteaces of MyDeck class.
     """
+    mydecks: Dict[str, 'MyDeck'] = {}
     def __init__(self, config: dict):
         """
         config dict takes the following keys:
@@ -70,7 +71,6 @@ class MyDecks:
         if self.vdeck_config is not None and type(self.vdeck_config) is not str:
             raise(ExceptionInvalidMyDecksConfig)
 
-        self.mydecks: Dict[str, 'MyDeck'] = {}
         self._one_deck_only: bool = False
         self.config: Optional[dict]
         self.decks: Optional[dict] = config.get('decks')

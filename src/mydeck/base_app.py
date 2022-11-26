@@ -54,7 +54,7 @@ class App:
             raise ExceptionNoDeck
 
     def name(self) -> str:
-        return "%s" % self.__class__
+        return "%s" % self.__class__.__name__
 
 class GameAppBase(App):
     """Base class of a game application"""

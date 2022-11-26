@@ -394,7 +394,7 @@ class DeckOutputWebServer:
 
     def run(self, port: int):
         with http.server.ThreadingHTTPServer(('', port), DeckOutputWebHandler) as httpd:
-            logging.info("serving at port", port)
+            logging.info("serving at port %d", port)
             httpd.serve_forever()
             logging.info("server is started")
 
@@ -419,8 +419,8 @@ class DeckOutputWebHandler(http.server.BaseHTTPRequestHandler):
     def do_GET(self):
         if self.path == '/':
             return self.res_vdeck_html()
-        elif self.path == '/apps':
-            return self.res_apps()
+        elif self.path == '/status':
+            return self.res_status()
         elif self.path == '/device_info':
             return self.res_device_info()
         elif self.path == '/images':
@@ -494,10 +494,22 @@ class DeckOutputWebHandler(http.server.BaseHTTPRequestHandler):
             }
         self.api_json_response(json_data)
 
-    def res_apps(self):
-        pass
-        #for key in self.idDeckMap.keys():
-        #    deck: VirtualDeck = self.idDeckMap[key]
+    def res_status(self):
+        from mydeck.base import MyDecks
+        json_data: dict[str, dict] = {}
+        for sn_alias in MyDecks.mydecks.keys():
+            device = MyDecks.mydecks[sn_alias]
+            json_data[sn_alias] = {
+                "apps": [],
+                "current_page": device.current_page()
+            }
+            for app in device.config.apps:
+                json_data[sn_alias]["apps"].append({
+                    "name": app.name(),
+                    "in_working": app.in_working,
+                    "key_config": app.page_key,
+                })
+        self.api_json_response(json_data)
 
     def res_images(self):
         json_data: list = glob.glob("./src/Assets/*.png", recursive=False)
