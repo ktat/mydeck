@@ -4,12 +4,12 @@ from typing import Optional, Dict
 class AppCommunicateDeck(AppBase):
     """Sample application to communicate other deck"""
     _key_conf = {
-        "app_command": "MyStreamDeckCommunicateDeck",
+        "app_command": "MyDeckCommunicateDeck",
         "image": "./src/Assets/world.png",
         "label": "Communicate",
     }
     key_command = {
-        "MyStreamDeckCommunicateDeck": lambda app: app.communicate(),
+        "MyDeckCommunicateDeck": lambda app: app.communicate(),
     }
 
     def __init__(self, mydeck: MyDeck, option: dict = {}):

@@ -14,12 +14,12 @@ Y: int = 100
 
 class AppStopWatch(AppBase):
     _key_conf = {
-        "app_command": "MyStreamDeckStopWatchToggle",
+        "app_command": "MyDeckStopWatchToggle",
         "image": "./src/Assets/stopwatch.png",
         "label": "Stop Watch",
     }
     key_command = {
-        "MyStreamDeckStopWatchToggle": lambda app: app.toggle_count(),
+        "MyDeckStopWatchToggle": lambda app: app.toggle_count(),
     }
 
     def __init__(self, mydeck: MyDeck, option: dict = {}):

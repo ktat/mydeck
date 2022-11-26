@@ -27,7 +27,7 @@ class App:
     key_command: dict = {}
 
     def __init__(self, mydeck: 'MyDeck'):
-        """Constructor pass MyStreamDeck instance."""
+        """Constructor pass MyDeck instance."""
         self.mydeck: 'MyDeck'
         # sleep sec in thread
         self.time_to_sleep: float = 1
@@ -55,7 +55,7 @@ class GameAppBase(App):
     require_key_count: int
     enable: bool = True
     def __init__ (self, mydeck :MyDeck, start_key_num :int = 0):
-        """Constructor. pass MyStreamDeck instance and key number of put game."""
+        """Constructor. pass MyDeck instance and key number of put game."""
         super().__init__(mydeck)
         self.data: dict = {}
         if self.require_key_count > mydeck.key_count:
@@ -64,7 +64,7 @@ class GameAppBase(App):
 class AppBase(App):
     """Base class of a normal application"""
     def __init__(self, mydeck: 'MyDeck', option: dict = {}):
-        """Constructor. Pass MyStreamDeck instance and app configuration."""
+        """Constructor. Pass MyDeck instance and app configuration."""
         super().__init__(mydeck)
 
         self.temp_wait = 0
@@ -182,7 +182,7 @@ class BackgroundAppBase(App):
     use_thread: bool = True
 
     def __init__ (self, mydeck: MyDeck, config: dict = {}):
-        """Pass MyStreamDeck instance and configuration"""
+        """Pass MyDeck instance and configuration"""
         super().__init__(mydeck)
         # need to stop thread
         self.stop: bool = False
@@ -217,7 +217,7 @@ class HookAppBase(App):
     on: str
 
     def __init__ (self, mydeck: MyDeck, config: dict = {}):
-        """Pass MyStreamDeck instance and configuration"""
+        """Pass MyDeck instance and configuration"""
         super().__init__(mydeck)
         if config is not None:
             on = config.get('on')
