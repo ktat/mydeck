@@ -147,7 +147,7 @@ class GameMemory(GameAppBase):
         deck = mydeck.deck
         # Print new key state
         if deck is not None:
-            logging.debug("Deck {} Key {} = {}".format(deck.id(), key, state), flush=True)
+            logging.debug("Deck {} Key {} = {}".format(deck.id(), key, state))
 
         conf = mydeck._GAME_KEY_CONFIG.get(key)
         wait_time = self.data["wait_time"]
