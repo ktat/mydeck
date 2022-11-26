@@ -22,6 +22,7 @@ from PIL import Image, ImageDraw, ImageFont
 from StreamDeck.ImageHelpers import PILHelper
 from StreamDeck.Devices import StreamDeckOriginalV2
 from .my_decks import MyDecksManager
+from .lock import Lock
 
 if TYPE_CHECKING:
     from . import App, AppBase, BackgroundAppBase, HookAppBase
@@ -171,7 +172,6 @@ class MyDeck:
 
     def __init__ (self, opt: dict):
         deck = opt.get('deck')
-        self.locking: dict = {}
         self.deck: StreamDeckOriginalV2 = deck
         self.key_count: int = self.deck.key_count()
         self.font_path = "/usr/share/fonts/truetype/freefont/FreeSans.ttf"
@@ -394,11 +394,11 @@ class MyDeck:
             res = requests.get(icon_url)
             if res.status_code == requests.codes.ok:
                 icon_data = res.content
-                self.wait_can_lock(icon_file)
+                Lock.wait_can_lock(icon_file)
                 if icon_url[-3:len(icon_url)] == 'svg':
                     icon_file = icon_file[0:-4] + '.png'
                     svg2png(bytestring=icon_data,write_to=icon_file)
-                    self.unlock(icon_file)
+                    Lock.unlock(icon_file)
                 else:
                     with open(icon_file, mode="wb") as f:
                         f.write(icon_data)
@@ -428,27 +428,12 @@ class MyDeck:
             key = self.abs_key(key)
             if use_lock:
                 # logging.debug("update_key_image: %s => %d" % (self.myname, key))
-                self.wait_can_lock(self.myname)
+                Lock.wait_can_lock(self.myname)
                 # Update requested key with the generated image.
                 deck.set_key_image(key, image)
-                self.unlock(self.myname)
+                Lock.unlock(self.myname)
             else:
                 deck.set_key_image(key, image)
-
-    def locked(self, lock: str) -> bool:
-        return self.locking.get(lock) is not None
-
-    def wait_can_lock(self, lock: str, wait: float = 0.001):
-        time_locked: float = 0
-        while self.locked(lock):
-            time_locked += wait
-            time.sleep(time_locked)
-            logging.debug("waiting lock for %s (%f sec)" % (lock, time_locked))
-        self.locking[lock] = True
-
-    def unlock(self, lock):
-        if self.locking.get(lock) is not None:
-            del self.locking[lock]
 
     # render key image and label
     def render_key_image(self, icon_filename_or_object: 'ImageOrFile', label: str = '', bg_color: str = '', no_label: bool = False):
@@ -608,7 +593,7 @@ class MyDeck:
         """Set game key configuration for one key"""
         key = self.abs_key(key)
         self._GAME_KEY_CONFIG[key] = conf
-        self.set_key(key, conf, True)
+        self.set_key(key, conf, False)
 
     def add_game_key_conf(self, conf: dict):
         """Add game confiruration for keys"""
