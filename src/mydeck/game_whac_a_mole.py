@@ -3,7 +3,6 @@ import time
 import random
 import threading
 from mydeck import MyDeck, ImageOrFile, GameAppBase, ExceptionNoDeck
-from typing import NoReturn
 
 class GameWhacAMole(GameAppBase):
     require_key_count: int = 15
@@ -43,9 +42,6 @@ class GameWhacAMole(GameAppBase):
             raise(ExceptionNoDeck)
 
         deck.reset()
-        print("Opened '{}' device (serial number: '{}', fw: '{}')".format(
-            deck.deck_type(), deck.get_serial_number(), deck.get_firmware_version()
-        ))
 
         # Set initial screen brightness to 30%.
         deck.set_brightness(30)

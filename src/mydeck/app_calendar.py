@@ -1,7 +1,5 @@
 from PIL import Image, ImageDraw, ImageFont
-from mydeck import MyDeck, TriggerAppBase, ImageOrFile
-import time
-import sys
+from mydeck import TriggerAppBase, ImageOrFile
 import datetime
 
 # whole image size

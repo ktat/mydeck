@@ -1,5 +1,5 @@
 import subprocess
-
+import logging
 from typing import Optional
 from mydeck import WindowCheckBase
 
@@ -13,5 +13,5 @@ class AppWindowCheckLinux(WindowCheckBase):
                 result: str = subprocess.check_output(["xdotool", "getwindowname", window_id]).decode()
             return result
         except Exception as e:
-            print(e)
+            logging.crtical(e)
             return None

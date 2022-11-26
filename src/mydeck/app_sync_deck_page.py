@@ -1,7 +1,4 @@
-import time
-
 from mydeck import MyDeck, HookAppBase
-from typing import Optional, Dict
 
 class AppSyncDeckPage(HookAppBase):
     on = 'page_change_any'

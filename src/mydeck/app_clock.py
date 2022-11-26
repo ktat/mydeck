@@ -1,10 +1,8 @@
 import math
 import datetime
-import time
-import sys
 
 from PIL import Image, ImageDraw
-from typing import NoReturn, Tuple
+from typing import Tuple
 from mydeck import MyDeck, AppBase, ImageOrFile
 
 # whole image size

@@ -1,6 +1,7 @@
 import datetime
 import time
 from mydeck import MyDeck, BackgroundAppBase
+import logging
 
 class AppTrigger(BackgroundAppBase):
     # if app reuquire thread, true
@@ -18,23 +19,22 @@ class AppTrigger(BackgroundAppBase):
             if current_time.day != self.now.day:
                 for app in self.mydeck.config.apps:
                     if app.use_day_trigger or app.use_hour_trigger or app.use_minute_trigger:
-                       print("trigger day")
-                       app.trigger.set()
-                       self.now = current_time
+                        logging.debug("trigger day for " + app.name())
+                        app.trigger.set()
+                        self.now = current_time
             elif current_time.hour != self.now.hour:
                 for app in self.mydeck.config.apps:
                     if app.use_hour_trigger or app.use_minute_trigger:
-                       print("trigger hour")
-                       app.trigger.set()
-                       self.now = current_time
+                        logging.debug("trigger hour for " + app.name())
+                        app.trigger.set()
+                        self.now = current_time
             elif current_time.minute != self.now.minute:
                 for app in self.mydeck.config.apps:
                     if app.use_minute_trigger:
-                       print("trigger minute")
-                       print(app.trigger)
-                       app.trigger.set()
-                       self.now = current_time
+                        logging.debug("trigger minute for " + app.name())
+                        app.trigger.set()
+                        self.now = current_time
 
             # sleep untile next munite
-            time.sleep(current_time.second % 60)
+            time.sleep(datetime.datetime.now().second % 60)
 
