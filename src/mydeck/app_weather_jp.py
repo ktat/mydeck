@@ -96,7 +96,7 @@ class JMASearch:
             weather: OptStr = None
             temp: OptStr = None
             pop: OptStr = None
-            data: Dict = json.loads(res.text)
+            data: dict = json.loads(res.text)
             for area in data[0]["timeSeries"][0]["areas"]:
                 if area["area"]["name"] == self.area.area or area["area"]["code"] == self.area.area_code:
                     weather = area["weatherCodes"][0]
