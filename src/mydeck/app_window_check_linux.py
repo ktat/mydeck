@@ -13,5 +13,5 @@ class AppWindowCheckLinux(WindowCheckBase):
                 result: str = subprocess.check_output(["xdotool", "getwindowname", window_id]).decode()
             return result
         except Exception as e:
-            logging.crtical(e)
+            logging.critical(e)
             return None

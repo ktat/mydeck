@@ -6,10 +6,12 @@ class Lock:
 
     def __init__(self) -> None:
         pass
-        
+
+    @staticmethod
     def locked(lock: str) -> bool:
         return Lock.locking.get(lock) is not None
 
+    @staticmethod
     def wait_can_lock(lock: str, wait_second: float = 0.001):
         time_locked: float = 0
         while Lock.locked(lock):
@@ -19,6 +21,7 @@ class Lock:
                 logging.debug("waiting lock for %s (%f sec)" % (lock, time_locked))
         Lock.locking[lock] = True
 
+    @staticmethod
     def unlock(lock):
         if Lock.locking.get(lock) is not None:
             del Lock.locking[lock]

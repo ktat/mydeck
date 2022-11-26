@@ -402,7 +402,7 @@ class MyDeck:
                 else:
                     with open(icon_file, mode="wb") as f:
                         f.write(icon_data)
-                        self.unlock(icon_file)
+                        Lock.unlock(icon_file)
                 if self.check_icon_file(icon_file):
                     return icon_file
         else:
@@ -655,7 +655,7 @@ class MyDeck:
                         time.sleep(0.01)
                         i += 1
                         if i % 200 == 0:
-                            logging('%s still waiting to start app', type(app))
+                            logging.debug('%s still waiting to start app', app)
 
 
     def abs_key(self, key: int) -> int:
