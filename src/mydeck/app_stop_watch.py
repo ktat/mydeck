@@ -59,7 +59,7 @@ class AppStopWatch(AppBase):
                 draw = ImageDraw.Draw(im)
                 n = "{0:02.2f}".format(int((time.time() - t) * 100) / 100)
                 draw.text((0,45), text=n, font = font, andhor="ms", fill="white")
-                self.mydeck.update_key_image(key, self.mydeck.render_key_image(ImageOrFile(im), "STOP/START", "black"))
+                self.mydeck.update_key_image(key, self.mydeck.render_key_image(ImageOrFile(im), "STOP/START", "black"), False)
         sys.exit()
 
     def toggle_count(self):
