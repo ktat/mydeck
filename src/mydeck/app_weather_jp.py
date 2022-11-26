@@ -86,8 +86,8 @@ class JMAResult:
 
 class JMASearch:
     def __init__(self, jma: JMA, area: Area):
-        self.jma: Area = jma
-        self.area: JMA = area
+        self.jma: JMA = jma
+        self.area: Area = area
 
     def search(self):
         res = requests.get(self.jma.url)

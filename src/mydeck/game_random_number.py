@@ -1,6 +1,7 @@
 import time
 import random
 import threading
+import logging
 from mydeck import MyDeck, GameAppBase
 
 class GameRandomNumber(GameAppBase):
@@ -50,7 +51,7 @@ class GameRandomNumber(GameAppBase):
         mydeck.set_game_status_on()
         mydeck.set_current_page_without_setup("~GAME_RANDOM_NUMBER")
         self.data["mode"] = num
-        print("Opened '{}' device (serial number: '{}', fw: '{}')".format(
+        logging.debug("Opened '{}' device (serial number: '{}', fw: '{}')".format(
             deck.deck_type(), deck.get_serial_number(), deck.get_firmware_version()
         ))
 
@@ -149,7 +150,7 @@ class GameRandomNumber(GameAppBase):
         mydeck = self.mydeck
         deck = mydeck.deck
         # Print new key state
-        print("Deck {} Key {} = {}".format(deck.id(), key, state), flush=True)
+        logging.debug("Deck {} Key {} = {}".format(deck.id(), key, state))
 
         conf = mydeck._GAME_KEY_CONFIG.get(key)
         if state:
@@ -161,7 +162,6 @@ class GameRandomNumber(GameAppBase):
                 if conf["name"] == "restart":
                     self.key_setup(self.data["mode"])
                 if conf["name"] == "number":
-                    print(conf["name"])
                     if conf["click"]:
                         self.data["answer"].append(conf["value"])
                     if len(self.data["answer"]) == self.data["mode"]:

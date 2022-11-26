@@ -1,7 +1,8 @@
 import random
 import time
+import logging
 from mydeck import MyDeck, GameAppBase
-from typing import NoReturn, List
+from typing import List
 
 # 三目並べのビット
 # 1   2    4
@@ -178,7 +179,6 @@ class GameTicTackToe(GameAppBase):
                         mydeck.set_game_key(key, conf)
                         self.cpu_turn()
                 elif conf["name"] == "reverse":
-                    print(self.data.get("reverse"))
                     if self.data.get("reverse") is None:
                         self.data["reverse"] = True
                         self.cpu_turn()
@@ -235,26 +235,26 @@ class GameTicTackToe(GameAppBase):
         if choose_key is None:
             # CPUの勝利条件の場所を探す
             choose_key = can_select_value.get(self.search_win_value(cpu_val, can_select, WIN_CONDITION))
-            print("choose_key1: {}".format(choose_key))
+            logging.debug("choose_key1: {}".format(choose_key))
         if choose_key is None:
             # ユーザーの勝利条件の場所を探す(ユーザーが勝つ場所に打って妨害する)
             choose_key = can_select_value.get(self.search_win_value(user_val, can_select, WIN_CONDITION))
-            print("choose_key2: {}".format(choose_key))
+            logging.debug("choose_key2: {}".format(choose_key))
         if choose_key is None:
             # ユーザーの勝てそうな場所を探す(ユーザーの勝てそうな場所は先に抑えて妨害する)
             choose_key = can_select_value.get(self.search_pre_win_value(2, user_val, cpu_val, can_select, PRE_WIN_CONDITION))
-            print("choose_key3: {}".format(choose_key))
+            logging.debug("choose_key3: {}".format(choose_key))
         if choose_key is None:
             # CPUの勝てそうな場所を探す
             choose_key = can_select_value.get(self.search_pre_win_value(1, cpu_val, user_val, can_select, PRE_WIN_CONDITION))
-            print("choose_key4: {}".format(choose_key))
+            logging.debug("choose_key4: {}".format(choose_key))
         if choose_key is None:
             # まだ決まっていない場合は、取れるところをrandomで取る
             select = random.randint(0, len(can_select) -1)
             choose_key = can_select_value[can_select.pop(select)]
-            print("choose_key5: {}".format(choose_key))
+            logging.debug("choose_key5: {}".format(choose_key))
 
-        print("choose_key: {}".format(choose_key))
+        logging.debug("choose_key: {}".format(choose_key))
 
         # CPUが勝利しているか確認
         for w in WIN_CONDITION.keys():
@@ -277,7 +277,7 @@ class GameTicTackToe(GameAppBase):
 
         for i, v in enumerate(can_select):
             for w in win.keys():
-                print("val: {}, v: {}, w: {}, sum: {}".format(val, v, w, (val + v) & w))
+                logging.debug("val: {}, v: {}, w: {}, sum: {}".format(val, v, w, (val + v) & w))
                 if (val + v) & w == w:
                     choose_value = v
                     can_select.pop(i)
@@ -301,16 +301,16 @@ class GameTicTackToe(GameAppBase):
                     continue
 
                 next_val = pre_win[w]
-                print("val: {}, v: {}, w: {}, sum: {}, next_val: {}".format(val, v, w, (val + v) & w, next_val))
+                logging.debug("val: {}, v: {}, w: {}, sum: {}, next_val: {}".format(val, v, w, (val + v) & w, next_val))
                 if (val + v) & w == w and can_select_value.get(next_val) is not None:
-                    print("choose: {}".format(v))
+                    logging.debug("choose: {}".format(v))
                     if choose_value.get(v):
                         choose_value[v] += 1
                         break
                     else:
                         choose_value[v] = 1
 
-        print("selected: {}".format(choose_value))
+        logging.debug("selected: {}".format(choose_value))
         if len(choose_value.keys()) == 0:
             return None
 
@@ -340,7 +340,7 @@ class GameTicTackToe(GameAppBase):
     def cpu_turn(self):
         mydeck = self.mydeck
         result = self.select_by_cpu()
-        print("RESULT {}".format(result))
+        logging.debug("RESULT {}".format(result))
         choose_key = result[0]
         winner = result[1]
         if choose_key is not None and winner != 1:

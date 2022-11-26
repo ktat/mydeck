@@ -1,6 +1,3 @@
-import time
-import os
-import sys
 from mydeck import MyDeck, BackgroundAppBase, DeckOutputWebServer
 
 class AppWebServer(BackgroundAppBase):

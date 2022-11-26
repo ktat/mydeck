@@ -1,7 +1,7 @@
 import time
 import random
+import logging
 from mydeck import MyDeck, GameAppBase, ExceptionNoDeck
-from typing import NoReturn
 
 class GameMemory(GameAppBase):
     require_key_count: int = 15
@@ -147,7 +147,7 @@ class GameMemory(GameAppBase):
         deck = mydeck.deck
         # Print new key state
         if deck is not None:
-            print("Deck {} Key {} = {}".format(deck.id(), key, state), flush=True)
+            logging.debug("Deck {} Key {} = {}".format(deck.id(), key, state), flush=True)
 
         conf = mydeck._GAME_KEY_CONFIG.get(key)
         wait_time = self.data["wait_time"]

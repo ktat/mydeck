@@ -3,6 +3,7 @@ import sys
 import datetime
 import traceback
 from threading import Event
+import logging
 
 from typing import NoReturn, TYPE_CHECKING, Any
 from . import MyDeck
@@ -50,6 +51,9 @@ class App:
         if self.mydeck.deck is None:
             raise ExceptionNoDeck
 
+    def name(self) -> str:
+        return "%s" % self.__class__
+
 class GameAppBase(App):
     """Base class of a game application"""
     require_key_count: int
@@ -77,7 +81,7 @@ class AppBase(App):
     # implment it in subclass
     def set_image_to_key(self, key: int, page: str):
         """Set image to key. Implement this method in subclass."""
-        print("Implemnt set_image_to_key in subclass for app to use thread anytime.")
+        logging.critical("Implemnt set_image_to_key in subclass for app to use thread anytime.")
 
     # check current page is whther app's target or not
     def is_in_target_page(self) -> bool:
@@ -105,14 +109,13 @@ class AppBase(App):
                 if key is not None:
                     self.set_image_to_key(key, page)
             except Exception as e:
-                print('Error in app_base.start', type(self), e)
-                print(traceback.format_exc())
+                logging.critical('Error in app_base.start {} {}'.format(type(self), e))
+                logging.debug(traceback.format_exc())
 
             # exit when main process is finished
             if self.check_to_stop():
                 break
 
-            is_first = False
             if self.use_trigger:
                 self.trigger.wait()
                 self.trigger.clear()
@@ -130,13 +133,15 @@ class AppBase(App):
     def stop_app(self):
         """Stop application."""
         if self.in_working:
+            if self.use_trigger:
+                self.trigger.set()
             self.stop = False
             self.in_working = False
 
     def key_setup(self):
         """Setup app keys. If command is given as option, set key to command."""
         if self.command is not None:
-            key_config =self.mydeck.key_config()
+            key_config = self.mydeck.key_config()
             for page_value in self.page_key.items():
                 if key_config.get(page_value[0]) is None:
                     key_config[page_value[0]] = {}
@@ -194,7 +199,7 @@ class BackgroundAppBase(App):
 
     def execute_in_thread(self):
         """Execute the app in thread. It should be imlemented in subclass."""
-        print("implement in subclass")
+        logging.critical("implement in subclass")
         raise Exception
 
     def start(self):
@@ -228,7 +233,7 @@ class HookAppBase(App):
 
     def execute_on_hook(self):
         """Execute the app on hook point. It should be imlemented in subclass."""
-        print("implement in subclass")
+        logging.critical("implement in subclass")
         raise Exception
 
     def do(self, hookname: str):

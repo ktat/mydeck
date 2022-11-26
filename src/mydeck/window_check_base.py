@@ -61,7 +61,7 @@ class WindowCheckBase(BackgroundAppBase):
 
     def _get_current_window(self) -> Optional[str]:
         """Get curent window name. It should be implmented in subclass."""
-        print("implment it subclass")
+        logging.critical("implment it subclass")
         return None
 
     def get_current_window(self) -> Optional[str]:

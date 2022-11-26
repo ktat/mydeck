@@ -1,4 +1,3 @@
-2
 from contextlib import nullcontext
 import json
 import base64
@@ -11,7 +10,7 @@ import yaml
 from PIL import Image
 from StreamDeck.DeviceManager import DeviceManager
 from io import BytesIO
-from typing import Union, Optional
+from typing import Union
 import queue
 import glob
 
@@ -146,8 +145,8 @@ class VirtualDecksConfig:
                     opt: dict = config[id]
                     configs.append(VirtualDeckConfig(str(id), opt))
             except Exception as e:
-                print("Error in load", e)
-                print(traceback.format_exc())
+                logging.critical("Error in load: %s", e)
+                logging.debug(traceback.format_exc())
 
         return configs
 
@@ -197,7 +196,7 @@ class VirtualDeck:
 
     def open(self):
         """Do nothing."""
-        print("OPEN VirtualDeck: " + self.serial_number)
+        logging.info("OPEN VirtualDeck: " + self.serial_number)
         pass
 
     def id(self) -> str:
@@ -395,9 +394,9 @@ class DeckOutputWebServer:
 
     def run(self, port: int):
         with http.server.ThreadingHTTPServer(('', port), DeckOutputWebHandler) as httpd:
-            print("serving at port", port)
+            logging.info("serving at port", port)
             httpd.serve_forever()
-            print("server is started")
+            logging.info("server is started")
 
 class DeckOutputWebHandler(http.server.BaseHTTPRequestHandler):
     pathKeyMap: dict = {}

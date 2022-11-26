@@ -137,9 +137,9 @@ class MyDecks:
             try:
                 t.join()
             except RuntimeError as e:
-                print("Error in start_decks", e)
+                logging.critical("Error in start_decks {}".format(e))
 
-        print("start_decks end!")
+        logging.info("start_decks end!")
         sys.exit()
 
     def list_mydecks(self) -> List['MyDeck']:
@@ -413,11 +413,10 @@ class MyDeck:
     def check_icon_file(self, file_path: str) -> bool:
         """Check whether file_path is image or not"""
         try:
-            print("file: {}".format(file_path))
             with wand.image.Image(filename=file_path):
                 return True
         except Exception as e:
-            print("Error in check_icon_file:", e)
+            logging.debug("Error in check_icon_file: {}".format(e))
             os.rename(file_path, file_path + '.back')
             return False
 
@@ -428,7 +427,7 @@ class MyDeck:
         if (deck := self.deck) is not None:
             key = self.abs_key(key)
             if use_lock:
-                logging.debug("%s => %d" % (self.myname, key))
+                # logging.debug("update_key_image: %s => %d" % (self.myname, key))
                 self.wait_can_lock(self.myname)
                 # Update requested key with the generated image.
                 deck.set_key_image(key, image)
@@ -439,10 +438,12 @@ class MyDeck:
     def locked(self, lock: str) -> bool:
         return self.locking.get(lock) is not None
 
-    def wait_can_lock(self, lock: str, wait: float = 0.5):
+    def wait_can_lock(self, lock: str, wait: float = 0.001):
+        time_locked: float = 0
         while self.locked(lock):
-            logging.debug("waiting lock for " + lock)
-            time.sleep(wait)
+            time_locked += wait
+            time.sleep(time_locked)
+            logging.debug("waiting lock for %s (%f sec)" % (lock, time_locked))
         self.locking[lock] = True
 
     def unlock(self, lock):
@@ -494,7 +495,7 @@ class MyDeck:
         deck = self.deck
         if deck is not None:
             # Print new key state
-            print("Deck {} Key {} = {}, page = {}".format(deck.id(), key, state, self.current_page()), flush=True)
+            logging.debug("Deck {} Key {} = {}, page = {}".format(deck.id(), key, state, self.current_page()))
 
 
         # Check if the key is changing to the pressed state.
@@ -565,10 +566,7 @@ class MyDeck:
     def stop_working_apps(self):
         """Try to stop working apps and wait until all of them are stopped."""
         for app in self.config.apps:
-            if app.in_working:
-                if app.use_trigger:
-                    app.trigger.set()
-                app.in_working = False
+            app.stop_app()
 
         i = 0
         # when app is stopped, app make stop False
@@ -577,8 +575,8 @@ class MyDeck:
                 if app.in_working:
                     time.sleep(0.01)
                     i += 1
-                    if i > 200:
-                        print(type(app), 'still waiting to stop working apps')
+                    if i % 200 == 0:
+                        logging.debug('%s still waiting to stop working apps', type(app))
 
 
     # handler to notify alert
@@ -671,8 +669,8 @@ class MyDeck:
                     if app.is_in_target_page() and not app.in_working:
                         time.sleep(0.01)
                         i += 1
-                        if i > 200:
-                            print(type(app), 'still waiting to start app')
+                        if i % 200 == 0:
+                            logging('%s still waiting to start app', type(app))
 
 
     def abs_key(self, key: int) -> int:
@@ -725,8 +723,8 @@ class Config:
                 f.close()
             except Exception as e:
                 shutil.move(self._file + '.backup', self._file)
-                print("Error in load", e)
-                print(traceback.format_exc())
+                logging.critical("Error in load: %s", e)
+                logging.debug(traceback.format_exc())
 
 
     def reflect_config(self, force: bool = False):
@@ -739,8 +737,8 @@ class Config:
                 self.mydeck.threading_apps(self.apps, self.background_apps)
                 self.mydeck.key_setup()
             except Exception as e:
-                print("Error in reflect_config", e)
-                print(traceback.format_exc())
+                logging.critical("Error in reflect_config: %s", e)
+                logging.debug(traceback.format_exc())
                 return None
 
     def load(self, force :bool = False):
@@ -754,29 +752,24 @@ class Config:
                     self._config_content = deepcopy(self._config_content_origin)
                     return self._config_content
                 except Exception as e:
-                    print("Error in load", e)
-                    print(traceback.format_exc())
+                    logging.critical("Error in load: %s", e)
+                    logging.debug(traceback.format_exc())
 
         return None
 
     def update_page_config_content(self, page: str, data: dict) -> bool:
         key = data.pop('key', None)
         if key is None or re.match('\D', str(key)) is not None:
-            print(key)
             return False
         key = int(key)
-        print("{} - {} - {}".format(page,key,data))
         page_config: Optional[dict] = self._config_content_origin.get('page_config')
         if page_config is None or type(page_config) is not dict:
-            print(page_config)
             return False
         current_page_config: Optional[dict] = page_config.get(page)
         if current_page_config is None or type(current_page_config) is not dict:
-            print(current_page_config)
             return False
         key_config: Optional[dict] = current_page_config.get('keys')
         if key_config is None and type(key_config) is not dict:
-            print(key_config)
             return False
 
         self._config_content_origin['page_config'][page]['keys'][key] = data
