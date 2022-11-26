@@ -1,12 +1,12 @@
 import time
 
-from mystreamdeck import MyStreamDeck, HookAppBase
+from mydeck import MyDeck, HookAppBase
 from typing import Optional, Dict
 
 class AppSyncDeckPage(HookAppBase):
     on = 'page_change_any'
     """Open the same name page of current page of deck on other decks."""
-    def __init__(self, mydeck: MyStreamDeck, option: dict = {}):
+    def __init__(self, mydeck: MyDeck, option: dict = {}):
         super().__init__(mydeck, option)
 
     def execute_on_hook(self):

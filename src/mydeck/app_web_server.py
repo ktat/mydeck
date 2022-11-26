@@ -1,7 +1,7 @@
 import time
 import os
 import sys
-from mystreamdeck import MyStreamDeck, BackgroundAppBase, DeckOutputWebServer
+from mydeck import MyDeck, BackgroundAppBase, DeckOutputWebServer
 
 class AppWebServer(BackgroundAppBase):
     # if app reuquire thread, true
@@ -9,7 +9,7 @@ class AppWebServer(BackgroundAppBase):
     # need to stop thread
     stop = False
 
-    def __init__(self, mydeck: MyStreamDeck, config: dict = {}):
+    def __init__(self, mydeck: MyDeck, config: dict = {}):
         super().__init__(mydeck)
         self.port = config.get('port')
         if self.port is None:

@@ -1,4 +1,4 @@
-from mystreamdeck import MyStreamDeck, TriggerAppBase, ImageOrFile
+from mydeck import MyDeck, TriggerAppBase, ImageOrFile
 from typing import Tuple, Optional
 from PIL import Image, ImageDraw, ImageFont
 import json
@@ -115,7 +115,7 @@ class JMASearch:
 class AppWeatherJp(TriggerAppBase):
     use_hour_trigger: bool = True
 
-    def __init__(self, mydeck: MyStreamDeck, option: dict ={}):
+    def __init__(self, mydeck: MyDeck, option: dict ={}):
         super().__init__(mydeck, option)
         self.area: Area = Area(option)
         self.jma: JMA = JMA(self.area)

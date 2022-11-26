@@ -5,7 +5,7 @@ import sys
 
 from PIL import Image, ImageDraw
 from typing import NoReturn, Tuple
-from mystreamdeck import MyStreamDeck, AppBase, ImageOrFile
+from mydeck import MyDeck, AppBase, ImageOrFile
 
 # whole image size
 X: int = 100
@@ -24,7 +24,7 @@ class AppClock(AppBase):
     y: int = 50
     l: int = 45
 
-    def __init__(self, mydeck: MyStreamDeck, option: dict = {}):
+    def __init__(self, mydeck: MyDeck, option: dict = {}):
         super().__init__(mydeck, option)
 
     def _pos (self, l: float, t: float) -> XY:

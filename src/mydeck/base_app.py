@@ -5,7 +5,7 @@ import traceback
 from threading import Event
 
 from typing import NoReturn, TYPE_CHECKING, Any
-from . import MyStreamDeck
+from . import MyDeck
 
 class ExceptionNoDeck(Exception):
     pass
@@ -26,9 +26,9 @@ class App:
 
     key_command: dict = {}
 
-    def __init__(self, mydeck: 'MyStreamDeck'):
+    def __init__(self, mydeck: 'MyDeck'):
         """Constructor pass MyStreamDeck instance."""
-        self.mydeck: 'MyStreamDeck'
+        self.mydeck: 'MyDeck'
         # sleep sec in thread
         self.time_to_sleep: float = 1
         # execute command when button pushed
@@ -54,7 +54,7 @@ class GameAppBase(App):
     """Base class of a game application"""
     require_key_count: int
     enable: bool = True
-    def __init__ (self, mydeck :MyStreamDeck, start_key_num :int = 0):
+    def __init__ (self, mydeck :MyDeck, start_key_num :int = 0):
         """Constructor. pass MyStreamDeck instance and key number of put game."""
         super().__init__(mydeck)
         self.data: dict = {}
@@ -63,7 +63,7 @@ class GameAppBase(App):
 
 class AppBase(App):
     """Base class of a normal application"""
-    def __init__(self, mydeck: 'MyStreamDeck', option: dict = {}):
+    def __init__(self, mydeck: 'MyDeck', option: dict = {}):
         """Constructor. Pass MyStreamDeck instance and app configuration."""
         super().__init__(mydeck)
 
@@ -172,7 +172,7 @@ class AppBase(App):
 
 class TriggerAppBase(AppBase):
     use_thread: bool = True
-    def __init__(self, mydeck: MyStreamDeck, config: dict = {}):
+    def __init__(self, mydeck: MyDeck, config: dict = {}):
         super().__init__(mydeck, config)
         if self.use_day_trigger or self.use_hour_trigger or self.use_minute_trigger:
             self.use_trigger = True
@@ -181,7 +181,7 @@ class BackgroundAppBase(App):
     """Base class of the application which works in background."""
     use_thread: bool = True
 
-    def __init__ (self, mydeck: MyStreamDeck, config: dict = {}):
+    def __init__ (self, mydeck: MyDeck, config: dict = {}):
         """Pass MyStreamDeck instance and configuration"""
         super().__init__(mydeck)
         # need to stop thread
@@ -216,7 +216,7 @@ class HookAppBase(App):
     use_thread: bool = False
     on: str
 
-    def __init__ (self, mydeck: MyStreamDeck, config: dict = {}):
+    def __init__ (self, mydeck: MyDeck, config: dict = {}):
         """Pass MyStreamDeck instance and configuration"""
         super().__init__(mydeck)
         if config is not None:

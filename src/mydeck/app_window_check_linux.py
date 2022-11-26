@@ -1,7 +1,7 @@
 import subprocess
 
 from typing import Optional
-from mystreamdeck import WindowCheckBase
+from mydeck import WindowCheckBase
 
 class AppWindowCheckLinux(WindowCheckBase):
     """Get curent window name for Linux environment using xdotool"""

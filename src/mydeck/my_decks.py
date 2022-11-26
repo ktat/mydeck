@@ -1,3 +1,4 @@
+2
 from contextlib import nullcontext
 import json
 import base64
@@ -19,7 +20,7 @@ BLANK_IMAGE = "iVBORw0KGgoAAAANSUhEUgAAAGQAAABkCAQAAADa613fAAAAaUlEQVR42u3PQREAA
             + "3g34MGNJMXKiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIi" \
             + "IiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiJyWeRuMgFyCP0cAAAAAElFTkSuQmCC"
 
-class MyDecks:
+class MyDecksManager:
     """Class to mange multiple decks"""
     ConfigQueue: dict[str, queue.Queue] = {}
     # mydeck_configs = {}
@@ -47,7 +48,7 @@ class MyDecks:
             o = DeckOutput.FromOption(c.output_option())
             deck: VirtualDeck = VirtualDeck(c.config(), i, o)
             decks.append(deck)
-            MyDecks.ConfigQueue[deck.get_serial_number()] = queue.Queue()
+            MyDecksManager.ConfigQueue[deck.get_serial_number()] = queue.Queue()
 
         return decks
 
@@ -522,4 +523,4 @@ class DeckOutputWebHandler(http.server.BaseHTTPRequestHandler):
         if deck_id is not None:
             deck = self.idDeckMap[deck_id]
             sn: str = deck.get_serial_number()
-            MyDecks.ConfigQueue[sn].put(data)
+            MyDecksManager.ConfigQueue[sn].put(data)

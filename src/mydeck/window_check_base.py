@@ -1,7 +1,7 @@
 import re
 import logging
 
-from mystreamdeck import BackgroundAppBase, MyStreamDeck
+from mydeck import BackgroundAppBase, MyDeck
 from typing import Optional
 
 class WindowCheckBase(BackgroundAppBase):
@@ -12,7 +12,7 @@ class WindowCheckBase(BackgroundAppBase):
         [r'^.+  YouTube.+Google Chrome$', 'YouTube'],
     ]
 
-    def __init__ (self, mydeck: MyStreamDeck, config: dict = {}):
+    def __init__ (self, mydeck: MyDeck, config: dict = {}):
         """'window_title_regexps' is a dict whose key is regexp and value is a replacement like the following
         {
           [r'^Meet.+Google Chrome$', 'Meet'],

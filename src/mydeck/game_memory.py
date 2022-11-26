@@ -1,12 +1,12 @@
 import time
 import random
-from mystreamdeck import MyStreamDeck, GameAppBase, ExceptionNoDeck
+from mydeck import MyDeck, GameAppBase, ExceptionNoDeck
 from typing import NoReturn
 
 class GameMemory(GameAppBase):
     require_key_count: int = 15
 
-    def __init__ (self, mydeck :MyStreamDeck, start_key_num :int = 0):
+    def __init__ (self, mydeck :MyDeck, start_key_num :int = 0):
         super().__init__(mydeck)
 
         if self.enable == False:

@@ -1,6 +1,6 @@
 import time
 import sys
-from mystreamdeck import MyStreamDeck, BackgroundAppBase
+from mydeck import MyDeck, BackgroundAppBase
 from typing import Callable, Optional
 
 class AppAlert(BackgroundAppBase):
@@ -17,7 +17,7 @@ class AppAlert(BackgroundAppBase):
     in_working = False
     is_background_app = True
 
-    def __init__ (self, mydeck: MyStreamDeck, config: dict):
+    def __init__ (self, mydeck: MyDeck, config: dict):
         alert_key_config: dict = {}
         check_interval = config.get("check_interval")
         if check_interval is not None and type(check_interval) == int:

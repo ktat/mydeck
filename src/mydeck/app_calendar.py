@@ -1,5 +1,5 @@
 from PIL import Image, ImageDraw, ImageFont
-from mystreamdeck import MyStreamDeck, TriggerAppBase, ImageOrFile
+from mydeck import MyDeck, TriggerAppBase, ImageOrFile
 import time
 import sys
 import datetime

@@ -5,7 +5,7 @@ import threading
 import sys
 
 from PIL import Image, ImageDraw, ImageFont
-from mystreamdeck import AppBase, ImageOrFile, MyStreamDeck
+from mydeck import AppBase, ImageOrFile, MyDeck
 from typing import NoReturn
 
 # whole image size
@@ -22,7 +22,7 @@ class AppStopWatch(AppBase):
         "MyStreamDeckStopWatchToggle": lambda app: app.toggle_count(),
     }
 
-    def __init__(self, mydeck: MyStreamDeck, option: dict = {}):
+    def __init__(self, mydeck: MyDeck, option: dict = {}):
         super().__init__(mydeck, option)
 
     # setup key configuration
