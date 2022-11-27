@@ -36,27 +36,27 @@ class AppBingPhoto(TriggerAppBase):
         d: datetime.datetime = datetime.datetime.now()
         res = requests.get(BING_URL + self.lang)
         if res.status_code == requests.codes.ok:
-            data: list = json.loads(res.text)
-            image_url: str = 'https://bing.com' + data['images'][0]['url']
-            ext: str = "jpg"
-            m = re.search('\.(jpg|png|gif)', image_url)
-            if m is not None and m.group(1) is not None:
-                ext = m.group(1)
-
-            image_res = requests.get(image_url)
-            if image_res.status_code == requests.codes.ok:
-                icon_file = "/tmp/mydeck-bing_photo." + ext
-                with open(icon_file, mode="wb") as f:
-                    f.write(image_res.content)
-            self.mydeck.update_key_image(
-                key,
-                self.mydeck.render_key_image(
-                    ImageOrFile(icon_file),
-                    "",
-                    'black',
-                    True,
+            data: dict = json.loads(res.text)
+            if data.get('images') is not None and len(data['images']) > 0 and (url := data['images'][0].get('url')):
+                image_url: str = 'https://bing.com' + url
+                ext: str = "jpg"
+                m = re.search('\.(jpg|png|gif)', image_url)
+                if m is not None and m.group(1) is not None:
+                    ext = m.group(1)
+                image_res = requests.get(image_url)
+                if image_res.status_code == requests.codes.ok:
+                    icon_file = "/tmp/mydeck-bing_photo." + ext
+                    with open(icon_file, mode="wb") as f:
+                        f.write(image_res.content)
+                self.mydeck.update_key_image(
+                    key,
+                    self.mydeck.render_key_image(
+                        ImageOrFile(icon_file),
+                        "",
+                        'black',
+                        True,
+                    )
                 )
-            )
 
     def open_browser(self):
         command = ['google-chrome', '--profile-directory=Default', 'https://www.bing.com/']

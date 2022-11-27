@@ -47,7 +47,7 @@ class AppDoodle(TriggerAppBase):
                 with open(icon_file, mode="wb") as f:
                     f.write(image_res.content)
                 im = Image.open(icon_file)
-                crop_width = (im.size[0] - im.size[1]) / 3
+                crop_width = int((im.size[0] - im.size[1]) / 3)
                 im_cropped = im.crop((crop_width,0,im.size[0] - crop_width,im.size[1]))
                 im_cropped.save(icon_file, format = ext, quality=95)
             self.mydeck.update_key_image(
