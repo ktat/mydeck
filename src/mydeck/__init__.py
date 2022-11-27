@@ -3,8 +3,8 @@ from pkgutil import iter_modules,extend_path
 from pathlib import Path
 from importlib import import_module
 
+from .my_decks_manager import *
 from .my_decks import *
-from .base import *
 from .base_app import *
 from .window_check_base import *
 
@@ -13,7 +13,7 @@ package_dir = extend_path(__path__, __name__)
 
 for item in iter_modules(package_dir):
     module_name = item.name
-    if module_name in ["my_decks", "base", "base_app", "window_check_base"]:
+    if module_name in ["my_decks_manager", "my_decks", "base_app", "window_check_base"]:
         continue
     # import the module and iterate through its attributes
     module = import_module(f"{__name__}.{module_name}")

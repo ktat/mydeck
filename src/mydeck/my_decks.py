@@ -21,11 +21,10 @@ from typing import Any, NoReturn, List, TYPE_CHECKING, Optional, Callable, Dict,
 from PIL import Image, ImageDraw, ImageFont
 from StreamDeck.ImageHelpers import PILHelper
 from StreamDeck.Devices import StreamDeckOriginalV2
-from .my_decks import MyDecksManager
 from .lock import Lock
 
 if TYPE_CHECKING:
-    from . import App, AppBase, BackgroundAppBase, HookAppBase
+    from . import AppBase, BackgroundAppBase, HookAppBase
 
 class ExceptionInvalidMyDecksConfig(Exception):
     pass
@@ -84,6 +83,7 @@ class MyDecks:
 
     def start_decks(self, no_real_device: bool = False) -> NoReturn:
         """Start and display images to buttons according to configuration."""
+        from .my_decks_manager import MyDecksManager
         streamdecks = MyDecksManager(self.vdeck_config, no_real_device).devices
         logging.info("Found {} Stream Deck(s).\n".format(len(streamdecks)))
 
@@ -673,6 +673,7 @@ class MyDeck:
                     app.execute_on_hook()
 
     def update_config(self):
+        from .my_decks_manager import MyDecksManager
         while True:
             sn = self.deck.get_serial_number()
             if MyDecksManager.ConfigQueue.get(sn) is not None:
