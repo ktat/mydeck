@@ -5,7 +5,7 @@ from importlib import import_module
 
 from .my_decks_manager import *
 from .my_decks import *
-from .base_app import *
+from .my_decks_app_base import *
 from .window_check_base import *
 
 # iterate through the modules in the current package

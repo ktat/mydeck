@@ -24,7 +24,7 @@ from StreamDeck.Devices import StreamDeckOriginalV2
 from .lock import Lock
 
 if TYPE_CHECKING:
-    from . import AppBase, BackgroundAppBase, HookAppBase
+    from .my_decks_app_base import AppBase, BackgroundAppBase, HookAppBase
 
 class ExceptionInvalidMyDecksConfig(Exception):
     pass
