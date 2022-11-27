@@ -292,13 +292,12 @@ class MyDeck:
 
         if name[0] != "~ALERT":
             self.set_alert_off()
-
         if self.deck is not None and name != self._current_page and self.has_page_key_config(name):
             self.set_previous_page(self._current_page)
             self.stop_working_apps()
             self._current_page = name
             self.set_game_status_off()
-            self.deck.reset()
+            Lock.do_with_lock(self.deck.get_serial_number(), lambda: self.deck.reset())
             self.key_setup()
             self.run_page_command(name)
             self.run_hook_apps('page_change')
@@ -332,7 +331,7 @@ class MyDeck:
             page_configuration = self.key_config().get(self.current_page())
             if page_configuration is not None:
                 if page_configuration.get(key) is not None:
-                    self.set_key(key, page_configuration.get(key), False)
+                    self.set_key(key, page_configuration.get(key), True)
 
                     # Register callback function for the time when a key state changes.
                     deck.set_key_callback(lambda deck, key, state: self.key_change_callback(key, state))
@@ -394,15 +393,16 @@ class MyDeck:
             res = requests.get(icon_url)
             if res.status_code == requests.codes.ok:
                 icon_data = res.content
-                Lock.wait_can_lock(icon_file)
+                l = Lock(icon_file)
+                l.wait()
                 if icon_url[-3:len(icon_url)] == 'svg':
                     icon_file = icon_file[0:-4] + '.png'
                     svg2png(bytestring=icon_data,write_to=icon_file)
-                    Lock.unlock(icon_file)
+                    l.unlock()
                 else:
                     with open(icon_file, mode="wb") as f:
                         f.write(icon_data)
-                        Lock.unlock(icon_file)
+                        l.unlock()
                 if self.check_icon_file(icon_file):
                     return icon_file
         else:
@@ -428,10 +428,8 @@ class MyDeck:
             key = self.abs_key(key)
             if use_lock:
                 # logging.debug("update_key_image: %s => %d" % (self.myname, key))
-                Lock.wait_can_lock(self.myname)
                 # Update requested key with the generated image.
-                deck.set_key_image(key, image)
-                Lock.unlock(self.myname)
+                Lock.do_with_lock(self.deck.get_serial_number(), lambda: deck.set_key_image(key, image))
             else:
                 deck.set_key_image(key, image)
 

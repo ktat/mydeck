@@ -2,7 +2,13 @@ import re
 import http
 import json
 import glob
+import logging
 from typing import Union
+
+# 100 x 100 blank image
+BLANK_IMAGE = "iVBORw0KGgoAAAANSUhEUgAAAGQAAABkCAQAAADa613fAAAAaUlEQVR42u3PQREAAAgDoC251Y" \
+            + "3g34MGNJMXKiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIi" \
+            + "IiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiJyWeRuMgFyCP0cAAAAAElFTkSuQmCC"
 
 class DeckOutputWebHandler(http.server.BaseHTTPRequestHandler):
     pathKeyMap: dict = {}
@@ -10,12 +16,22 @@ class DeckOutputWebHandler(http.server.BaseHTTPRequestHandler):
 
     @staticmethod
     def setKeyImage(id: str, key: str, image: str):
-        self = DeckOutputWebHandler
-        if self.pathKeyMap.get(id) == None:
-            self.pathKeyMap[id] = {}
-        if self.pathKeyMap[id].get(key) == None:
-            self.pathKeyMap[id][key] = None
-        self.pathKeyMap[id][key] = image
+        c = DeckOutputWebHandler
+        if c.pathKeyMap.get(id) == None:
+            c.pathKeyMap[id] = {}
+        if c.pathKeyMap[id].get(key) == None:
+            c.pathKeyMap[id][key] = None
+        c.pathKeyMap[id][key] = image
+
+    @staticmethod
+    def reset_keys(id: str, key_count: int):
+        c = DeckOutputWebHandler
+        c.pathKeyMap[id] = {}
+        k: int = 0
+
+        while k < key_count:
+            c.pathKeyMap[id][k] = BLANK_IMAGE
+            k += 1
 
     def call_key_call_back(self, id, key):
         from .my_decks_manager import VirtualDeck
@@ -33,6 +49,8 @@ class DeckOutputWebHandler(http.server.BaseHTTPRequestHandler):
             return self.res_device_info()
         elif self.path == '/images':
             return self.res_images()
+        elif self.path == '/device_key_images':
+            return self.res_device_key_images()
         elif (m := re.search("(/src/Assets/[^/]+\.(\w+))", self.path)) is not None and m.group(2) is not None:
             image_path = m.group(1)
             ext = m.group(2)
@@ -103,6 +121,9 @@ class DeckOutputWebHandler(http.server.BaseHTTPRequestHandler):
                 "columns": deck.columns(),
             }
         self.api_json_response(json_data)
+
+    def res_device_key_images(self):
+        self.api_json_response(self.pathKeyMap)
 
     def res_status(self):
         from .my_decks import MyDecks

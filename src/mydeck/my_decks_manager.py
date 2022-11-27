@@ -11,11 +11,6 @@ from StreamDeck.DeviceManager import DeviceManager
 from io import BytesIO
 from typing import Union
 
-# 100 x 100 blank image
-BLANK_IMAGE = "iVBORw0KGgoAAAANSUhEUgAAAGQAAABkCAQAAADa613fAAAAaUlEQVR42u3PQREAAAgDoC251Y" \
-            + "3g34MGNJMXKiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIi" \
-            + "IiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiJyWeRuMgFyCP0cAAAAAElFTkSuQmCC"
-
 class MyDecksManager:
     """Class to mange multiple decks"""
     ConfigQueue: dict[str, queue.Queue] = {}
@@ -214,18 +209,10 @@ class VirtualDeck:
 
     def reset(self):
         """Reset key images."""
-        from .web_server import DeckOutputWebHandler
+        self.current_key_status = {}
 
-        k = 0
         # for web server
-        h = DeckOutputWebHandler
-        id = self.id()
-        if h.pathKeyMap.get(id) is None:
-            h.pathKeyMap[id] = {}
-
-        while k < self.key_count():
-            h.pathKeyMap[id][k] = BLANK_IMAGE
-            k += 1
+        DeckOutputWebHandler.reset_keys(self.id(), self.key_count())
 
     def deck_type(self):
         """Do nothing."""
