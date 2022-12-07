@@ -25,7 +25,7 @@ class AppAlert(BackgroundAppBase):
         retry_interval = config.get("retry_interval")
         if retry_interval is not None and type(retry_interval) == int:
             self._retry_interval = retry_interval
-        conf = config.get("key_cofnig")
+        conf = config.get("key_config")
         if conf is not None and type(conf) == dict:
             alert_key_config = conf
 
