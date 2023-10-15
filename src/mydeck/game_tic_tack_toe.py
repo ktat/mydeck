@@ -16,7 +16,6 @@ WIN_CONDITION = {
     56: True,
     448: True,
     273: True,
-    428: True,
     73: True,
     146: True,
     292: True,
