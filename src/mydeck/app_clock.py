@@ -3,7 +3,7 @@ import datetime
 
 from PIL import Image, ImageDraw
 from typing import Tuple
-from mydeck import MyDeck, AppBase, ImageOrFile
+from mydeck import MyDeck, ThreadAppBase, ImageOrFile
 
 # whole image size
 X: int = 100
@@ -12,11 +12,8 @@ Y: int = 100
 XY = tuple[float, float]
 HMS = tuple[int, int, int]
 
-class AppClock(AppBase):
+class AppClock(ThreadAppBase):
     """Show an analog clock on a key"""
-
-    # if app reuquire thread, true
-    use_thread: bool = True
 
     x: int = 50
     y: int = 50

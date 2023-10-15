@@ -2,13 +2,17 @@ import re
 import http
 import json
 import glob
+import psutil
+import os
+import sys
 import logging
 from typing import Union
 
 # 100 x 100 blank image
 BLANK_IMAGE = "iVBORw0KGgoAAAANSUhEUgAAAGQAAABkCAQAAADa613fAAAAaUlEQVR42u3PQREAAAgDoC251Y" \
-            + "3g34MGNJMXKiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIi" \
-            + "IiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiJyWeRuMgFyCP0cAAAAAElFTkSuQmCC"
+    + "3g34MGNJMXKiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIi" \
+    + "IiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiJyWeRuMgFyCP0cAAAAAElFTkSuQmCC"
+
 
 class DeckOutputWebHandler(http.server.BaseHTTPRequestHandler):
     pathKeyMap: dict = {}
@@ -36,21 +40,33 @@ class DeckOutputWebHandler(http.server.BaseHTTPRequestHandler):
     def call_key_call_back(self, id, key):
         from .my_decks_manager import VirtualDeck
 
-        deck :VirtualDeck = self.idDeckMap[id]
+        deck: VirtualDeck = self.idDeckMap[id]
         deck.key_callback(deck, key, True)
         deck.key_callback(deck, key, False)
 
+    # https://towardsdatascience.com/the-strange-size-of-python-objects-in-memory-ce87bdfbb97f
+    def actualsize(self, input_obj):
+        import sys
+        import gc
+
+        memory_size = 0
+        ids = set()
+        objects = [input_obj]
+        while objects:
+            new = []
+            for obj in objects:
+                if id(obj) not in ids:
+                    ids.add(id(obj))
+                    memory_size += sys.getsizeof(obj)
+                    new.append(obj)
+            objects = gc.get_referents(*new)
+        return memory_size
+
     def do_GET(self):
         if self.path == '/':
-            return self.res_vdeck_html()
-        elif self.path == '/status':
-            return self.res_status()
-        elif self.path == '/device_info':
-            return self.res_device_info()
-        elif self.path == '/images':
-            return self.res_images()
-        elif self.path == '/device_key_images':
-            return self.res_device_key_images()
+            return self.res_file_html('src/html/index.html')
+        elif self.path == '/chart/status':
+            return self.res_file_html('src/html/chart-status.html')
         elif (m := re.search("(/src/Assets/[^/]+\.(\w+))", self.path)) is not None and m.group(2) is not None:
             image_path = m.group(1)
             ext = m.group(2)
@@ -59,7 +75,17 @@ class DeckOutputWebHandler(http.server.BaseHTTPRequestHandler):
                     return self.response_image(f, ext)
                 except Exception as e:
                     pass
-        elif (m := re.search('^/([^/]+)(?:/(\d+))?$', self.path)) is not None:
+        elif self.path == '/api/status':
+            return self.res_status()
+        elif self.path == '/api/resource':
+            return self.res_resource()
+        elif self.path == '/api/device_info':
+            return self.res_device_info()
+        elif self.path == '/api/images':
+            return self.res_images()
+        elif self.path == '/api/device_key_images':
+            return self.res_device_key_images()
+        elif (m := re.search('^/api/([^/]+)(?:/(\d+))?$', self.path)) is not None:
             id: str = m.group(1)
             # /id/key_num
             if m.group(2) is not None:
@@ -73,7 +99,7 @@ class DeckOutputWebHandler(http.server.BaseHTTPRequestHandler):
 
     def do_POST(self):
         # /key_setting/: update configuration YAML file
-        if self.path == '/key_setting/':
+        if self.path == '/api/key_setting/':
             return self.res_key_setting()
 
         self.response_404()
@@ -86,7 +112,8 @@ class DeckOutputWebHandler(http.server.BaseHTTPRequestHandler):
     def api_headers(self, status: int = 200):
         self.send_response(status)
         self.send_header("Content-Type", 'application/json')
-        self.send_header("Access-Control-Allow-Origin", self.headers.get("Origin"))
+        self.send_header("Access-Control-Allow-Origin",
+                         self.headers.get("Origin"))
         self.end_headers()
 
     def api_json_response(self, data: dict):
@@ -104,10 +131,10 @@ class DeckOutputWebHandler(http.server.BaseHTTPRequestHandler):
         self.end_headers()
         self.wfile.write(f.read())
 
-    def res_vdeck_html(self):
+    def res_file_html(self, file: str):
         self.text_headers()
-        f = open('src/html/index.html', 'r+b')
-        self.wfile.write(f.read())
+        with open(file, 'r+b') as f:
+            self.wfile.write(f.read())
 
     def res_device_info(self):
         from .my_decks_manager import VirtualDeck
@@ -142,6 +169,24 @@ class DeckOutputWebHandler(http.server.BaseHTTPRequestHandler):
                 })
         self.api_json_response(json_data)
 
+    def res_resource(self):
+        from .my_decks import MyDecks
+        json_data: dict[str, int] = {
+            "apps": {},
+            "memory": 0
+        }
+        keys = MyDecks.mydecks.keys()
+        for sn_alias in keys:
+            device = MyDecks.mydecks[sn_alias]
+            json_data["memory"] = psutil.Process(os.getpid()).memory_info().rss
+            json_data["calc_memory"] = self.actualsize(MyDecks.mydecks)
+            json_data["cpu"] = psutil.Process(
+                os.getpid()).cpu_percent(interval=1)
+            for app in device.config.apps:
+                json_data["apps"][sn_alias+"." +
+                                  app.name()] = self.actualsize(app)
+        self.api_json_response(json_data)
+
     def res_images(self):
         json_data: list = glob.glob("./src/Assets/*.png", recursive=False)
         self.api_json_response(json_data)
@@ -163,7 +208,7 @@ class DeckOutputWebHandler(http.server.BaseHTTPRequestHandler):
         json_str = self.rfile.read(content_length).decode('utf-8')
 
         data: dict = json.loads(json_str)
-        deck_id :Union[str,None] = data.pop('id', None)
+        deck_id: Union[str, None] = data.pop('id', None)
         if deck_id is not None:
             deck = self.idDeckMap[deck_id]
             sn: str = deck.get_serial_number()

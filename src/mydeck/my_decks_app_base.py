@@ -103,6 +103,7 @@ class AppBase(App):
             sys.exit()
 
         while True:
+            logging.debug("%s is working", self.name())
             self.in_working = True
 
             try:
@@ -179,6 +180,9 @@ class AppBase(App):
         else:
             return False
 
+class ThreadAppBase(AppBase):
+    use_thread: bool = True
+
 class TriggerAppBase(AppBase):
     use_thread: bool = True
     def __init__(self, mydeck: MyDeck, config: dict = {}):
@@ -186,6 +190,7 @@ class TriggerAppBase(AppBase):
         if self.use_day_trigger or self.use_hour_trigger or self.use_minute_trigger:
             self.use_trigger = True
         self.trigger = Event()
+
 class BackgroundAppBase(App):
     """Base class of the application which works in background."""
     use_thread: bool = True

@@ -29,7 +29,7 @@ class Lock:
         return Lock.locking.get(lock) is not None
 
     @staticmethod
-    def do_with_lock(lock: str, l: Callable, wait: float = 0.001):
+    def do_with_lock(lock: str, l: Callable, wait: float = 0.05):
         lo = Lock(lock)
         lo.wait(wait)
         l()

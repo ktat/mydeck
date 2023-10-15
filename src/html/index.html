@@ -107,6 +107,18 @@
 </head>
 <body>
 <div id="container">
+  APIs
+  <ul>
+    <li><a href="/api/status">Status JSON</a></li>
+    <li><a href="/api/resource">Resouse JSON</a></li>
+    <li><a href="/api/device_info">DeviceInfo JSON</a></li>
+    <li><a href="/api/images">images JSON</a></li>
+    <li><a href="/api/device_key_images">Devices and its images JSON</a></li>
+  </ul>
+  Status Chart
+  <ul>
+    <li><a href="/chart/status">Status Chart</a></li>
+  </ul>
   <div id="app1">
     <div id="block1" :class="modal_block_class" @click.left="closeSettingModal()"></div>
     <div class="app">
@@ -185,10 +197,10 @@
 <script>
 "use strict";
 const baseURL = location.href;
-axios.get(baseURL + "/images").then((res) => {
+axios.get(baseURL + "api/images").then((res) => {
     let images = res.data;
 
-    axios.get(baseURL + "/device_info").then(
+    axios.get(baseURL + "api/device_info").then(
         (res) => {
             const keys = Object.keys(res.data).sort()
             keys.forEach((i,v) => {
@@ -370,11 +382,11 @@ axios.get(baseURL + "/images").then((res) => {
                         }
                         data.id = this.id;
                         data.key = this.settingKey;
-                        axios.post(baseURL + 'key_setting/', data);
+                        axios.post(baseURL + 'api/key_setting/', data);
                         this.closeSettingModal();
                     },
                     loadData: function () {
-                        axios.get(baseURL + i).then(
+                        axios.get(baseURL + 'api/' + i).then(
                             (response) => {
                                   this.key_count = this.deviceInfo.key_count;
                                   this.items = response;
@@ -395,7 +407,7 @@ axios.get(baseURL + "/images").then((res) => {
 
 function tap(e, id, key) {
     setTimeout(() => {buttonOpacity(e, 50)});
-    axios.get(baseURL + id + '/' + key);
+    axios.get(baseURL + 'api/' + id + '/' + key);
 }
 
 function buttonOpacity(e, o) {

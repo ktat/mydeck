@@ -58,7 +58,7 @@ class GameRandomNumber(GameAppBase):
         # Set initial screen brightness to 30%.
         deck.set_brightness(30)
 
-        self.data["correct"] = [];
+        self.data["correct"] = []
 
         t = threading.Thread(target=lambda: self.prepare_number(num), args=())
         t.start()
@@ -175,5 +175,5 @@ class GameRandomNumber(GameAppBase):
                                 "label": "NG",
                                 "image": "./src/Assets/bad.png",
                             })
-                            self.data["answer"] = [];
+                            self.data["answer"] = []
 
