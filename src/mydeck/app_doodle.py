@@ -9,6 +9,7 @@ import time
 import glob
 from PIL import Image
 
+
 class AppDoodle(TriggerAppBase):
     use_hour_trigger: bool = True
     doodle_name: str = ''
@@ -36,10 +37,12 @@ class AppDoodle(TriggerAppBase):
         icon_file: str = ''
         icon_files: list[str] = glob.glob(image_prefix + "*")
         if len(icon_files) > 0:
-            icon_files = sorted(icon_files, key=lambda item: os.stat(item).st_mtime )
+            icon_files = sorted(
+                icon_files, key=lambda item: os.stat(item).st_mtime)
             icon_file = icon_files[0]
         if os.path.isfile(icon_file) is False or time.time() - os.stat(icon_file).st_mtime >= 3600:
-            doodles_api_url = 'https://www.google.com/doodles/json/{0:04d}/{1:02d}'.format(d.year, d.month)
+            doodles_api_url = 'https://www.google.com/doodles/json/{0:04d}/{1:02d}'.format(
+                d.year, d.month)
             res = requests.get(doodles_api_url)
             if res.status_code == requests.codes.ok:
                 data: list = json.loads(res.text)
@@ -59,9 +62,11 @@ class AppDoodle(TriggerAppBase):
                         f.write(image_res.content)
                     im = Image.open(icon_file)
                     crop_width = int((im.size[0] - im.size[1]) / 3)
-                    im_cropped = im.crop((crop_width,0,im.size[0] - crop_width,im.size[1]))
+                    im_cropped = im.crop(
+                        (crop_width, 0, im.size[0] - crop_width, im.size[1]))
                     percent = 100 / im_cropped.width
-                    im_resized = im_cropped.resize((int(im_cropped.width * percent), int(im_cropped.height * percent)))
+                    im_resized = im_cropped.resize(
+                        (int(im_cropped.width * percent), int(im_cropped.height * percent)))
                     im_resized.save(icon_file, format=ext, quality=95)
         self.mydeck.update_key_image(
             key,
@@ -74,5 +79,6 @@ class AppDoodle(TriggerAppBase):
         )
 
     def open_browser(self):
-        command = ['google-chrome', '--profile-directory=Default', 'https://www.google.com/doodles/' + self.doodle_name]
+        command = ['google-chrome', '--profile-directory=Default',
+                   'https://www.google.com/doodles/' + self.doodle_name]
         subprocess.Popen(command)

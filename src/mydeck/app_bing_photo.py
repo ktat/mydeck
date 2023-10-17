@@ -11,6 +11,7 @@ from PIL import Image
 
 BING_URL = 'https://www.bing.com/HPImageArchive.aspx?format=js&idx=0&n=1&mkt='
 
+
 class AppBingPhoto(TriggerAppBase):
     use_day_trigger: bool = True
     _key_conf = {
@@ -21,6 +22,7 @@ class AppBingPhoto(TriggerAppBase):
     key_command = {
         "OpenBing": lambda app: app.open_browser(),
     }
+
     def __init__(self, mydeck: MyDeck, config: dict = {}):
         super().__init__(mydeck, config)
         self.lang = 'en-US'
@@ -36,13 +38,17 @@ class AppBingPhoto(TriggerAppBase):
             self.mydeck.set_key_conf(page, key, self._key_conf)
 
     def set_image_to_key(self, key: int, page: str):
+        if not self.is_in_target_page():
+            return
+
         image_prefix: str = "/tmp/mydeck-bing_photo."
         self.key_setup()
         d: datetime.datetime = datetime.datetime.now()
         icon_file: str = ''
         icon_files: list[str] = glob.glob(image_prefix + '*')
         if len(icon_files) > 0:
-            icon_files = sorted(icon_files, key=lambda item: os.stat(item).st_mtime )
+            icon_files = sorted(
+                icon_files, key=lambda item: os.stat(item).st_mtime)
             icon_file = icon_files[0]
         if os.path.isfile(icon_file) is False or time.time() - os.stat(icon_file).st_mtime >= 3600:
             res = requests.get(BING_URL + self.lang)
@@ -58,12 +64,12 @@ class AppBingPhoto(TriggerAppBase):
                     if image_res.status_code == requests.codes.ok:
                         icon_file = image_prefix + ext
 
-
                         with open(icon_file, mode="wb") as f:
                             f.write(image_res.content)
                         im = Image.open(icon_file)
                         percent = 100 / im.width
-                        im_resized = im.resize((int(im.width * percent), int(im.height * percent)))
+                        im_resized = im.resize(
+                            (int(im.width * percent), int(im.height * percent)))
                         im_resized.save(icon_file, format=ext, quality=95)
         self.mydeck.update_key_image(
             key,
@@ -76,5 +82,6 @@ class AppBingPhoto(TriggerAppBase):
         )
 
     def open_browser(self):
-        command = ['google-chrome', '--profile-directory=Default', 'https://www.bing.com/']
+        command = ['google-chrome', '--profile-directory=Default',
+                   'https://www.bing.com/']
         subprocess.Popen(command)
