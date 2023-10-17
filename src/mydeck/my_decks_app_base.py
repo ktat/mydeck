@@ -8,8 +8,10 @@ import logging
 from typing import NoReturn, TYPE_CHECKING, Any
 from . import MyDeck
 
+
 class ExceptionNoDeck(Exception):
     pass
+
 
 class App:
     """Commn base class of an application and a game."""
@@ -23,7 +25,7 @@ class App:
     use_day_trigger: bool = False
     use_hour_trigger: bool = False
     use_minute_trigger: bool = False
-    use_trigger :bool = False
+    use_trigger: bool = False
 
     key_command: dict = {}
 
@@ -56,19 +58,23 @@ class App:
     def name(self) -> str:
         return "%s" % self.__class__.__name__
 
+
 class GameAppBase(App):
     """Base class of a game application"""
     require_key_count: int
     enable: bool = True
-    def __init__ (self, mydeck :MyDeck, start_key_num :int = 0):
+
+    def __init__(self, mydeck: MyDeck, start_key_num: int = 0):
         """Constructor. pass MyDeck instance and key number of put game."""
         super().__init__(mydeck)
         self.data: dict = {}
         if self.require_key_count > mydeck.key_count:
             self.enable = False
 
+
 class AppBase(App):
     """Base class of a normal application"""
+
     def __init__(self, mydeck: 'MyDeck', option: dict = {}):
         """Constructor. Pass MyDeck instance and app configuration."""
         super().__init__(mydeck)
@@ -83,13 +89,14 @@ class AppBase(App):
     # implment it in subclass
     def set_image_to_key(self, key: int, page: str):
         """Set image to key. Implement this method in subclass."""
-        logging.critical("Implemnt set_image_to_key in subclass for app to use thread anytime.")
+        logging.critical(
+            "Implemnt set_image_to_key in subclass for app to use thread anytime.")
 
     # check current page is whther app's target or not
     def is_in_target_page(self) -> bool:
         """Return true when the current page is the target of the app."""
         page = self.mydeck.current_page()
-        key  = self.page_key.get(page)
+        key = self.page_key.get(page)
         if key is not None:
             return True
         else:
@@ -108,11 +115,12 @@ class AppBase(App):
 
             try:
                 page = self.mydeck.current_page()
-                key  = self.page_key.get(page)
+                key = self.page_key.get(page)
                 if key is not None:
                     self.set_image_to_key(key, page)
             except Exception as e:
-                logging.critical('Error in app_base.start {} {}'.format(type(self), e))
+                logging.critical(
+                    'Error in app_base.start {} {}'.format(type(self), e))
                 logging.debug(traceback.format_exc())
 
             # exit when main process is finished
@@ -180,28 +188,32 @@ class AppBase(App):
         else:
             return False
 
+
 class ThreadAppBase(AppBase):
     use_thread: bool = True
 
+
 class TriggerAppBase(AppBase):
     use_thread: bool = True
+
     def __init__(self, mydeck: MyDeck, config: dict = {}):
         super().__init__(mydeck, config)
         if self.use_day_trigger or self.use_hour_trigger or self.use_minute_trigger:
             self.use_trigger = True
         self.trigger = Event()
 
+
 class BackgroundAppBase(App):
     """Base class of the application which works in background."""
     use_thread: bool = True
 
-    def __init__ (self, mydeck: MyDeck, config: dict = {}):
+    def __init__(self, mydeck: MyDeck, config: dict = {}):
         """Pass MyDeck instance and configuration"""
         super().__init__(mydeck)
         # need to stop thread
         self.stop: bool = False
         # sleep time in thread
-        self.sleep: float  = 1
+        self.sleep: float = 1
 
         self.in_working = False
         self.is_background_app = True
@@ -225,12 +237,13 @@ class BackgroundAppBase(App):
 
         sys.exit()
 
+
 class HookAppBase(App):
     """Base class of the application which works is a specific timing."""
     use_thread: bool = False
     on: str
 
-    def __init__ (self, mydeck: MyDeck, config: dict = {}):
+    def __init__(self, mydeck: MyDeck, config: dict = {}):
         """Pass MyDeck instance and configuration"""
         super().__init__(mydeck)
         if config is not None:
