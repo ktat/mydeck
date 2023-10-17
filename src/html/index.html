@@ -1,423 +1,453 @@
 <html lang="ja">
+
 <head>
-  <meta name="viewport" content="width=device-width,initial-scale=1">
-  <title>Virtual Decks</title>
-  <script src="https://unpkg.com/axios/dist/axios.min.js"></script>
-  <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
-  <style>
-    body,div {
-        margin-left: 0px;
-        margin-right: 0px;
-        padding: 0px;
-    }
-    h2 {
-        margin-top: 0px;
-    }
-    div {
-        margin-left: 0px;
-        margin-right: 0px;
-        margin-top: 5px;
-        padding: 0px;
-    }
-    span {
-        margin-left: 0px;
-        list-style: none;
-        padding: 5px;
-        user-select: none;
-    }
-    .mod0::after {
-        content: "\A";
-        white-space: pre;
-    }
-    img {
-        border-radius: 10px;
-    }
-    div.app {
-        padding-bottom:5px;
-    }
-    div.app h1 {
-        font-size: 1.5em;
-        margin: 0px;
-	    padding-left: 5px;
-        padding-bottom: 5px;
-    }
-    #settingModal {
-        position: absolute;
-        left: 50%;
-        top: 50%;
-        transform: translate(-50%, -50%);
-        color: white;
-        border-radius: 10px;
-        width: 500px;
-        height: 450px;
-        z-index: 1000;
-        background-color: #555;
-        opacity: 95%;
-        padding: 10px;
-    }
-    #closeModal {
-        float: right;
-        margin-right: 10px;
-    }
-    .path, .url {
-        width: 450px;
-    }
-    span.valid::before {
-        content: '\02705';
-	    color: #3b3;
-        width: 10px;
-    }
-    span.invalid::before {
-        content: '\0274c';
-        font-size: 0.8em;
-	    color: #c44;
-        width: 10px;
-    }
-    .icon_image {
-        margin-right:15px;
-        float: right;
-    }
-    .icon_image img {
-        width: 50px;
-    }
-    div#container {
-        overflow: scroll;
-    }
-    div[id^="block"].on {
-        float: left;
-        position: absolute;
-        left: 0px;
-        top: 0px;
-        width: 100%;
-        height: 100%;
-        z-index: 999;
-        background-color: #999;
-        opacity: 75%;
-    }
-    div[id^="block"].off {
-        float: left;
-        position: absolute;
-        left: 0px;
-        top: 0px;
-        width: 0px;
-        height: 0px;
-        z-index: 0;
-    }
-  </style>
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <title>Virtual Decks</title>
+    <script src="https://unpkg.com/axios/dist/axios.min.js"></script>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+    <style>
+        body,
+        div {
+            margin-left: 0px;
+            margin-right: 0px;
+            padding: 0px;
+        }
+
+        h2 {
+            margin-top: 0px;
+        }
+
+        div {
+            margin-left: 0px;
+            margin-right: 0px;
+            margin-top: 5px;
+            padding: 0px;
+        }
+
+        span {
+            margin-left: 0px;
+            list-style: none;
+            padding: 5px;
+            user-select: none;
+        }
+
+        .mod0::after {
+            content: "\A";
+            white-space: pre;
+        }
+
+        img {
+            border-radius: 10px;
+        }
+
+        div.app {
+            padding-bottom: 5px;
+        }
+
+        div.app h1 {
+            font-size: 1.5em;
+            margin: 0px;
+            padding-left: 5px;
+            padding-bottom: 5px;
+        }
+
+        #settingModal {
+            position: absolute;
+            left: 50%;
+            top: 50%;
+            transform: translate(-50%, -50%);
+            color: white;
+            border-radius: 10px;
+            width: 500px;
+            height: 450px;
+            z-index: 1000;
+            background-color: #555;
+            opacity: 95%;
+            padding: 10px;
+        }
+
+        #closeModal {
+            float: right;
+            margin-right: 10px;
+        }
+
+        .path,
+        .url {
+            width: 450px;
+        }
+
+        span.valid::before {
+            content: '\02705';
+            color: #3b3;
+            width: 10px;
+        }
+
+        span.invalid::before {
+            content: '\0274c';
+            font-size: 0.8em;
+            color: #c44;
+            width: 10px;
+        }
+
+        .icon_image {
+            margin-right: 15px;
+            float: right;
+        }
+
+        .icon_image img {
+            width: 50px;
+        }
+
+        div#container {
+            overflow: scroll;
+        }
+
+        div[id^="block"].on {
+            float: left;
+            position: absolute;
+            left: 0px;
+            top: 0px;
+            width: 100%;
+            height: 100%;
+            z-index: 999;
+            background-color: #999;
+            opacity: 75%;
+        }
+
+        div[id^="block"].off {
+            float: left;
+            position: absolute;
+            left: 0px;
+            top: 0px;
+            width: 0px;
+            height: 0px;
+            z-index: 0;
+        }
+    </style>
 </head>
+
 <body>
-<div id="container">
-  APIs
-  <ul>
-    <li><a href="/api/status">Status JSON</a></li>
-    <li><a href="/api/resource">Resouse JSON</a></li>
-    <li><a href="/api/device_info">DeviceInfo JSON</a></li>
-    <li><a href="/api/images">images JSON</a></li>
-    <li><a href="/api/device_key_images">Devices and its images JSON</a></li>
-  </ul>
-  Status Chart
-  <ul>
-    <li><a href="/chart/status">Status Chart</a></li>
-  </ul>
-  <div id="app1">
-    <div id="block1" :class="modal_block_class" @click.left="closeSettingModal()"></div>
-    <div class="app">
-      <h1>Deck {{ id }}</h1>
-      <span v-for="i in key_count">
-        <img :src="'data:image/png;base64,' + items.data[i - 1]"
-         :onclick="'tap(this, ' + id + ', ' + (i - 1) + ')'"
-         @click.right.prevent="openSettingModal(i)"
-         >
-        <span :class="'mod' + (i % columns)"></span>
-      </span>
-    </div>
-    <div v-if="settingMode" id="settingModal">
-        <div id="closeModal" @click.left="closeSettingModal()">&#x274c;</div>
-        <h2>Key Setting</h2>
-        DeckID: {{id}} / Key: {{settingKey}}<br>
-        <form id="setting">
-        <select @change="settingType = $event.target.value; iconImage = null">
-            <option>select type</option>
-            <option value="deck_command">Deck Command</option>
-            <option value="chrome">Chrome</option>
-            <option value="command">Command</option>
-        </select>
-        <!-- TODO: use component -->
-        <div v-if="settingType == 'deck_command'">
-            Command:<br>
-            <select @change="settingData.deck_command.deck_command = $event.target.value">
-                <option value="">select command</option>
-                <option value="change_page">Change Page</option>
-            </select><br>
-            Deck command argument: <span :class="checkResult.arg"></span><br>
-            <input type="text" value="" v-model="settingData.deck_command.arg" @input="ok = fillRequired()"><br>
-            <div class="icon_image" v-if="iconImage != ''">
-                <img :src="iconImage">
+    <div id="container">
+        APIs
+        <ul>
+            <li><a href="/api/status">Status JSON</a></li>
+            <li><a href="/api/resource">Resouse JSON</a></li>
+            <li><a href="/api/device_info">DeviceInfo JSON</a></li>
+            <li><a href="/api/images">images JSON</a></li>
+            <li><a href="/api/device_key_images">Devices and its images JSON</a></li>
+        </ul>
+        Status Chart
+        <ul>
+            <li><a href="/chart/status">Status Chart</a></li>
+        </ul>
+        <div id="app1">
+            <div id="block1" :class="modal_block_class" @click.left="closeSettingModal()"></div>
+            <div class="app">
+                <h1>Deck {{ id }}</h1>
+                <span v-for="i in key_count">
+                    <img :src="'data:image/png;base64,' + items.data[i - 1]"
+                        :onclick="'tap(this, ' + id + ', ' + (i - 1) + ')'" @click.right.prevent="openSettingModal(i)">
+                    <span :class="'mod' + (i % columns)"></span>
+                </span>
             </div>
-            Image Path: <span :class="checkResult.image"></span><br>
-            <select @change="settingData.deck_command.image = $event.target.value; ok = fillRequired(); if ($event.target.value != ''){iconImage = $event.target.value }">
-                <option value="">select image</option>
-                <option v-for="im in images"  :value="im">{{im}}</option>
-            </select><br>
-            Label:  <span :class="checkResult.label"></span><br>
-            <input type="text" value="" class="label" v-model="settingData.deck_command.label" @input="ok = fillRequired()">
+            <div v-if="settingMode" id="settingModal">
+                <div id="closeModal" @click.left="closeSettingModal()">&#x274c;</div>
+                <h2>Key Setting</h2>
+                DeckID: {{id}} / Key: {{settingKey}}<br>
+                <form id="setting">
+                    <select @change="settingType = $event.target.value; iconImage = null">
+                        <option>select type</option>
+                        <option value="deck_command">Deck Command</option>
+                        <option value="chrome">Chrome</option>
+                        <option value="command">Command</option>
+                    </select>
+                    <!-- TODO: use component -->
+                    <div v-if="settingType == 'deck_command'">
+                        Command:<br>
+                        <select @change="settingData.deck_command.deck_command = $event.target.value">
+                            <option value="">select command</option>
+                            <option value="change_page">Change Page</option>
+                        </select><br>
+                        Deck command argument: <span :class="checkResult.arg"></span><br>
+                        <input type="text" value="" v-model="settingData.deck_command.arg"
+                            @input="ok = fillRequired()"><br>
+                        <div class="icon_image" v-if="iconImage != ''">
+                            <img :src="iconImage">
+                        </div>
+                        Image Path: <span :class="checkResult.image"></span><br>
+                        <select
+                            @change="settingData.deck_command.image = $event.target.value; ok = fillRequired(); if ($event.target.value != ''){iconImage = $event.target.value }">
+                            <option value="">select image</option>
+                            <option v-for="im in images" :value="im">{{im}}</option>
+                        </select><br>
+                        Label: <span :class="checkResult.label"></span><br>
+                        <input type="text" value="" class="label" v-model="settingData.deck_command.label"
+                            @input="ok = fillRequired()">
+                    </div>
+                    <div v-if="settingType == 'chrome'">
+                        Profile: <span :class="checkResult.profile"></span><br>
+                        <input type="text" value="Default" v-model="settingData.chrome.chrome[0]"
+                            @input="ok = fillRequired()"><br>
+                        URL: <span :class="checkResult.url"></span><br>
+                        <input type="text" value="" class="url" v-model="settingData.chrome.chrome[1]"
+                            @input="ok = fillRequired()"><br>
+                        Image Path(optional): <span :class="checkResult.image"></span><br>
+                        <select
+                            @change="settingData.chrome.image = $event.target.value; ok = fillRequired(); if ($event.target.value != ''){iconImage = $event.target.value }">
+                            <option value="">select image</option>
+                            <option v-for="im in images" :value="im">{{im}}</option>
+                        </select><br>
+                        Label: <span :class="checkResult.label"></span><br>
+                        <input type="text" value="" class="label" v-model="settingData.chrome.label"
+                            @input="ok = fillRequired()">
+                    </div>
+                    <div v-if="settingType == 'command'">
+                        Command: <span :class="checkResult.command"></span><br>
+                        <input type="text" value="" class="path" v-model="settingData.command.command"
+                            @input="ok = fillRequired()"><br>
+                        Image Path: <span :class="checkResult.image"></span><br>
+                        <select
+                            @change="settingData.command.image = $event.target.value; ok = fillRequired(); if ($event.target.value != ''){iconImage = $event.target.value }">
+                            <option value="">select image</option>
+                            <option v-for="im in images" :value="im">{{im}}</option>
+                        </select><br>
+                        Label: <span :class="checkResult.label"></span><br>
+                        <input type="text" value="" class="path" v-model="settingData.command.label"
+                            @input="ok = fillRequired()">
+                    </div>
+                    <div v-if="settingType != null && ok">
+                        <input type="button" value="SAVE" @click.leftk="settingDone()">
+                    </div>
+                </form>
+            </div>
         </div>
-        <div v-if="settingType == 'chrome'">
-            Profile: <span :class="checkResult.profile"></span><br>
-            <input type="text" value="Default" v-model="settingData.chrome.chrome[0]" @input="ok = fillRequired()"><br>
-            URL: <span :class="checkResult.url"></span><br>
-            <input type="text" value="" class="url" v-model="settingData.chrome.chrome[1]" @input="ok = fillRequired()"><br>
-            Image Path(optional): <span :class="checkResult.image"></span><br>
-            <select @change="settingData.chrome.image = $event.target.value; ok = fillRequired(); if ($event.target.value != ''){iconImage = $event.target.value }">
-                <option value="">select image</option>
-                <option v-for="im in images"  :value="im">{{im}}</option>
-            </select><br>
-            Label:  <span :class="checkResult.label"></span><br>
-            <input type="text" value="" class="label" v-model="settingData.chrome.label" @input="ok = fillRequired()">
-        </div>
-        <div v-if="settingType == 'command'">
-            Command: <span :class="checkResult.command"></span><br>
-            <input type="text" value="" class="path" v-model="settingData.command.command" @input="ok = fillRequired()"><br>
-            Image Path: <span :class="checkResult.image"></span><br>
-            <select @change="settingData.command.image = $event.target.value; ok = fillRequired(); if ($event.target.value != ''){iconImage = $event.target.value }">
-                <option value="">select image</option>
-                <option v-for="im in images"  :value="im">{{im}}</option>
-            </select><br>
-            Label: <span :class="checkResult.label"></span><br>
-            <input type="text" value="" class="path" v-model="settingData.command.label" @input="ok = fillRequired()">
-        </div>
-        <div v-if="settingType != null && ok">
-            <input type="button" value="SAVE" @click.leftk="settingDone()">
-        </div>
-        </form>
     </div>
-  </div>
-</div>
-<script src="https://cdn.jsdelivr.net/npm/vue@2.7.10/dist/vue.js"></script>
-<script>
-"use strict";
-const baseURL = location.href;
-axios.get(baseURL + "api/images").then((res) => {
-    let images = res.data;
+    <script src="https://cdn.jsdelivr.net/npm/vue@2.7.10/dist/vue.js"></script>
+    <script>
+        "use strict";
+        const baseURL = location.href;
+        axios.get(baseURL + "api/images").then((res) => {
+            let images = res.data;
 
-    axios.get(baseURL + "api/device_info").then(
-        (res) => {
-            const keys = Object.keys(res.data).sort()
-            keys.forEach((i,v) => {
-                if (i > 1) {
-                  const div = document.createElement('div');
-                  div.innerHTML = document.getElementById('app1').innerHTML;
-                  div.innerHTML = div.innerHTML.replace('id="block1"', 'id="block' + i + '"');
-                  div.id = 'app' + i;
-                  document.getElementById('container').appendChild(div);
-                }
-            });
-            // default data for settingData.
-            const defaultData = () => {
-                return {
-                    id: null,
-                    key: null,
-                    chrome: {
-                        chrome: ['Default', ''],
-                        image: null,
-                        label: '',
-                    },
-                    command: {
-                        command: '',
-                        image: null,
-                        label: '',
-                    },
-                    deck_command: {
-                        deck_command: '',
-                        arg: '',
-                        image: null,
-                        label: '',
-                    },
-                }
-            };
-            // very simple validation definition
-            const required = {
-                'chrome': {
-                    'chrome': [{name: 'url', type:'array'}, [[{name: 'profile', type: 'string'}], [{name: 'url', type: 'url'}]]],
-                    'image': [{type: 'path?'}],
-                    'label': [{type: 'string'}],
-                },
-                'command':{
-                    'command': [{type: 'string'}],
-                    'image': [{type: 'path'}],
-                    'label': [{type: 'string'}],
-                },
-                'deck_command':{
-                    'deck_command': [{type: 'string'}],
-                    'arg': [{type: 'string'}],
-                    'image': [{type: 'path'}],
-                    'label': [{type: 'string'}],
-                },
-            };
-            // data modifier
-            const dataModifier = {
-                command: (d) => {
-                    command = d.command.split(' ');
-                    d.command = command;
-                },
-                deck_command: (d) => {
-                    d[d.deck_command] = d.arg
-                    delete(d['deck_command'])
-                    delete(d['arg'])
-                },
-                chrome: (d) => {
-                   if (! d.image ||  d.image === '') {
-                       delete(d['image'])
-                   }
-                },
-            };
-            keys.forEach((i,v) => {
-                const app = new Vue({
-                  el: '#app' + i,
-                  data: {
-                        ok: false,
-                        modal_block_class: 'off',
-                        images: images,
-                        iconImage: "",
-                        key_count: [],
-                        items: {},
-                        id: i,
-                        checkResult: {},
-                        deviceInfo: res.data[i],
-                        columns: res.data[i].columns,
-                        settingMode: false,
-                        settingKey: 0,
-                        settingType: null,
-                        settingData: defaultData(),
-                    },
-                    methods: {
-                    fillRequired: function() {
-                        this.checkResult = {};
-                        const data = this.settingData[this.settingType];
-                        let valid = true;
-                        const keys = Object.keys(required[this.settingType]);
-                        for (let i = 0;  i < keys.length; i++) {
-                            let v = required[this.settingType][keys[i]];
-                            const rule = required[this.settingType][keys[i]];
-                            if (rule) {
-                                let result = this.checkRule(keys[i], data[keys[i]], rule);
-                                if (!result) {
-                                    valid = result;
-                                }
-                            }
+            axios.get(baseURL + "api/device_info").then(
+                (res) => {
+                    const keys = Object.keys(res.data).sort()
+                    keys.forEach((i, v) => {
+                        if (i > 1) {
+                            const div = document.createElement('div');
+                            div.innerHTML = document.getElementById('app1').innerHTML;
+                            div.innerHTML = div.innerHTML.replace('id="block1"', 'id="block' + i + '"');
+                            div.id = 'app' + i;
+                            document.getElementById('container').appendChild(div);
                         }
-                        return valid;
-                    },
-                    checkRule: function (name, data, rule) {
-                        let valid = true;
-                        let r = rule[0].type.replace(/\?$/, '');
-                        let optional = r != rule[0].type;
-			            if (!rule[0].name) {
-                            rule[0].name = name;
-			            }
-                        this.checkResult[rule[0].name] = optional ? 'yet' : 'valid';
-                        const invalidString = (data, optional) => {
-                            return (!optional && !data) || (!optional && typeof(data) !== 'string') || (!optional && data.length === 0);
+                    });
+                    // default data for settingData.
+                    const defaultData = () => {
+                        return {
+                            id: null,
+                            key: null,
+                            chrome: {
+                                chrome: ['Default', ''],
+                                image: null,
+                                label: '',
+                            },
+                            command: {
+                                command: '',
+                                image: null,
+                                label: '',
+                            },
+                            deck_command: {
+                                deck_command: '',
+                                arg: '',
+                                image: null,
+                                label: '',
+                            },
                         }
-                        if (r === 'string') {
-                            valid = !invalidString(data, optional);
-                        } else if (r === 'url') {
-                            if (invalidString(data, optional) || (data && data.length > 0 && !data.match("^https?://.+?\\..+?"))) {
-                                valid = false;
+                    };
+                    // very simple validation definition
+                    const required = {
+                        'chrome': {
+                            'chrome': [{ name: 'url', type: 'array' }, [[{ name: 'profile', type: 'string' }], [{ name: 'url', type: 'url' }]]],
+                            'image': [{ type: 'path?' }],
+                            'label': [{ type: 'string' }],
+                        },
+                        'command': {
+                            'command': [{ type: 'string' }],
+                            'image': [{ type: 'path' }],
+                            'label': [{ type: 'string' }],
+                        },
+                        'deck_command': {
+                            'deck_command': [{ type: 'string' }],
+                            'arg': [{ type: 'string' }],
+                            'image': [{ type: 'path' }],
+                            'label': [{ type: 'string' }],
+                        },
+                    };
+                    // data modifier
+                    const dataModifier = {
+                        command: (d) => {
+                            command = d.command.split(' ');
+                            d.command = command;
+                        },
+                        deck_command: (d) => {
+                            d[d.deck_command] = d.arg
+                            delete (d['deck_command'])
+                            delete (d['arg'])
+                        },
+                        chrome: (d) => {
+                            if (!d.image || d.image === '') {
+                                delete (d['image'])
                             }
-                        } else if (r === 'path') {
-                            if (invalidString(data, optional) || (data && data.length > 0 && !data.match("^\\.*?(/[\\w \\.\\-\\+]+)+"))) {
-                                valid = false;
-                            }
-                        } else if (r === 'array') {
-                            if (Array.isArray(data)) {
-                                for (let i = 0; i < data.length; i++) {
-                                    if (!optional && data[i].length === 0) {
-                                        valid = false;
+                        },
+                    };
+                    keys.forEach((i, v) => {
+                        const app = new Vue({
+                            el: '#app' + i,
+                            data: {
+                                ok: false,
+                                modal_block_class: 'off',
+                                images: images,
+                                iconImage: "",
+                                key_count: [],
+                                items: {},
+                                id: i,
+                                checkResult: {},
+                                deviceInfo: res.data[i],
+                                columns: res.data[i].columns,
+                                settingMode: false,
+                                settingKey: 0,
+                                settingType: null,
+                                settingData: defaultData(),
+                            },
+                            methods: {
+                                fillRequired: function () {
+                                    this.checkResult = {};
+                                    const data = this.settingData[this.settingType];
+                                    let valid = true;
+                                    const keys = Object.keys(required[this.settingType]);
+                                    for (let i = 0; i < keys.length; i++) {
+                                        let v = required[this.settingType][keys[i]];
+                                        const rule = required[this.settingType][keys[i]];
+                                        if (rule) {
+                                            let result = this.checkRule(keys[i], data[keys[i]], rule);
+                                            if (!result) {
+                                                valid = result;
+                                            }
+                                        }
                                     }
-                                }
-                                if (valid && rule[1] && data.length != rule[1].length) {
-                                    valid = false;
-                                }
-                                if (valid) {
-                                   for (let i = 0; i < rule[1].length; i++) {
-                                        let result = this.checkRule(null, data[i], rule[1][i]);
-                                        if (!result) valid = false;
+                                    return valid;
+                                },
+                                checkRule: function (name, data, rule) {
+                                    let valid = true;
+                                    let r = rule[0].type.replace(/\?$/, '');
+                                    let optional = r != rule[0].type;
+                                    if (!rule[0].name) {
+                                        rule[0].name = name;
                                     }
-                                }
-                            } else {
-                                valid = false;
+                                    this.checkResult[rule[0].name] = optional ? 'yet' : 'valid';
+                                    const invalidString = (data, optional) => {
+                                        return (!optional && !data) || (!optional && typeof (data) !== 'string') || (!optional && data.length === 0);
+                                    }
+                                    if (r === 'string') {
+                                        valid = !invalidString(data, optional);
+                                    } else if (r === 'url') {
+                                        if (invalidString(data, optional) || (data && data.length > 0 && !data.match("^https?://.+?\\..+?"))) {
+                                            valid = false;
+                                        }
+                                    } else if (r === 'path') {
+                                        if (invalidString(data, optional) || (data && data.length > 0 && !data.match("^\\.*?(/[\\w \\.\\-\\+]+)+"))) {
+                                            valid = false;
+                                        }
+                                    } else if (r === 'array') {
+                                        if (Array.isArray(data)) {
+                                            for (let i = 0; i < data.length; i++) {
+                                                if (!optional && data[i].length === 0) {
+                                                    valid = false;
+                                                }
+                                            }
+                                            if (valid && rule[1] && data.length != rule[1].length) {
+                                                valid = false;
+                                            }
+                                            if (valid) {
+                                                for (let i = 0; i < rule[1].length; i++) {
+                                                    let result = this.checkRule(null, data[i], rule[1][i]);
+                                                    if (!result) valid = false;
+                                                }
+                                            }
+                                        } else {
+                                            valid = false;
+                                        }
+                                    }
+                                    if (valid) {
+                                        console.log("valid", optional, valid, data, rule);
+                                    } else {
+                                        console.log("invalid", optional, valid, data, rule);
+                                    }
+                                    this.checkResult[rule[0].name] = valid ? 'valid' : 'invalid';
+                                    return valid;
+                                },
+                                openSettingModal: function (i) {
+                                    this.initializeModal();
+                                    this.settingMode = true;
+                                    this.settingKey = i - 1;
+                                    this.modal_block_class = 'on';
+                                },
+                                closeSettingModal: function () {
+                                    this.initializeModal();
+                                    this.settingMode = false;
+                                    this.modal_block_class = 'off';
+                                },
+                                initializeModal: function () {
+                                    this.settingType = null;
+                                    this.checkResult = {};
+                                    this.settingData = defaultData();
+                                    this.settingKey = null;
+                                    this.ok = false;
+                                },
+                                settingDone: function () {
+                                    let data = this.settingData[this.settingType]
+                                    if (dataModifier[this.settingType]) {
+                                        dataModifier[this.settingType](data);
+                                    }
+                                    data.id = this.id;
+                                    data.key = this.settingKey;
+                                    axios.post(baseURL + 'api/key_setting/', data);
+                                    this.closeSettingModal();
+                                },
+                                loadData: function () {
+                                    axios.get(baseURL + 'api/' + i).then(
+                                        (response) => {
+                                            this.key_count = this.deviceInfo.key_count;
+                                            this.items = response;
+                                        })
+                                },
+                            },
+                            mounted: function () {
+                                this.loadData();
+                                setInterval(function () {
+                                    this.loadData();
+                                }.bind(this), 800);
                             }
-                        }
-                        if (valid) {
-                            console.log("valid", optional, valid, data, rule);
-                        } else {
-                            console.log("invalid", optional, valid, data, rule);
-                        }
-                        this.checkResult[rule[0].name] = valid ? 'valid' : 'invalid';
-                        return valid;
-                    },
-                    openSettingModal: function (i) {
-                        this.initializeModal();
-                        this.settingMode = true;
-                        this.settingKey = i - 1;
-                        this.modal_block_class = 'on';
-                    },
-                    closeSettingModal: function () {
-                        this.initializeModal();
-                        this.settingMode = false;
-                        this.modal_block_class = 'off';
-                    },
-                    initializeModal: function () {
-                        this.settingType = null;
-                        this.checkResult = {};
-                        this.settingData = defaultData();
-                        this.settingKey = null;
-                        this.ok = false;
-                    },
-                    settingDone: function () {
-                        let data = this.settingData[this.settingType]
-                        if (dataModifier[this.settingType]) {
-                            dataModifier[this.settingType](data);
-                        }
-                        data.id = this.id;
-                        data.key = this.settingKey;
-                        axios.post(baseURL + 'api/key_setting/', data);
-                        this.closeSettingModal();
-                    },
-                    loadData: function () {
-                        axios.get(baseURL + 'api/' + i).then(
-                            (response) => {
-                                  this.key_count = this.deviceInfo.key_count;
-                                  this.items = response;
-                            })
-                    },
-                },
-                mounted: function () {
-                    this.loadData();
-                    setInterval(function () {
-                        this.loadData();
-                    }.bind(this), 200);
+                        });
+                    })
                 }
-            });
-        })
-      }
-    )
-});
+            )
+        });
 
-function tap(e, id, key) {
-    setTimeout(() => {buttonOpacity(e, 50)});
-    axios.get(baseURL + 'api/' + id + '/' + key);
-}
+        function tap(e, id, key) {
+            setTimeout(() => { buttonOpacity(e, 50) });
+            axios.get(baseURL + 'api/' + id + '/' + key);
+        }
 
-function buttonOpacity(e, o) {
-    if (o >= 0) {
-	  e.style = "opacity: " + o + "%";
-	  setTimeout(() => { buttonOpacity(e, o - 10) }, 25);
-    } else {
-	  e.style = "";
-    }
-}
-</script>
+        function buttonOpacity(e, o) {
+            if (o >= 0) {
+                e.style = "opacity: " + o + "%";
+                setTimeout(() => { buttonOpacity(e, o - 10) }, 25);
+            } else {
+                e.style = "";
+            }
+        }
+    </script>
 </body>
+
 </html>
