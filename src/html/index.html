@@ -146,7 +146,8 @@
                 <h1>Deck {{ id }}</h1>
                 <span v-for="i in key_count">
                     <img :src="'data:image/png;base64,' + items.data[i - 1]"
-                        :onclick="'tap(this, ' + id + ', ' + (i - 1) + ')'" @click.right.prevent="openSettingModal(i)">
+                        :onclick="'tap(this, &quot;' + id + '&quot;, ' + (i - 1) + ')'"
+                        @click.right.prevent="openSettingModal(i)">
                     <span :class="'mod' + (i % columns)"></span>
                 </span>
             </div>
@@ -233,7 +234,7 @@
                 (res) => {
                     const keys = Object.keys(res.data).sort()
                     keys.forEach((i, v) => {
-                        if (i > 1) {
+                        if (v > 0) {
                             const div = document.createElement('div');
                             div.innerHTML = document.getElementById('app1').innerHTML;
                             div.innerHTML = div.innerHTML.replace('id="block1"', 'id="block' + i + '"');
