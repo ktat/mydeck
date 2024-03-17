@@ -43,7 +43,7 @@ class GameWhacAMole(GameAppBase):
         if deck is None:
             raise (ExceptionNoDeck)
 
-        deck.reset()
+        deck.reset_keys()
 
         # Set initial screen brightness to 30%.
         deck.set_brightness(30)

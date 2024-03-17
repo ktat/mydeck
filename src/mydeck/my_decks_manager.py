@@ -4,6 +4,7 @@ import http.server
 import logging
 import random
 import re
+import time
 import traceback
 import yaml
 import queue
@@ -260,6 +261,18 @@ class VirtualDeck:
     def key_count(self) -> int:
         """Returns number of the key of the virtual devces."""
         return self._key_count
+
+    def reset_keys(self):
+        """Reset key images."""
+        self.current_key_status = {}
+
+        # for web server
+        DeckOutputWebHandler.reset_keys(self.id(), self.key_count())
+
+        if self.has_real_deck():
+            for i in range(self.key_count()):
+                self.real_deck.set_key_image(i, None)
+            time.sleep(0.1)
 
     def reset(self):
         """Reset key images."""

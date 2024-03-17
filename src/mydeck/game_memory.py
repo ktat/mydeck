@@ -3,10 +3,11 @@ import random
 import logging
 from mydeck import MyDeck, GameAppBase, ExceptionNoDeck
 
+
 class GameMemory(GameAppBase):
     require_key_count: int = 15
 
-    def __init__ (self, mydeck :MyDeck, start_key_num :int = 0):
+    def __init__(self, mydeck: MyDeck, start_key_num: int = 0):
         super().__init__(mydeck)
 
         if self.enable == False:
@@ -38,7 +39,8 @@ class GameMemory(GameAppBase):
                 "mode": -1,
             },
         })
-        mydeck.add_game_command("GameMemory", lambda conf: self.key_setup(conf["mode"]))
+        mydeck.add_game_command(
+            "GameMemory", lambda conf: self.key_setup(conf["mode"]))
 
     def key_setup(self, wait_time: int):
         mydeck = self.mydeck
@@ -48,21 +50,22 @@ class GameMemory(GameAppBase):
         self.data["vsmode"] = wait_time == -1
         self.data["memory"] = {}
         self.data["turn"] = None
-        self.data["score"] = {1: 0, 2: 0} # 1 is user, 2 is cpu
+        self.data["score"] = {1: 0, 2: 0}  # 1 is user, 2 is cpu
         deck = mydeck.deck
 
         mydeck.set_current_page_without_setup("~GAME_MEMORY")
 
         if deck is None:
-            raise(ExceptionNoDeck)
+            raise (ExceptionNoDeck)
 
-        deck.reset()
+        deck.reset_keys()
 
         # Set initial screen brightness to 30%.
         deck.set_brightness(30)
 
         # Set initial key images.
-        deck.set_key_callback(lambda deck, key, state: self.key_change_callback(key, state))
+        deck.set_key_callback(
+            lambda deck, key, state: self.key_change_callback(key, state))
 
         empty = {
             "image": "./src/Assets/cat.png",
@@ -142,7 +145,7 @@ class GameMemory(GameAppBase):
                 "clicked": False,
             })
 
-    def key_change_callback(self, key :int, state :bool):
+    def key_change_callback(self, key: int, state: bool):
         mydeck = self.mydeck
         deck = mydeck.deck
         # Print new key state
@@ -212,8 +215,6 @@ class GameMemory(GameAppBase):
                         "label": label
                     })
 
-
-
     def clicked(self):
         clicked = 0
         mydeck = self.mydeck
@@ -222,7 +223,7 @@ class GameMemory(GameAppBase):
                 clicked += 1
         return clicked
 
-    def evaluate(self, clicked :int, num :int, wait_time :int) -> str:
+    def evaluate(self, clicked: int, num: int, wait_time: int) -> str:
         mydeck = self.mydeck
         keisu: float = 1
         if wait_time == 0:
@@ -247,7 +248,7 @@ class GameMemory(GameAppBase):
 
         return evaluate
 
-    def evaluate2label(self, evaluate :str):
+    def evaluate2label(self, evaluate: str):
         l = {
             "laugh": "Excelent!",
             "happy": "Good!",
@@ -258,7 +259,7 @@ class GameMemory(GameAppBase):
         }
         return l[evaluate]
 
-    def open_and_check(self, key :int, conf :dict) -> int:
+    def open_and_check(self, key: int, conf: dict) -> int:
         mydeck = self.mydeck
         self.data['memory'][key] = conf["value"]
         key_name = 'number'
@@ -343,7 +344,8 @@ class GameMemory(GameAppBase):
 
         time.sleep(0.5)
         conf = mydeck._GAME_KEY_CONFIG[can_open[0]]
-        result = self.open_and_check(can_open[0], mydeck._GAME_KEY_CONFIG[can_open[0]])
+        result = self.open_and_check(
+            can_open[0], mydeck._GAME_KEY_CONFIG[can_open[0]])
         if result == 1:
             self.data['score'][2] += 1
         elif result == 0:

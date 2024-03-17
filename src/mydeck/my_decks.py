@@ -310,7 +310,7 @@ class MyDeck:
             self._current_page = name
             self.set_game_status_off()
             Lock.do_with_lock(self.deck.get_serial_number(),
-                              lambda: self.deck.reset())
+                              lambda: self.deck.reset_keys())
             self.key_setup()
             self.run_page_command(name)
             self.run_hook_apps('page_change')

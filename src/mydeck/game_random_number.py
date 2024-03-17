@@ -47,7 +47,7 @@ class GameRandomNumber(GameAppBase):
     def key_setup(self, num):
         mydeck = self.mydeck
         deck = mydeck.deck
-        deck.reset()
+        deck.reset_keys()
         mydeck.set_game_status_on()
         mydeck.set_current_page_without_setup("~GAME_RANDOM_NUMBER")
         self.data["mode"] = num

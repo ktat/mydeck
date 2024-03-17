@@ -51,10 +51,11 @@ PRE_WIN_CONDITION = {
     260: 32,
 }
 
+
 class GameTicTackToe(GameAppBase):
     require_key_count: int = 15
 
-    def __init__ (self, mydeck :MyDeck, start_key_num :int = 0):
+    def __init__(self, mydeck: MyDeck, start_key_num: int = 0):
         super().__init__(mydeck)
 
         if self.enable == False:
@@ -138,13 +139,14 @@ class GameTicTackToe(GameAppBase):
         mydeck.set_current_page_without_setup("~GAME_TICK_TACK_TOE")
         mydeck.set_game_status_on()
 
-        deck.reset()
+        deck.reset_keys()
 
         # Set initial screen brightness to 30%.
         deck.set_brightness(30)
 
         # Set initial key images.
-        deck.set_key_callback(lambda deck, key, state: self.key_change_callback(key, state))
+        deck.set_key_callback(
+            lambda deck, key, state: self.key_change_callback(key, state))
 
         for key in key_conf.keys():
             conf = key_conf[key]
@@ -154,8 +156,7 @@ class GameTicTackToe(GameAppBase):
                 conf["user"] = None
             mydeck.set_game_key(key, conf)
 
-
-    def key_change_callback(self, key :int, state :bool):
+    def key_change_callback(self, key: int, state: bool):
         mydeck = self.mydeck
 
         conf = mydeck._GAME_KEY_CONFIG.get(key)
@@ -219,12 +220,14 @@ class GameTicTackToe(GameAppBase):
             choose_key = can_select_value[selected]
         # ユーザーが、真ん中を選んだ場合は端を取る
         elif user_val == 16:
-            n = [n for n in [1, 4, 64, 256] if can_select_value.get(n) is not None ]
+            n = [n for n in [1, 4, 64, 256]
+                 if can_select_value.get(n) is not None]
             selected = n[random.randint(0, len(n)-1)]
             choose_key = can_select_value[selected]
         # 真ん中(cpu) x 対角(user)の場合は、辺の中を取る
         elif cpu_val == 16 and user_val in [68, 257]:
-            n = [n for n in [2, 8, 128, 32] if can_select_value.get(n) is not None ]
+            n = [n for n in [2, 8, 128, 32]
+                 if can_select_value.get(n) is not None]
             selected = n[random.randint(0, len(n)-1)]
             choose_key = can_select_value[selected]
         # 真ん中があいてるなら真ん中を取る
@@ -233,23 +236,27 @@ class GameTicTackToe(GameAppBase):
 
         if choose_key is None:
             # CPUの勝利条件の場所を探す
-            choose_key = can_select_value.get(self.search_win_value(cpu_val, can_select, WIN_CONDITION))
+            choose_key = can_select_value.get(
+                self.search_win_value(cpu_val, can_select, WIN_CONDITION))
             logging.debug("choose_key1: {}".format(choose_key))
         if choose_key is None:
             # ユーザーの勝利条件の場所を探す(ユーザーが勝つ場所に打って妨害する)
-            choose_key = can_select_value.get(self.search_win_value(user_val, can_select, WIN_CONDITION))
+            choose_key = can_select_value.get(
+                self.search_win_value(user_val, can_select, WIN_CONDITION))
             logging.debug("choose_key2: {}".format(choose_key))
         if choose_key is None:
             # ユーザーの勝てそうな場所を探す(ユーザーの勝てそうな場所は先に抑えて妨害する)
-            choose_key = can_select_value.get(self.search_pre_win_value(2, user_val, cpu_val, can_select, PRE_WIN_CONDITION))
+            choose_key = can_select_value.get(self.search_pre_win_value(
+                2, user_val, cpu_val, can_select, PRE_WIN_CONDITION))
             logging.debug("choose_key3: {}".format(choose_key))
         if choose_key is None:
             # CPUの勝てそうな場所を探す
-            choose_key = can_select_value.get(self.search_pre_win_value(1, cpu_val, user_val, can_select, PRE_WIN_CONDITION))
+            choose_key = can_select_value.get(self.search_pre_win_value(
+                1, cpu_val, user_val, can_select, PRE_WIN_CONDITION))
             logging.debug("choose_key4: {}".format(choose_key))
         if choose_key is None:
             # まだ決まっていない場合は、取れるところをrandomで取る
-            select = random.randint(0, len(can_select) -1)
+            select = random.randint(0, len(can_select) - 1)
             choose_key = can_select_value[can_select.pop(select)]
             logging.debug("choose_key5: {}".format(choose_key))
 
@@ -276,7 +283,8 @@ class GameTicTackToe(GameAppBase):
 
         for i, v in enumerate(can_select):
             for w in win.keys():
-                logging.debug("val: {}, v: {}, w: {}, sum: {}".format(val, v, w, (val + v) & w))
+                logging.debug("val: {}, v: {}, w: {}, sum: {}".format(
+                    val, v, w, (val + v) & w))
                 if (val + v) & w == w:
                     choose_value = v
                     can_select.pop(i)
@@ -300,7 +308,8 @@ class GameTicTackToe(GameAppBase):
                     continue
 
                 next_val = pre_win[w]
-                logging.debug("val: {}, v: {}, w: {}, sum: {}, next_val: {}".format(val, v, w, (val + v) & w, next_val))
+                logging.debug("val: {}, v: {}, w: {}, sum: {}, next_val: {}".format(
+                    val, v, w, (val + v) & w, next_val))
                 if (val + v) & w == w and can_select_value.get(next_val) is not None:
                     logging.debug("choose: {}".format(v))
                     if choose_value.get(v):
@@ -319,14 +328,16 @@ class GameTicTackToe(GameAppBase):
             return 16
 
         # 端が空いてて危険度が高ければ端を返す
-        corner = [corner for corner in [1,4,64,256] if choose_value.get(corner) is not None and choose_value[corner] >= threshold]
+        corner = [corner for corner in [1, 4, 64, 256] if choose_value.get(
+            corner) is not None and choose_value[corner] >= threshold]
         if len(corner) > 0:
             selected = corner[random.randint(0, len(corner)-1)]
             can_select.pop(can_select_value[selected])
             return selected
 
         # 危険度が高いものを返す
-        sort_orders = sorted(choose_value.items(), key=lambda x: x[1], reverse=True)
+        sort_orders = sorted(choose_value.items(),
+                             key=lambda x: x[1], reverse=True)
 
         if threshold >= sort_orders[0][1]:
             selected = sort_orders[0][0]
@@ -367,4 +378,3 @@ class GameTicTackToe(GameAppBase):
                 conf["image"] = "./src/Assets/sad.png"
             # Draw
             mydeck.set_game_key(4 + self.addional_key_count, conf)
-
