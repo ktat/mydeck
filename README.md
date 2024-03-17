@@ -7,14 +7,14 @@
 Check [the instruction](https://onlinux.systems/guides/20220520_how-to-set-up-elgatos-stream-deck-on-ubuntu-linux-2204) at first when you haven't setup STREAM DECK.
 
 This package is intended primarily for Linux environments.
-However, with the exception of one module (app_window_check_linux),
+However, with the exception of one module (`app_window_check_linux`),
 it does not depend on Linux at all.
 It has not been tested on environments other than Ubuntu 22.04,
 but I believe it can be used on other environments as well.
 
 ## Dependency
 
-- [xdotool](https://manpages.ubuntu.com/manpages/trusty/man1/xdotool.1.html) for active window checking(app_window_check_linux)
+- [xdotool](https://manpages.ubuntu.com/manpages/trusty/man1/xdotool.1.html) for active window checking(`app_window_check_linux`)
 - python3-wand
 - python3-cairosvg
 
@@ -78,15 +78,15 @@ page_config:
         "exit": 1
 ```
 
-- PAGE_LABEL ... Name of the page or name of active window
-- KEY_NUMBER ... It should be number, start from 0
+- PAGE\_LABEL ... Name of the page or name of active window
+- KEY\_NUMBER ... It should be number, start from 0
 - command ... OS command
-- chrome ... launch chrome with profile. if image & image_url is not set, check url root path + /faviocn.ico and use it as image if it exists.
-- image_url ... use url instead of image file path
-- change_page ... change page when the button is pushed
+- chrome ... launch chrome with profile. if image & image\_url is not set, check url root path + /faviocn.ico and use it as image if it exists.
+- image\_url ... use url instead of image file path
+- change\_page ... change page when the button is pushed
 - image ... an image shown on button
 - label ... a label shown on button below the image
-- background_color ... background color of the key
+- background\_color ... background color of the key
 - exit ... can set 1 only. Exit app when the button is pushed
 
 `command` and `change_page` can be used in same time.
@@ -95,13 +95,13 @@ In the case, command is executed and then page is changed.
 configuration is live reload,
 when you change yaml file, it is loaded when page is changed.
 
-#### PAGE_LABEL
+#### PAGE\_LABEL
 
 - `@HOME` is special label. This configuration is used for first page.
 - `@GAME` is reserved label for the page to collect games.
 - `@previous` is also special label. It can be used for the value of `change_page`. When the button is pushed, go back to the previous page whose name isn't started with `~`.
 
-If you set window title as PAGE_LABEL, page is changed according to active window.
+If you set window title as PAGE\_LABEL, page is changed according to active window.
 
 #### example
 
