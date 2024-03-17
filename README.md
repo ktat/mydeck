@@ -55,23 +55,10 @@ http://localhost:3000/
   key_count: 4
   columns: 2
   serial_number: 'dummy1'
-  output:
-    use_web: 1
 2: # ID
   key_count: 6
   columns: 3
   serial_number: 'dummy2'
-  output:
-    use_web: 1
-```
-
-If you use virtual deck on web browser,
-you have to use WebServer app.
-
-```yaml
-   - app: WebServer
-     option:
-       port: 8080
 ```
 
 ### Page Configuration Rule
@@ -281,11 +268,12 @@ def check_alert():
 if __name__ == "__main__":
     mydecks = MyStreamDecks(
         {
+            'server_port': 3001, # default is 3000
             'config': {
                'file': "./example/config/config.yml",
                'alert_func': check_alert,
             },
-	}
+      	}
     )
 
     mydecks.start_decks()
@@ -298,6 +286,7 @@ If you have multi devices.
 ```python
 if __name__ == "__main__":
     mydecks = MyStreamDecks({
+        'server_port': 3001, # default is 3000
         'decks': {
             'SERIAL_KEY_1': 'name1',
             'SERIAL_KEY_2': 'name2',

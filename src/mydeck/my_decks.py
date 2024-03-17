@@ -23,6 +23,8 @@ from StreamDeck.ImageHelpers import PILHelper
 from StreamDeck.Devices import StreamDeckOriginalV2
 from .lock import Lock
 
+DEFAULT_PORT: int = 3000
+
 if TYPE_CHECKING:
     from .my_decks_app_base import AppBase, BackgroundAppBase, HookAppBase
 
@@ -42,6 +44,7 @@ class MyDecks:
         """
         config dict takes the following keys:
         - log_level
+        - server_port
         - decks and configs or config
 
         If you have only one STREAM DECK device, use config. If you have several devices, use decks and configs.
@@ -76,6 +79,7 @@ class MyDecks:
         self._one_deck_only: bool = False
         self.config: Optional[dict]
         self.decks: Optional[dict] = config.get('decks')
+        self.server_port: int = config.get('server_port') or DEFAULT_PORT
         self.configs: Optional[dict] = config.get('configs')
         if self.decks is None and self.configs is None:
             self.config = config.get('config')
@@ -107,7 +111,7 @@ class MyDecks:
                         "deck": deck,
                         'alert_func': alert_func,
                         'config': config_file
-                    })
+                    }, self.server_port)
                     self.mydecks[serial_number] = mydeck
                     mydeck.init_deck()
                     break
@@ -127,7 +131,7 @@ class MyDecks:
                             "deck": deck,
                             'alert_func': sn_config.get('alert_func'),
                             'config': sn_config.get('file'),
-                        })
+                        }, self.server_port)
                         self.mydecks[sn_alias] = mydeck
                         mydeck.init_deck()
                 else:
@@ -177,8 +181,9 @@ class MyDeck:
     mydecks: MyDecks
     # path of font
 
-    def __init__(self, opt: dict):
+    def __init__(self, opt: dict, server_port: int):
         deck = opt.get('deck')
+        self.server_port: int = server_port
         self.deck: StreamDeckOriginalV2 = deck
         self.key_count: int = self.deck.key_count()
         self.font_path = "/usr/share/fonts/truetype/freefont/FreeSans.ttf"
@@ -645,6 +650,8 @@ class MyDeck:
 
     def threading_apps(self, apps: List['AppBase'], background_apps: List['BackgroundAppBase']):
         """Run apps in thread"""
+        from .app_web_server import AppWebServer
+
         for app in apps:
             if app.use_thread and app.is_in_target_page():
                 t = threading.Thread(target=lambda: app.start(), args=())
@@ -658,6 +665,12 @@ class MyDeck:
                 logging.debug(bg_app.name())
                 t = threading.Thread(target=lambda: bg_app.start(), args=())
                 t.start()
+
+        # Automatically load AppWebServer when it is not loaded yet.
+        if AppWebServer.IS_ALREADY_WORKING is False:
+            app = AppWebServer(self, {"port": self.server_port})
+            t = threading.Thread(target=lambda: app.start(), args=())
+            t.start()
 
         t = threading.Thread(target=lambda: self.update_config(), args=())
         t.start()

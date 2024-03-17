@@ -40,9 +40,9 @@ class MyDecksManager:
         vdeck_configs: list[VirtualDeckConfig] = vconfig.parse()
 
         for c in vdeck_configs:
-            i = DeckInput.FromOption(c.input_option())
-            o = DeckOutput.FromOption(c.output_option())
-            deck: VirtualDeck = VirtualDeck(c.config(), i, o)
+            input = DeckInput.FromOption(c.input_option())
+            output = DeckOutputWeb(c.output_option())
+            deck: VirtualDeck = VirtualDeck(c.config(), input, output)
             deck.open()
             decks.append(deck)
             MyDecksManager.ConfigQueue[deck.get_serial_number(
@@ -61,7 +61,7 @@ class MyDecksManager:
                 "r" + str(i), {"real_deck": real_deck})
 
             input = DeckInput.FromOption({})
-            output = DeckOutput.FromOption({"use_web": 1})
+            output = DeckOutputWeb({})
             deck: VirtualDeck = VirtualDeck(config.config(), input, output)
             deck.real_deck = real_deck
             decks.append(deck)
@@ -343,13 +343,6 @@ class DeckOutput:
 
     def output(self, key_status: dict):
         pass
-
-    @staticmethod
-    def FromOption(opt: dict) -> Union['DeckOutput', 'DeckOutputWeb']:
-        """Returns DeckOutput instance from configuration"""
-        if opt.get("use_web") is not None:
-            return DeckOutputWeb(opt)
-        return DeckOutput(opt)
 
 
 class DeckInput:
