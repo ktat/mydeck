@@ -1,5 +1,4 @@
 from .web_server import DeckOutputWebHandler
-# from .real_deck_server import RealDeckServerWebHandler
 import base64
 import http.server
 import logging
@@ -13,6 +12,7 @@ from StreamDeck.DeviceManager import DeviceManager
 from StreamDeck.Devices.StreamDeck import StreamDeck
 from io import BytesIO
 from typing import Union
+from StreamDeck.ImageHelpers import PILHelper
 
 
 class MyDecksManager:
@@ -23,16 +23,15 @@ class MyDecksManager:
 
     def __init__(self, config_file: str, no_real_device: bool = False):
         """Pass configration file for veirtual decks, and flag as 2nd argument if you have no real STREAM DECK device."""
+        real_decks: list[StreamDeck] = []
+        self.devices: list = []
+        if config_file is not None:
+            self.devices = self.devices_from_config(config_file)
         if no_real_device is False:
             real_decks = DeviceManager().enumerate()
-        self.devices: list = []
-        virtual_devices: list = []
-        if config_file is not None:
-            virtual_devices = self.devices_from_config(config_file)
-        if len(real_decks) > 0:
-            virtual_devices[len(virtual_devices)
-                                :] = self.devices_from_real_decks(real_decks)
-        self.devices = virtual_devices
+            if len(real_decks) > 0:
+                self.devices[len(self.devices):] = self.devices_from_real_decks(
+                    real_decks)
 
     def devices_from_config(self, config_file) -> list['VirtualDeck']:
         """Return virtual decks from virtual deck configuration file"""
@@ -44,6 +43,7 @@ class MyDecksManager:
             i = DeckInput.FromOption(c.input_option())
             o = DeckOutput.FromOption(c.output_option())
             deck: VirtualDeck = VirtualDeck(c.config(), i, o)
+            deck.open()
             decks.append(deck)
             MyDecksManager.ConfigQueue[deck.get_serial_number(
             )] = queue.Queue()
@@ -54,16 +54,20 @@ class MyDecksManager:
         """Return virtual decks from real streamdecks"""
         decks: list[VirtualDeck] = []
 
-        for deck in real_decks:
-            config: VirtualDeckConfig = VirtualDeckConfig(
-                deck.id, {"real_deck": deck})
+        i: int = 0
+        for real_deck in real_decks:
+            real_deck.open()
+            config = VirtualDeckConfig(
+                "r" + str(i), {"real_deck": real_deck})
 
-            i = DeckInput.FromOption(c.input_option())
-            o = DeckOutput.FromOption(c.output_option())
-            deck: VirtualDeck = VirtualDeck(c.config(), i, o)
+            input = DeckInput.FromOption({})
+            output = DeckOutput.FromOption({"use_web": 1})
+            deck: VirtualDeck = VirtualDeck(config.config(), input, output)
+            deck.real_deck = real_deck
             decks.append(deck)
-            MyDecksManager.ConfigQueue[deck.get_serial_number(
+            MyDecksManager.ConfigQueue[real_deck.get_serial_number(
             )] = queue.Queue()
+            i += 1
 
         return decks
 
@@ -78,26 +82,32 @@ class VirtualDeckConfig:
 
     def __init__(self, id: str, opt: dict):
         self.opt = opt
+        self._id: str
+        self._key_count: int
+        self._columns: int
+        self._serial_number: str
+
         real_deck: StreamDeck = opt.get("real_deck")
         if real_deck is not None:
-            self._id: str = id
-            self._key_count: int = real_deck.KEY_COUNT
-            self._columns: int = real_deck.KEY_COLS
-            self._serial_number: str = real_deck.get_serial_number()
+            self._id = id
+            self._key_count = real_deck.KEY_COUNT
+            self._columns = real_deck.KEY_COLS
+            logging.info(real_deck.get_serial_number())
+            self._serial_number = real_deck.get_serial_number()
         else:
             key_count = opt.get('key_count')
             if key_count is None or re.match('\D', str(key_count)) is not None:
                 raise (ExceptionInvalidVirtualDeckConfig)
-            self._key_count: int = key_count
+            self._key_count = key_count
             columns = opt.get('columns')
             if columns is None or re.match('\D', str(columns)) is not None:
                 raise (ExceptionInvalidVirtualDeckConfig)
-            self._columns: int = columns
+            self._columns = columns
             serial_number = opt.get('serial_number')
             if serial_number is None:
                 raise (ExceptionInvalidVirtualDeckConfig)
-            self._serial_number: str = str(serial_number)
-            self._id: str = id
+            self._serial_number = str(serial_number)
+            self._id = id
 
     def id(self) -> str:
         return self._id
@@ -188,6 +198,7 @@ class VirtualDeck:
 
     def __init__(self, opt: dict, input: 'DeckInput', output: 'DeckOutput'):
         """Pass Virutal Deck option, DeckInput instance and DeckOutput instance."""
+        self.real_deck: StreamDeck = None
         key_count = opt.get('key_count')
         if type(key_count) is not int:
             raise (ExceptionVirtualDeckConstructor)
@@ -213,6 +224,9 @@ class VirtualDeck:
         self.input.init()
         self.output.init()
         self.reset()
+
+    def has_real_deck(self) -> bool:
+        return self.real_deck is not None
 
     def is_virtual(self) -> bool:
         """Always returns true."""
@@ -254,6 +268,9 @@ class VirtualDeck:
         # for web server
         DeckOutputWebHandler.reset_keys(self.id(), self.key_count())
 
+        if self.has_real_deck():
+            self.real_deck.reset()
+
     def deck_type(self):
         """Do nothing."""
         pass
@@ -265,11 +282,17 @@ class VirtualDeck:
     def set_key_callback(self, func):
         """Set key callback"""
         self.key_callback = func
+        if self.has_real_deck():
+            self.real_deck.set_key_callback(func)
 
     def set_key_image(self, key, image):
         """Set key image."""
+        if self.has_real_deck():
+            image2 = PILHelper.to_native_format(self.real_deck, image)
+            self.real_deck.set_key_image(key, image2)
         if self.current_key_status.get(key) is None:
             self.current_key_status[key] = {}
+
         self.current_key_status[key]["image"] = image
         self.output.output(self.current_key_status)
 
@@ -432,18 +455,3 @@ class DeckOutputWebServer:
             logging.info("serving at port %d", port)
             httpd.serve_forever()
             logging.info("server is started")
-
-
-# class RealDeckWebServer:
-#     """web server for real deck"""
-#     real_decks: list[StreamDeck] = []
-#
-#     def __init__(self):
-#         pass
-#
-#     def run(self, port: int):
-#         with http.server.ThreadingHTTPServer(('', port), RealDeckServerWebHandler) as httpd:
-#             logging.info("serving at port %d", port)
-#             httpd.serve_forever()
-#             logging.info("server is started")
-#

@@ -1,0 +1,138 @@
+<html>
+<head>
+<title>MyDeck Memory Monitoring</title>
+</head>
+<body>
+<script
+  src="https://code.jquery.com/jquery-3.6.1.min.js"
+  integrity="sha256-o88AwQnZB+VDvE9tvIXrMQaPlFFSUTR+nldQm1LuPXQ="
+  crossorigin="anonymous">
+</script>
+<script
+  src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.2.0/chart.min.js"
+  integrity="sha512-VMsZqo0ar06BMtg0tPsdgRADvl0kDHpTbugCBBrL55KmucH6hP9zWdLIWY//OTfMnzz6xWQRxQqsUFefwHuHyg=="
+  crossorigin="anonymous">
+</script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/google-palette/1.1.0/palette.min.js"
+  integrity="sha512-+rKeqfKuzCrzOolK5cPvYqzEHJTEPWG1MTvH02P+MYgmw7uMyNiewzvzlPj0wOgPd10jdNAtkf8tL1aQt7RsxQ=="
+  crossorigin="anonymous" referrerpolicy="no-referrer">
+</script>
+
+ <h1>MyDeck Memory Monitoring</h1>
+  Update a <select id= "timing">
+    <option value="1">1</option>
+    <option value="2">2</option>
+    <option value="5">5</option>
+    <option value="10" selected="selected">10</option>
+    <option value="30">30</option>
+    <option value="60">60</option>
+  </select> sec.
+  <div style="width:100%;">
+  <canvas id="memRestCanvas"></canvas>
+  <canvas id="appCanvas"></canvas>
+  <canvas id="memCanvas"></canvas>
+  <canvas id="cpuCanvas"></canvas>
+</div>
+
+<!-- I refered to https://codepen.io/jordanwillis/pen/bqaGRR -->
+<script>
+const ctx_app = document.getElementById("appCanvas");
+const ctx_mem = document.getElementById("memCanvas");
+const ctx_cpu = document.getElementById("cpuCanvas");
+const ctx_mem_rest = document.getElementById("memRestCanvas");
+let chartApps;
+let count = 1;
+const keyIndex = {}
+const baseURL = location.href.replace(/\/.+/, '/');
+
+const options = {
+            responsive: true,
+            title: {
+              display: true,
+              text: "MyDeck Monitoring",
+            },
+            legend: {
+              display: false
+            },
+            scales: {
+              yAxes: [{
+                ticks: {
+                  beginAtZero: true,
+                }
+              }]
+            }
+          };
+function mychart (ctx, label) {
+  return new Chart(ctx, {
+          type: 'line',
+          data: {
+            labels: [],
+            datasets: [{
+              data: [],
+              borderWidth: 1,
+              borderColor: 'red',
+              label: label
+            }],
+          },
+          options: options
+        })
+}
+let chartCpu = mychart(ctx_cpu, 'cpu');          
+let chartMem = mychart(ctx_mem, 'memory'); 
+let chartMemRest = mychart(ctx_mem_rest, 'memory without apps');
+var getData = function() {
+  $.ajax({
+    url: baseURL + 'api/resource',
+    success: function(data) {
+      appTotalMem = 0;
+      if (!chartApps) {
+        let seq = palette('tol-sq', Object.keys(data["apps"]).length);
+        let datasets = [];
+        let appTotalMem = 0;
+        Object.keys(data["apps"]).forEach((key) => {
+          keyIndex[key] = datasets.length
+          appTotalMem += data["apps"][key];
+          datasets.push(
+            {
+              data: [data["apps"][key]],
+              borderWidth: 1,
+              borderColor: '#' + seq[keyIndex[key]],
+              label: key,
+            }
+          )
+        });
+
+        chartApps = new Chart(ctx_app, {
+          type: 'line',
+          data: {
+            labels: [],
+            datasets: datasets
+          },
+          options: options
+        });
+      } else {
+        Object.keys(data["apps"]).sort().forEach((key) => {
+          appTotalMem += data["apps"][key];
+          chartApps.data.datasets[keyIndex[key]].data.push(data["apps"][key]);
+        })
+      }
+      chartMemRest.data.datasets[0].data.push(appTotalMem - data["calc_memory"]);
+      chartMem.data.datasets[0].data.push(data["memory"]);
+      chartCpu.data.datasets[0].data.push(data["cpu"]);
+      chartApps.data.labels.push(count);
+      chartMemRest.data.labels.push(count);
+      chartMem.data.labels.push(count);
+      chartCpu.data.labels.push(count++);
+      chartApps.update();
+      chartMemRest.update();
+      chartMem.update();
+      chartCpu.update();      
+    }
+  });
+  sec = $('#timing').val() || 5;
+  setTimeout(getData, sec * 1000);
+};
+getData();
+</script>
+</body>
+</html>

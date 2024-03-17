@@ -233,10 +233,17 @@
             axios.get(baseURL + "api/device_info").then(
                 (res) => {
                     const keys = Object.keys(res.data).sort()
+                    let rootAppID = 'app1';
                     keys.forEach((i, v) => {
+                        // If no virtual decks, then change defualt deck as r0(RealDeck)
+                        if (v == 0 && i == "r0") {
+                            const div2 = document.getElementById('app1');
+                            div2.innerHTML = div2.innerHTML.replace('id="app1"', 'id="appr0"').replace('id="block1"', 'id="blockr0"');
+                            rootAppID = div2.id = "appr0"
+                        }
                         if (v > 0) {
                             const div = document.createElement('div');
-                            div.innerHTML = document.getElementById('app1').innerHTML;
+                            div.innerHTML = document.getElementById(rootAppID).innerHTML;
                             div.innerHTML = div.innerHTML.replace('id="block1"', 'id="block' + i + '"');
                             div.id = 'app' + i;
                             document.getElementById('container').appendChild(div);
