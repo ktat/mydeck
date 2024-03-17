@@ -26,8 +26,10 @@ from .lock import Lock
 if TYPE_CHECKING:
     from .my_decks_app_base import AppBase, BackgroundAppBase, HookAppBase
 
+
 class ExceptionInvalidMyDecksConfig(Exception):
     pass
+
 
 class MyDecks:
     """The class to manage several STREAM DECK like devices.
@@ -35,6 +37,7 @@ class MyDecks:
     This class manages insteaces of MyDeck class.
     """
     mydecks: Dict[str, 'MyDeck'] = {}
+
     def __init__(self, config: dict):
         """
         config dict takes the following keys:
@@ -68,7 +71,7 @@ class MyDecks:
         """
         self.vdeck_config: Any[None, str] = config.get('vdeck_config')
         if self.vdeck_config is not None and type(self.vdeck_config) is not str:
-            raise(ExceptionInvalidMyDecksConfig)
+            raise (ExceptionInvalidMyDecksConfig)
 
         self._one_deck_only: bool = False
         self.config: Optional[dict]
@@ -91,12 +94,12 @@ class MyDecks:
             # if not deck.is_visual():
             # continue
 
-            deck.open()
             serial_number: str = deck.get_serial_number()
 
             if self._one_deck_only:
                 if self.config is not None:
-                    alert_func :Optional[Callable] = self.config.get('alert_func')
+                    alert_func: Optional[Callable] = self.config.get(
+                        'alert_func')
                     config_file: Optional[str] = self.config.get('file')
                     mydeck = MyDeck({
                         'mydecks': self,
@@ -109,8 +112,9 @@ class MyDecks:
                     mydeck.init_deck()
                     break
                 else:
-                    logging.warning("config{file: '/path/to/config_file'} is required")
-                    raise(ExceptionNoConfig)
+                    logging.warning(
+                        "config{file: '/path/to/config_file'} is required")
+                    raise (ExceptionNoConfig)
             elif self.decks is not None:
                 sn_alias = self.decks.get(serial_number)
                 configs = self.configs
@@ -127,10 +131,11 @@ class MyDecks:
                         self.mydecks[sn_alias] = mydeck
                         mydeck.init_deck()
                 else:
-                    logging.warning("config is not found for device: {}".format(serial_number))
+                    logging.warning(
+                        "config is not found for device: {}".format(serial_number))
             else:
                 logging.warning("config or (decks and configs) is required")
-                raise(ExceptionNoConfig)
+                raise (ExceptionNoConfig)
 
         # Wait until all application threads have terminated (for this example,
         # this is when all deck handles are closed).
@@ -152,7 +157,7 @@ class MyDecks:
         myname = mydeck.myname
         return list(filter(lambda mydeck: mydeck.myname != myname, self.mydecks.values()))
 
-    def mydeck (self, name: str) -> Optional['MyDeck']:
+    def mydeck(self, name: str) -> Optional['MyDeck']:
         """Pass name of the device and return the correspond MyDeck instance."""
         mydeck = self.mydecks.get(name)
         if mydeck is not None:
@@ -161,16 +166,18 @@ class MyDecks:
             logging.warning('mydeck is None: {}'.format(name))
         return None
 
+
 class ExceptionNoConfig(Exception):
     """Exception when no configuration is given"""
     pass
+
 
 class MyDeck:
     """Class to control a device like STREAM DECK."""
     mydecks: MyDecks
     # path of font
 
-    def __init__ (self, opt: dict):
+    def __init__(self, opt: dict):
         deck = opt.get('deck')
         self.deck: StreamDeckOriginalV2 = deck
         self.key_count: int = self.deck.key_count()
@@ -181,7 +188,7 @@ class MyDeck:
         self._exit: bool = False
         self._current_page: str = '@HOME'
         self._previous_pages: list[str] = ['@HOME']
-        self._previous_window: str =  ''
+        self._previous_window: str = ''
         self._in_alert: bool = False
         self._game_status: bool = False
         self._game_command: dict = {}
@@ -190,7 +197,7 @@ class MyDeck:
             'commands': {},
         }
         self._KEY_CONFIG_GAME: dict = {}
-        self._KEY_ACTION_APP: dict  = {}
+        self._KEY_ACTION_APP: dict = {}
         self._GAME_KEY_CONFIG: dict = {}
         self._config_file: str = ''
         self._config_file_mtime: float = 0
@@ -273,7 +280,7 @@ class MyDeck:
 
     def set_previous_page(self, name: str):
         """Set given page name as previous page"""
-        if  name[0] != '~' and (len(self._previous_pages) == 0 or self._previous_pages[-1] != name):
+        if name[0] != '~' and (len(self._previous_pages) == 0 or self._previous_pages[-1] != name):
             self._previous_pages.append(name)
         logging.debug(self._previous_pages)
 
@@ -297,12 +304,14 @@ class MyDeck:
             self.stop_working_apps()
             self._current_page = name
             self.set_game_status_off()
-            Lock.do_with_lock(self.deck.get_serial_number(), lambda: self.deck.reset())
+            Lock.do_with_lock(self.deck.get_serial_number(),
+                              lambda: self.deck.reset())
             self.key_setup()
             self.run_page_command(name)
             self.run_hook_apps('page_change')
             if self.config is not None:
-                self.threading_apps(self.config.apps, self.config.background_apps)
+                self.threading_apps(
+                    self.config.apps, self.config.background_apps)
 
         # run hook page_change_any whenever set_current_page is called.
         self.run_hook_apps('page_change_any')
@@ -316,7 +325,8 @@ class MyDeck:
         """setup keys"""
         deck = self.deck
         logging.warn("Opened '{}' device (serial number: '{}', fw: '{}', page: '{}')".format(
-            deck.deck_type(), deck.get_serial_number(), deck.get_firmware_version(), self.current_page()
+            deck.deck_type(), deck.get_serial_number(
+            ), deck.get_firmware_version(), self.current_page()
         ))
 
         # Set initial screen brightness to 30%.
@@ -334,7 +344,8 @@ class MyDeck:
                     self.set_key(key, page_configuration.get(key), True)
 
                     # Register callback function for the time when a key state changes.
-                    deck.set_key_callback(lambda deck, key, state: self.key_change_callback(key, state))
+                    deck.set_key_callback(
+                        lambda deck, key, state: self.key_change_callback(key, state))
 
     # set key image and label
     def set_key(self, key: int, conf: dict, use_lock: bool = True):
@@ -353,12 +364,14 @@ class MyDeck:
                 self.image_url_to_image(conf)
 
             if conf.get('no_image') is None:
-                self.update_key_image(key, self.render_key_image(ImageOrFile(conf["image"]), conf.get("label") or '', conf.get("background_color") or ''), use_lock)
+                self.update_key_image(key, self.render_key_image(ImageOrFile(conf["image"]), conf.get(
+                    "label") or '', conf.get("background_color") or ''), use_lock)
 
     def determine_image_url(self, image_url: Optional[str], url: Optional[str]) -> Optional[str]:
         """Return url for key image"""
         if image_url is None and url is not None:
-            image_url = re.sub(r'^(https?://[^/]+).*$', '\g<1>/favicon.ico', url)
+            image_url = re.sub(
+                r'^(https?://[^/]+).*$', '\g<1>/favicon.ico', url)
 
         return image_url
 
@@ -397,7 +410,7 @@ class MyDeck:
                 l.wait()
                 if icon_url[-3:len(icon_url)] == 'svg':
                     icon_file = icon_file[0:-4] + '.png'
-                    svg2png(bytestring=icon_data,write_to=icon_file)
+                    svg2png(bytestring=icon_data, write_to=icon_file)
                     l.unlock()
                 else:
                     with open(icon_file, mode="wb") as f:
@@ -429,7 +442,8 @@ class MyDeck:
             if use_lock:
                 # logging.debug("update_key_image: %s => %d" % (self.myname, key))
                 # Update requested key with the generated image.
-                Lock.do_with_lock(self.deck.get_serial_number(), lambda: deck.set_key_image(key, image))
+                Lock.do_with_lock(self.deck.get_serial_number(),
+                                  lambda: deck.set_key_image(key, image))
             else:
                 deck.set_key_image(key, image)
 
@@ -455,7 +469,8 @@ class MyDeck:
         if no_label:
             margins = [0, 0, 0, 0]
 
-        image = PILHelper.create_scaled_image(deck, icon, margins=margins, background=bg_color)
+        image = PILHelper.create_scaled_image(
+            deck, icon, margins=margins, background=bg_color)
 
         draw = ImageDraw.Draw(image)
         if no_label is False:
@@ -463,23 +478,24 @@ class MyDeck:
             if len(label) > 7:
                 font_size = int(14 * 7 / len(label) + 0.999)
             font = ImageFont.truetype(self.font_path, font_size)
-            draw.text((image.width / 2, image.height - 5), font=font, text=label, anchor="ms", fill=font_bg_color)
+            draw.text((image.width / 2, image.height - 5), font=font,
+                      text=label, anchor="ms", fill=font_bg_color)
 
         if hasattr(self.deck, 'is_virtual'):
             return image
         else:
             return PILHelper.to_native_format(deck, image)
 
-
     # Prints key state change information, updates rhe key image and performs any
     # associated actions when a key is pressed.
+
     def key_change_callback(self, key: int, state: bool):
         """Call a callback according to a key is pushed"""
         deck = self.deck
         if deck is not None:
             # Print new key state
-            logging.debug("Deck {} Key {} = {}, page = {}".format(deck.id(), key, state, self.current_page()))
-
+            logging.debug("Deck {} Key {} = {}, page = {}".format(
+                deck.id(), key, state, self.current_page()))
 
         # Check if the key is changing to the pressed state.
         if state:
@@ -520,7 +536,8 @@ class MyDeck:
 
                 elif conf.get("chrome"):
                     chrome = conf.get('chrome')
-                    command = ['google-chrome', '--profile-directory=' + chrome[0], chrome[1]]
+                    command = ['google-chrome',
+                               '--profile-directory=' + chrome[0], chrome[1]]
                     subprocess.Popen(command)
                 else:
                     command = conf.get("app_command")
@@ -541,10 +558,10 @@ class MyDeck:
                 page_name = conf.get("change_page")
                 if page_name is not None:
                     if page_name == "@previous":
-                        self.set_current_page(self.pop_last_previous_page(), False)
+                        self.set_current_page(
+                            self.pop_last_previous_page(), False)
                     else:
                         self.set_current_page(page_name)
-
 
     def stop_working_apps(self):
         """Try to stop working apps and wait until all of them are stopped."""
@@ -553,16 +570,17 @@ class MyDeck:
 
         i = 0
         # when app is stopped, app make stop False
-        while sum( 1 for e in self.config.working_apps()) > 0:
+        while sum(1 for e in self.config.working_apps()) > 0:
             for app in self.config.working_apps():
                 if app.in_working:
                     time.sleep(0.01)
                     i += 1
                     if i % 200 == 0:
-                        logging.debug('%s still waiting to stop working apps', type(app))
-
+                        logging.debug(
+                            '%s still waiting to stop working apps', type(app))
 
     # handler to notify alert
+
     def handler_alert(self):
         """Handling alert is caused."""
         self.set_alert_on()
@@ -637,6 +655,7 @@ class MyDeck:
         if not self.is_background_thread_started:
             self.is_background_thread_started = True
             for bg_app in background_apps:
+                logging.debug(bg_app.name())
                 t = threading.Thread(target=lambda: bg_app.start(), args=())
                 t.start()
 
@@ -647,14 +666,13 @@ class MyDeck:
 
         i = 0
         if self.config is not None:
-            while sum( 1 for e in self.config.not_working_apps() ) > 0:
+            while sum(1 for e in self.config.not_working_apps()) > 0:
                 for app in self.config.not_working_apps():
                     if app.is_in_target_page() and not app.in_working:
                         time.sleep(0.01)
                         i += 1
                         if i % 200 == 0:
                             logging.debug('%s still waiting to start app', app)
-
 
     def abs_key(self, key: int) -> int:
         """If key is negative number, chnage it as positive number"""
@@ -663,7 +681,7 @@ class MyDeck:
         return key
 
     def run_hook_apps(self, on: str):
-        hook_apps :List['HookAppBase'] = []
+        hook_apps: List['HookAppBase'] = []
         if self.config is not None:
             apps = self.config.hook_apps.get(on)
             if apps is not None:
@@ -679,6 +697,7 @@ class MyDeck:
                 if self.config.update_page_config_content(self.current_page(), data):
                     self.config.save_config()
                     self.config.reflect_config(True)
+
 
 class Config:
     """STREAM DECK Configuration Class"""
@@ -710,7 +729,6 @@ class Config:
                 logging.critical("Error in load: %s", e)
                 logging.debug(traceback.format_exc())
 
-
     def reflect_config(self, force: bool = False):
         """Read configuration file and reset applications and parse content of the configuration file and run apps"""
         loaded = self.load(force)
@@ -725,7 +743,7 @@ class Config:
                 logging.debug(traceback.format_exc())
                 return None
 
-    def load(self, force :bool = False):
+    def load(self, force: bool = False):
         """Load the configuration file, If the file is newer than read before, return the content of the configuration file. Or return None."""
         statinfo = os.stat(self._file)
         if force or self._file_mtime < statinfo.st_mtime:
@@ -733,7 +751,8 @@ class Config:
             with open(self._file) as f:
                 try:
                     self._config_content_origin = yaml.safe_load(f)
-                    self._config_content = deepcopy(self._config_content_origin)
+                    self._config_content = deepcopy(
+                        self._config_content_origin)
                     return self._config_content
                 except Exception as e:
                     logging.critical("Error in load: %s", e)
@@ -746,7 +765,8 @@ class Config:
         if key is None or re.match('\D', str(key)) is not None:
             return False
         key = int(key)
-        page_config: Optional[dict] = self._config_content_origin.get('page_config')
+        page_config: Optional[dict] = self._config_content_origin.get(
+            'page_config')
         if page_config is None or type(page_config) is not dict:
             return False
         current_page_config: Optional[dict] = page_config.get(page)
@@ -767,7 +787,8 @@ class Config:
                 for page in page_config.keys():
                     key_config = page_config[page].get('keys')
                     if key_config is not None:
-                        self.mydeck.set_key_config(self.modify_key_config_with_page(page, key_config))
+                        self.mydeck.set_key_config(
+                            self.modify_key_config_with_page(page, key_config))
                     command_config = page_config[page].get('commands')
                     if command_config is not None:
                         self.mydeck.set_command_config(page, command_config)
@@ -840,7 +861,8 @@ class Config:
                 self.background_apps.append(o)
                 if app_conf['app'] == 'Alert' and self.mydeck is not None:
                     o.set_check_func(self.mydeck._alert_func)
-                    self.mydeck.set_alert_key_conf(self.modify_key_config(app_conf['option']["key_config"]))
+                    self.mydeck.set_alert_key_conf(
+                        self.modify_key_config(app_conf['option']["key_config"]))
             elif o.is_hook_app:
                 self.append_hook_app(o)
             else:
@@ -852,7 +874,8 @@ class Config:
     def _load_module(self, app: str):
         module = re.sub('([A-Z])', r'_\1', app)[1:].lower()
         if self._loaded.get(app) is None:
-            self._loaded[app] = importlib.import_module('mydeck.' + module, "mydeck")
+            self._loaded[app] = importlib.import_module(
+                'mydeck.' + module, "mydeck")
 
         return self._loaded[app]
 
@@ -885,9 +908,11 @@ class Config:
             new_config[key] = conf[_key]
         return new_config
 
+
 class ImageOrFile:
     """Class to represent Image instannce or a file path."""
     is_file = False
+
     def __init__(self, file_or_image: Any):
         """Constructor. Pass Image.Image instance or file path."""
         self.image: Image.Image
@@ -895,13 +920,14 @@ class ImageOrFile:
 
         if type(file_or_image) != str and type(file_or_image) != Image.Image:
             logging.warning(file_or_image)
-            raise(ExceptionWrongTypeGiven)
+            raise (ExceptionWrongTypeGiven)
 
         if type(file_or_image) == str:
             self.file = file_or_image
             self.is_file = True
         elif type(file_or_image) == Image.Image:
             self.image = file_or_image
+
 
 class ExceptionWrongTypeGiven(Exception):
     """Exception when wrong type is given to ImageOrFile constructor."""

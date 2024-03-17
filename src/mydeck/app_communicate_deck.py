@@ -1,6 +1,7 @@
 from mydeck import AppBase, ImageOrFile, MyDeck
 from typing import Optional, Dict
 
+
 class AppCommunicateDeck(AppBase):
     """Sample application to communicate other deck"""
     _key_conf = {
@@ -27,7 +28,8 @@ class AppCommunicateDeck(AppBase):
             self.mydeck.set_key_conf(page, key, self._key_conf)
             conf = self.page_cache.get(page)
             if conf is not None:
-                self.mydeck.update_key_image(key, self.mydeck.render_key_image(ImageOrFile(conf["image"]), conf.get("label") or '', conf.get("background_color") or ''))
+                self.mydeck.update_key_image(key, self.mydeck.render_key_image(ImageOrFile(
+                    conf["image"]), conf.get("label") or '', conf.get("background_color") or ''))
 
     def communicate(self):
         to_deck_name: str = self.to_deck_name
@@ -52,10 +54,12 @@ class AppCommunicateDeck(AppBase):
                         if len(configs) <= self.index[page][to_key]:
                             self.index[page][to_key] = 0
                         conf = configs[self.index[page][to_key]]
-                        self.to_deck.update_key_image(to_key, self.to_deck.render_key_image(ImageOrFile(conf["image"]), conf.get("label") or '', conf.get("background_color") or ''))
+                        self.to_deck.update_key_image(to_key, self.to_deck.render_key_image(ImageOrFile(
+                            conf["image"]), conf.get("label") or '', conf.get("background_color") or ''))
                         self.index[page][to_key] += 1
 
                     if conf is not None:
-                        self.mydeck.update_key_image(key, self.mydeck.render_key_image(ImageOrFile(conf["image"]), conf.get("label") or '', conf.get("background_color") or ''))
+                        self.mydeck.update_key_image(key, self.mydeck.render_key_image(ImageOrFile(
+                            conf["image"]), conf.get("label") or '', conf.get("background_color") or ''))
                         self.page_cache[page] = conf
                     break

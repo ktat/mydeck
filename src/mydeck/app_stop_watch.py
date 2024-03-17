@@ -10,6 +10,7 @@ from typing import NoReturn
 X: int = 100
 Y: int = 100
 
+
 class AppStopWatch(AppBase):
     _key_conf = {
         "app_command": "MyDeckStopWatchToggle",
@@ -36,11 +37,10 @@ class AppStopWatch(AppBase):
         key = self.page_key.get(page)
         if key is not None:
             self.mydeck.set_key_conf(page, key, self._key_conf)
-            t = threading.Thread(target=lambda : self.count_up(key), args=())
+            t = threading.Thread(target=lambda: self.count_up(key), args=())
             t.start()
 
-
-    def count_up(self, key :int) -> NoReturn:
+    def count_up(self, key: int) -> NoReturn:
         t = time.time()
         font = ImageFont.truetype(self.mydeck.font_path, 35)
         while True:
@@ -58,8 +58,10 @@ class AppStopWatch(AppBase):
                 im = Image.new('RGB', (X, Y), (0, 0, 0))
                 draw = ImageDraw.Draw(im)
                 n = "{0:02.2f}".format(int((time.time() - t) * 100) / 100)
-                draw.text((0,45), text=n, font = font, andhor="ms", fill="white")
-                self.mydeck.update_key_image(key, self.mydeck.render_key_image(ImageOrFile(im), "STOP/START", "black"), False)
+                draw.text((0, 45), text=n, font=font,
+                          andhor="ms", fill="white")
+                self.mydeck.update_key_image(key, self.mydeck.render_key_image(
+                    ImageOrFile(im), "STOP/START", "black"), False)
         sys.exit()
 
     def toggle_count(self):
