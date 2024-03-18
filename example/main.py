@@ -1,6 +1,7 @@
 from mydeck import *
 
 import os
+import sys
 import requests
 
 from StreamDeck.DeviceManager import DeviceManager
@@ -15,8 +16,12 @@ def check_alert():
 
 
 if __name__ == "__main__":
+    port: int = 3000  # 3000 is default port, change this if required
+    if len(sys.argv) > 1:
+        port = int(sys.argv[1])
+
     mydecks = MyDecks({
-        "server_port": 3000, # 3000 is default port, change this if required
+        "server_port": port,
         'config': {
             'file': "./example/config/config.yml",
             'alert_func': check_alert,
