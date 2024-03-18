@@ -511,19 +511,24 @@ class MyDeck:
                 if conf.get("exit") == 1:
                     # Use a scoped-with on the deck to ensure we're the only thread
                     # using it right now.
-                    with deck:
-                        # Reset deck, clearing all button images.
-                        deck.reset()
 
-                        # Close deck handle, terminating internal worker threads.
-                        deck.close()
+                    # Reset deck, clearing all button images.
+                    deck.reset()
 
-                        # informa program is end to other thread
-                        self._exit = True
-                        if self.config is not None:
-                            for app in self.config.apps:
-                                app.stop = True
-                        sys.exit()
+                    # informa program is end to other thread
+                    self._exit = True
+
+                    if self.config is not None:
+                        for app in self.config.apps:
+                            logging.debug("stop app: %s" % app.name())
+                            app.stop = True
+
+                    time.sleep(2)
+
+                    # Close deck handle, terminating internal worker threads.
+                    deck.close()
+
+                    sys.exit()
 
                 elif type(conf.get("command")) is str and self._game_command.get(conf.get("command")):
                     command = self._game_command.get(conf.get("command"))
@@ -652,6 +657,9 @@ class MyDeck:
         """Run apps in thread"""
         from .app_web_server import AppWebServer
 
+        if self._exit:
+            return
+
         for app in apps:
             if app.use_thread and app.is_in_target_page():
                 t = threading.Thread(target=lambda: app.start(), args=())
@@ -668,8 +676,9 @@ class MyDeck:
 
         # Automatically load AppWebServer when it is not loaded yet.
         if AppWebServer.IS_ALREADY_WORKING is False:
-            app = AppWebServer(self, {"port": self.server_port})
-            t = threading.Thread(target=lambda: app.start(), args=())
+            web_server_app = AppWebServer(self, {"port": self.server_port})
+            t = threading.Thread(
+                target=lambda: web_server_app.start(), args=())
             t.start()
 
         t = threading.Thread(target=lambda: self.update_config(), args=())
@@ -704,12 +713,21 @@ class MyDeck:
     def update_config(self):
         from .my_decks_manager import MyDecksManager
         while True:
+            if self.deck.is_closed():
+                break
+
             sn = self.deck.get_serial_number()
             if MyDecksManager.ConfigQueue.get(sn) is not None:
                 data = MyDecksManager.ConfigQueue[sn].get()
+                if data.get('exit'):
+                    break
+
                 if self.config.update_page_config_content(self.current_page(), data):
                     self.config.save_config()
                     self.config.reflect_config(True)
+
+        logging.debug("update_config is exited")
+        sys.exit()
 
 
 class Config:

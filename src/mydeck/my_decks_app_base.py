@@ -113,6 +113,10 @@ class AppBase(App):
             logging.debug("%s is working", self.name())
             self.in_working = True
 
+            # exit when main process is finished
+            if self.check_to_stop():
+                break
+
             try:
                 page = self.mydeck.current_page()
                 key = self.page_key.get(page)
@@ -122,9 +126,6 @@ class AppBase(App):
                 logging.critical(
                     'Error in app_base.start {} {}'.format(type(self), e))
                 logging.debug(traceback.format_exc())
-
-            # exit when main process is finished
-            if self.check_to_stop():
                 break
 
             if self.use_trigger:
@@ -137,9 +138,11 @@ class AppBase(App):
 
     def check_to_stop(self) -> bool:
         """Return true when the deck exists or current page is not in the target of app."""
+
         if self.mydeck._exit or self.stop or not self.is_in_target_page():
             self.stop_app()
             return True
+
         return False
 
     def stop_app(self):
@@ -147,7 +150,7 @@ class AppBase(App):
         if self.in_working:
             if self.use_trigger:
                 self.trigger.set()
-            self.stop = False
+            self.stop = True
             self.is_first = True
             self.in_working = False
 
@@ -235,6 +238,7 @@ class BackgroundAppBase(App):
 
             time.sleep(self.sleep)
 
+        logging.debug("background(%s) app exit", self.name())
         sys.exit()
 
 

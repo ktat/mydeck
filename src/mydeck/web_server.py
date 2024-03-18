@@ -37,6 +37,11 @@ class DeckOutputWebHandler(http.server.BaseHTTPRequestHandler):
             c.pathKeyMap[id][k] = BLANK_IMAGE
             k += 1
 
+    @staticmethod
+    def remove_device(id: str):
+        c = DeckOutputWebHandler
+        c.pathKeyMap.pop(id, None)
+
     def call_key_call_back(self, id, key):
         from .my_decks_manager import VirtualDeck
 
@@ -86,6 +91,17 @@ class DeckOutputWebHandler(http.server.BaseHTTPRequestHandler):
         elif self.path == '/api/device_key_images':
             return self.res_device_key_images()
         elif (m := re.search('^/api/([^/]+)(?:/(\d+))?$', self.path)) is not None:
+            all_zero = True
+            c = DeckOutputWebHandler
+            for k in c.pathKeyMap.keys():
+                if c.pathKeyMap.get(k) is not None and len(c.pathKeyMap[k].keys()) != 0:
+                    all_zero = False
+                    break
+
+            if all_zero:
+                logging.debug("sys.exit!")
+                self.server.shutdown()
+
             id: str = m.group(1)
             # /id/key_num
             if m.group(2) is not None:

@@ -1,5 +1,6 @@
 from mydeck import MyDeck, BackgroundAppBase, DeckOutputWebServer
 import logging
+import sys
 
 
 class AppWebServer(BackgroundAppBase):
@@ -24,3 +25,6 @@ class AppWebServer(BackgroundAppBase):
 
             server = DeckOutputWebServer()
             server.run(self.port)
+            logging.info("exit in start")
+            self.stop = True
+            sys.exit()

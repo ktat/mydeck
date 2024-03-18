@@ -4,6 +4,7 @@ import http.server
 import logging
 import random
 import re
+import sys
 import time
 import traceback
 import yaml
@@ -200,6 +201,7 @@ class VirtualDeck:
     def __init__(self, opt: dict, input: 'DeckInput', output: 'DeckOutput'):
         """Pass Virutal Deck option, DeckInput instance and DeckOutput instance."""
         self.real_deck: StreamDeck = None
+        self._exit: bool = False
         key_count = opt.get('key_count')
         if type(key_count) is not int:
             raise (ExceptionVirtualDeckConstructor)
@@ -331,8 +333,20 @@ class VirtualDeck:
         pass
 
     def close(self):
-        """Do nothing."""
-        pass
+        """Close deck."""
+        self._exit = True
+
+        sn = self.get_serial_number()
+        MyDecksManager.ConfigQueue[sn].put({"exit": True})
+
+        if self.has_real_deck:
+            self.real_deck.close()
+
+        # for web server
+        DeckOutputWebHandler.remove_device(self.id())
+
+    def is_closed(self) -> bool:
+        return self._exit
 
 
 class DeckOutput:
@@ -459,5 +473,6 @@ class DeckOutputWebServer:
     def run(self, port: int):
         with http.server.ThreadingHTTPServer(('', port), DeckOutputWebHandler) as httpd:
             logging.info("serving at port %d", port)
-            httpd.serve_forever()
             logging.info("server is started")
+            httpd.serve_forever()
+            logging.info("server is exited")
