@@ -16,6 +16,7 @@ def check_alert():
 
 if __name__ == "__main__":
     mydecks = MyDecks({
+        "server_port": 3000, # 3000 is default port, change this if required
         'config': {
             'file': "./example/config/config.yml",
             'alert_func': check_alert,

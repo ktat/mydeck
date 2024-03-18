@@ -5,9 +5,6 @@ apps:
        page_key:
          '@HOME': 2
        display_name: 'Tokyo'
-   - app: WebServer
-     option:
-       port: 3000
    - app: Clock
      option:
        page_key:

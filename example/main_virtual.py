@@ -13,6 +13,7 @@ import requests
 
 if __name__ == "__main__":
     mydecks = MyDecks({
+        'server_port': 3000, # 3000 is default port, change this if required
         'vdeck_config': "example/config/vdeck.yml",
         'decks': {
             'dummy1': '4key-dummy',
