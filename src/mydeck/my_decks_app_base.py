@@ -146,11 +146,13 @@ class AppBase(App):
         return False
 
     def stop_app(self):
-        """Stop application."""
+        """Stop application. It must be called within app."""
         if self.in_working:
             if self.use_trigger:
                 self.trigger.set()
-            self.stop = True
+
+            # initialize app flags
+            self.stop = False
             self.is_first = True
             self.in_working = False
 
