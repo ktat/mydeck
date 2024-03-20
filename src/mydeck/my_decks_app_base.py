@@ -92,6 +92,12 @@ class AppBase(App):
         logging.critical(
             "Implemnt set_image_to_key in subclass for app to use thread anytime.")
 
+    # implment it in subclass
+    def set_image_to_touchscreen(self, page: str):
+        """Set image to key. Implement this method in subclass."""
+        logging.critical(
+            "Implemnt set_image_to_key in subclass for app to use thread anytime.")
+
     # check current page is whther app's target or not
     def is_in_target_page(self) -> bool:
         """Return true when the current page is the target of the app."""

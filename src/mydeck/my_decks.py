@@ -15,6 +15,7 @@ import importlib
 import logging
 import traceback
 import shutil
+from .my_decks_manager import VirtualDeck
 
 from cairosvg import svg2png
 from typing import Any, NoReturn, List, TYPE_CHECKING, Optional, Callable, Dict, Union
@@ -438,6 +439,16 @@ class MyDeck:
             os.rename(file_path, file_path + '.back')
             return False
 
+    def update_touchscreen_image(self, image: str, use_lock: bool = True):
+        """Update touchscreen image"""
+        deck: VirtualDeck = self.deck
+        if deck is not None:
+            if use_lock:
+                Lock.do_with_lock(deck.get_serial_number(),
+                                  lambda: deck.set_touchscreen_image(image))
+            else:
+                deck.set_touchscreen_image(image)
+
     # change key image
     def update_key_image(self, key: int, image: str, use_lock: bool = True):
         """Update image of key"""
@@ -652,6 +663,15 @@ class MyDeck:
         if self._PAGE_CONFIG['keys'].get(page) is None:
             self._PAGE_CONFIG['keys'][page] = {}
         self._PAGE_CONFIG['keys'][page][key] = conf
+
+    def set_touchscreen_conf(self, page: str, conf: dict):
+        """Set a configuration of a touchscreen"""
+        if self._PAGE_CONFIG.get('touch') is None:
+            self._PAGE_CONFIG['touch'] = {}
+        if self._PAGE_CONFIG['touch'].get(page) is None:
+            self._PAGE_CONFIG['touch'][page] = {}
+
+        self._PAGE_CONFIG['touch'][page] = conf
 
     def threading_apps(self, apps: List['AppBase'], background_apps: List['BackgroundAppBase']):
         """Run apps in thread"""

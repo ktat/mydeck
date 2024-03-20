@@ -6,6 +6,7 @@ import psutil
 import os
 import sys
 import logging
+from StreamDeck.Devices.StreamDeck import TouchscreenEventType, DialEventType
 from typing import Union
 
 # 100 x 100 blank image
@@ -13,9 +14,15 @@ BLANK_IMAGE = "iVBORw0KGgoAAAANSUhEUgAAAGQAAABkCAQAAADa613fAAAAaUlEQVR42u3PQREAA
     + "3g34MGNJMXKiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIi" \
     + "IiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiJyWeRuMgFyCP0cAAAAAElFTkSuQmCC"
 
+# 100 x 100 blank image
+BLANK_TOUCH_IMAGE = "iVBORw0KGgoAAAANSUhEUgAAAGQAAABkCAQAAADa613fAAAAaUlEQVR42u3PQREAAAgDoC251Y" \
+    + "3g34MGNJMXKiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIi" \
+    + "IiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiJyWeRuMgFyCP0cAAAAAElFTkSuQmCC"
+
 
 class DeckOutputWebHandler(http.server.BaseHTTPRequestHandler):
     pathKeyMap: dict = {}
+    touchscreenImage: dict = {}
     idDeckMap: dict = {}
 
     @staticmethod
@@ -26,6 +33,11 @@ class DeckOutputWebHandler(http.server.BaseHTTPRequestHandler):
         if c.pathKeyMap[id].get(key) == None:
             c.pathKeyMap[id][key] = None
         c.pathKeyMap[id][key] = image
+
+    @staticmethod
+    def setTouchscreenImage(id: str, image: str):
+        c = DeckOutputWebHandler
+        c.touchscreenImage[id] = image
 
     @staticmethod
     def reset_keys(id: str, key_count: int):
@@ -48,6 +60,18 @@ class DeckOutputWebHandler(http.server.BaseHTTPRequestHandler):
         deck: VirtualDeck = self.idDeckMap[id]
         deck.key_callback(deck, key, True)
         deck.key_callback(deck, key, False)
+
+    def call_dial_call_back(self, id, key, event, value):
+        from .my_decks_manager import VirtualDeck
+
+        deck: VirtualDeck = self.idDeckMap[id]
+        deck.dial_callback(deck, key, event, value)
+
+    def call_touchscreen_call_back(self, id, x, y):
+        from .my_decks_manager import VirtualDeck
+
+        deck: VirtualDeck = self.idDeckMap[id]
+        deck.touchscreen_callback(deck, x, y)
 
     # https://towardsdatascience.com/the-strange-size-of-python-objects-in-memory-ce87bdfbb97f
     def actualsize(self, input_obj):
@@ -90,7 +114,7 @@ class DeckOutputWebHandler(http.server.BaseHTTPRequestHandler):
             return self.res_images()
         elif self.path == '/api/device_key_images':
             return self.res_device_key_images()
-        elif (m := re.search('^/api/([^/]+)(?:/(\d+))?$', self.path)) is not None:
+        elif (m := re.search('^/api/([^/]+)(?:/(\d+|(?:dial|touch)/(\d+)/(\d+)))?$', self.path)) is not None:
             all_zero = True
             c = DeckOutputWebHandler
             for k in c.pathKeyMap.keys():
@@ -105,11 +129,28 @@ class DeckOutputWebHandler(http.server.BaseHTTPRequestHandler):
             id: str = m.group(1)
             # /id/key_num
             if m.group(2) is not None:
-                key: int = int(m.group(2))
-                return self.res_key_tapped(id, key)
+                if re.search("dial/(\d+)", m.group(2)):
+                    dial_num: int = int(m.group(3))
+                    value: int = int(m.group(4))
+                    self.idDeckMap[id]._dial_states[dial_num] = value
+                    self.res_dial_changed(id, dial_num, value)
+                elif re.search("touch", m.group(2)):
+                    x: int = int(m.group(3))
+                    y: int = int(m.group(4))
+                    self.res_touchscreen_tapped(id, x, y)
+                else:
+                    key: int = int(m.group(2))
+                    return self.res_key_tapped(id, key)
             # /id
             elif (image_info := self.pathKeyMap.get(id)) is not None:
-                return self.res_deck_images(image_info)
+                res = {
+                    "key": image_info,
+                    "touch": c.touchscreenImage.get(id),
+                    "dial_states": self.idDeckMap[id].dial_states()
+                }
+                if res["touch"] is None:
+                    res["touch"] = BLANK_TOUCH_IMAGE
+                return self.res_deck_images(res)
 
         self.response_404()
 
@@ -162,6 +203,9 @@ class DeckOutputWebHandler(http.server.BaseHTTPRequestHandler):
                 "key_count": deck.key_count(),
                 "serial_number": deck.get_serial_number(),
                 "columns": deck.columns(),
+                "has_touchscreen": deck.is_touch(),
+                "dials": deck.dial_count(),
+                "dial_states": deck.dial_states(),
             }
         self.api_json_response(json_data)
 
@@ -210,7 +254,18 @@ class DeckOutputWebHandler(http.server.BaseHTTPRequestHandler):
     def res_key_tapped(self, id: str, key: int):
         self.call_key_call_back(id, key)
         self.text_headers(200, 'plain')
-        self.wfile.write(b"Tapped")
+        self.wfile.write(b"Key Tapped")
+
+    def res_dial_changed(self, id: str, key: int, value: int):
+        self.call_dial_call_back(id, key, DialEventType.TURN, value)
+        self.text_headers(200, 'plain')
+        self.wfile.write(b"Dial Changed")
+
+    def res_touchscreen_tapped(self, id: int, x: int, y: int):
+        self.call_touchscreen_call_back(
+            id, TouchscreenEventType.SHORT, {"x": x, "y": y})
+        self.text_headers(200, 'plain')
+        self.wfile.write(b"Screen Tapped")
 
     def res_deck_images(self, image_info: dict):
         self.api_json_response(image_info)

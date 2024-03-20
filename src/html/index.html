@@ -102,6 +102,13 @@
             overflow: scroll;
         }
 
+        .touchscreen {
+            margin-left: 5px;
+            /* Actual size is 800 x 100 */
+            width: 595;
+            height: 74.375;
+        }
+
         div[id^="block"].on {
             float: left;
             position: absolute;
@@ -145,11 +152,19 @@
             <div class="app">
                 <h1>Deck {{ id }} (sn: {{ serial_number }})</h1>
                 <span v-for="i in key_count">
-                    <img :src="'data:image/png;base64,' + items.data[i - 1]"
+                    <img :src="'data:image/png;base64,' + items.data.key[i - 1]"
                         :onclick="'tap(this, &quot;' + id + '&quot;, ' + (i - 1) + ')'"
                         @click.right.prevent="openSettingModal(i)">
                     <span :class="'mod' + (i % columns)"></span>
                 </span>
+                <span v-for="i in dials">
+                    <input type="range" min="0" max="100" :value='items.data.dial_states[i]' class="slider" id="myRange"
+                        :onchange="' changeDial(this, &quot;' + id + '&quot;, ' + i + ',this.value)'">
+                </span>
+                <div v-if=" has_touchscreen">
+                    <img :src="'data:image/png;base64,' + items.data.touch" class="touchscreen"
+                        :onclick="'tapScreen(this, &quot;' + id + '&quot;, event.offsetX, event.offsetY)'">
+                </div>
             </div>
             <div v-if="settingMode" id="settingModal">
                 <div id="closeModal" @click.left="closeSettingModal()">&#x274c;</div>
@@ -326,6 +341,9 @@
                                 checkResult: {},
                                 deviceInfo: res.data[i],
                                 columns: res.data[i].columns,
+                                dials: res.data[i].dials,
+                                dial_states: res.data[i].dial_states,
+                                has_touchscreen: res.data[i].has_touchscreen,
                                 settingMode: false,
                                 settingKey: 0,
                                 settingType: null,
@@ -450,6 +468,15 @@
         function tap(e, id, key) {
             setTimeout(() => { buttonOpacity(e, 50) });
             axios.get(baseURL + 'api/' + id + '/' + key);
+        }
+
+        function changeDial(e, id, key, value) {
+            axios.get(baseURL + 'api/' + id + '/dial/' + key + '/' + value);
+        }
+
+        function tapScreen(e, id, x, y) {
+            setTimeout(() => { buttonOpacity(e, 50) });
+            axios.get(baseURL + 'api/' + id + '/touch/' + x + '/' + y);
         }
 
         function buttonOpacity(e, o) {
