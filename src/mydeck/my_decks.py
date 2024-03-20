@@ -201,6 +201,8 @@ class MyDeck:
         self._PAGE_CONFIG: dict = {
             'keys': {},
             'commands': {},
+            'touch': {},
+            'dial': {},
         }
         self._KEY_CONFIG_GAME: dict = {}
         self._KEY_ACTION_APP: dict = {}
@@ -228,7 +230,7 @@ class MyDeck:
         if self.config is not None:
             self.config.reflect_config()
 
-        self.key_setup()
+        self.key_touchscreen_setup()
 
     def in_game_status(self) -> bool:
         """True if deck is in game mode"""
@@ -244,6 +246,20 @@ class MyDeck:
             self.config.reflect_config()
 
         return self._PAGE_CONFIG.get('keys')
+
+    def dial_config(self):
+        """Return deck dial configuration"""
+        if self._config_file != '':
+            self.config.reflect_config()
+
+        return self._PAGE_CONFIG.get('dial')
+
+    def touchscreen_config(self):
+        """Return deck touchscreen configuration"""
+        if self._config_file != '':
+            self.config.reflect_config()
+
+        return self._PAGE_CONFIG.get('touch')
 
     def run_page_command(self, page):
         """Return deck page command configuration"""
@@ -312,7 +328,7 @@ class MyDeck:
             self._current_page = name
             self.set_game_status_off()
             self.deck.reset_keys()
-            self.key_setup()
+            self.key_touchscreen_setup()
             self.run_page_command(name)
             self.run_hook_apps('page_change')
             if self.config is not None:
@@ -326,10 +342,10 @@ class MyDeck:
         """return true when page key config exists"""
         return self._PAGE_CONFIG['keys'].get(name) is not None
 
-    # display keys and set key callbacks
-    def key_setup(self):
-        """setup keys"""
-        deck = self.deck
+    # display keys/touchscreen and set key/touchscreen callbacks
+    def key_touchscreen_setup(self):
+        """setup keys & touchscreen"""
+        deck: VirtualDeck = self.deck
         logging.warn("Opened '{}' device (serial number: '{}', fw: '{}', page: '{}')".format(
             deck.deck_type(), deck.get_serial_number(
             ), deck.get_firmware_version(), self.current_page()
@@ -352,6 +368,26 @@ class MyDeck:
                     # Register callback function for the time when a key state changes.
                     deck.set_key_callback(
                         lambda deck, key, state: self.key_change_callback(key, state))
+        self.touchscreen_setup()
+
+    def touchscreen_setup(self):
+        """setup touchscreen"""
+        deck: VirtualDeck = self.deck
+
+        current_page = self.current_page()
+
+        page_configuration = self.touchscreen_config().get(self.current_page())
+        if page_configuration is not None:
+            self.set_touchscreen(page_configuration, True)
+
+        # Register callback function for the time when a key state changes.
+        deck.set_touchscreen_callback(
+            lambda deck, x, y: self.touchscreen_change_callback(x, y))
+
+    def set_touchscreen(self, conf: dict, use_lock: bool = True):
+        """Set touchscreen image"""
+        if conf.get('image') is not None:
+            self.update_touchscreen_image(conf, use_lock)
 
     # set key image and label
     def set_key(self, key: int, conf: dict, use_lock: bool = True):
@@ -439,15 +475,21 @@ class MyDeck:
             os.rename(file_path, file_path + '.back')
             return False
 
-    def update_touchscreen_image(self, image: str, use_lock: bool = True):
+    # change touchscreen image
+    def update_touchscreen_image(self, conf: dict, use_lock: bool = True):
         """Update touchscreen image"""
         deck: VirtualDeck = self.deck
+        x: int = conf.get("x") or 0
+        y: int = conf.get("y") or 0
+        width: int = conf.get("width") or 800
+        height: int = conf.get("height") or 100
+        image = self.render_touchscreen_image(ImageOrFile(conf["image"]))
         if deck is not None:
             if use_lock:
                 Lock.do_with_lock(deck.get_serial_number(),
-                                  lambda: deck.set_touchscreen_image(image))
+                                  lambda: deck.set_touchscreen_image(image, x, y, width, height))
             else:
-                deck.set_touchscreen_image(image)
+                deck.set_touchscreen_image(image, x, y, width, height)
 
     # change key image
     def update_key_image(self, key: int, image: str, use_lock: bool = True):
@@ -462,6 +504,18 @@ class MyDeck:
                                   lambda: deck.set_key_image(key, image))
             else:
                 deck.set_key_image(key, image)
+
+    # render touchscreen image
+    def render_touchscreen_image(self, image_filename_or_object: 'ImageOrFile'):
+        """Render touchscreen image with image."""
+        deck = self.deck
+        image = PILHelper.create_scaled_touchscreen_image(
+            deck, image_filename_or_object.image, margins=[0, 0, 0, 0], background="black")
+
+        if hasattr(self.deck, 'is_virtual'):
+            return image
+        else:
+            return PILHelper.to_native_format(deck, image)
 
     # render key image and label
     def render_key_image(self, icon_filename_or_object: 'ImageOrFile', label: str = '', bg_color: str = '', no_label: bool = False):
@@ -501,6 +555,28 @@ class MyDeck:
             return image
         else:
             return PILHelper.to_native_format(deck, image)
+
+    def touchscreen_change_callback(self, event, pos: dict):
+        """Call a callback according to a touchscreen is touched"""
+        deck = self.deck
+        conf = self.touchscreen_config().get(self.current_page())
+        command = conf.get("app_command")
+        if command is not None:
+            found = False
+            if self.config is not None:
+                for app in self.config.apps:
+                    if app.name()[0:14] != "AppTouchscreen":
+                        continue
+
+                    if app.page is not None and self.current_page() in app.page:
+                        for key in app.touch_command.keys():
+                            if command == key:
+                                found = True
+                                cmd = app.touch_command[key]
+                                cmd(app, event, pos)
+                                break
+                    if found:
+                        break
 
     # Prints key state change information, updates rhe key image and performs any
     # associated actions when a key is pressed.
@@ -549,7 +625,7 @@ class MyDeck:
                 elif conf.get("name") == "alert":
                     with deck:
                         self.set_alert_off()
-                        self.key_setup()
+                        self.key_touchscreen_setup()
 
                 elif conf.get("command"):
                     command = conf.get("command")
@@ -566,6 +642,9 @@ class MyDeck:
                         found = False
                         if self.config is not None:
                             for app in self.config.apps:
+                                if app.name()[0:14] == "AppTouchscreen" or app.name()[0:7] == "AppDial":
+                                    continue
+
                                 if app.page_key is not None and app.page_key.get(self.current_page()):
                                     for key in app.key_command.keys():
                                         if command == key:
@@ -619,6 +698,12 @@ class MyDeck:
         if conf is None:
             conf = {}
         self._PAGE_CONFIG['keys'] = conf
+
+    def set_touchscreen_config(self, conf):
+        """Set touchscreen configuration."""
+        if conf is None:
+            conf = {}
+        self._PAGE_CONFIG['touch'] = conf
 
     def set_command_config(self, page: str, conf):
         """Set page command configuration."""
@@ -788,7 +873,7 @@ class Config:
                 self.reset_apps()
                 self.parse(loaded)
                 self.mydeck.threading_apps(self.apps, self.background_apps)
-                self.mydeck.key_setup()
+                self.mydeck.key_touchscreen_setup()
             except Exception as e:
                 logging.critical("Error in reflect_config: %s", e)
                 logging.debug(traceback.format_exc())
@@ -840,6 +925,11 @@ class Config:
                     if key_config is not None:
                         self.mydeck.set_key_config(
                             self.modify_key_config_with_page(page, key_config))
+                    touch_config = page_config[page].get('touch')
+                    if touch_config is not None:
+                        self.mydeck.set_touchscreen_config(
+                            self.modify_touchscreen_config_with_page(page, touch_config))
+                    # TODO: dial
                     command_config = page_config[page].get('commands')
                     if command_config is not None:
                         self.mydeck.set_command_config(page, command_config)
@@ -958,6 +1048,16 @@ class Config:
                 key = key_count + _key
             new_config[key] = conf[_key]
         return new_config
+
+    def modify_touchscreen_config_with_page(self, page: str, conf: dict):
+        """Modify touchscreen configuration according to conf whose key is page name and value is configuration dict."""
+
+        if self.mydeck._PAGE_CONFIG['touch'].get(page) is None:
+            self.mydeck._PAGE_CONFIG['touch'][page] = {}
+
+        self.mydeck._PAGE_CONFIG['touch'][page] = conf
+
+        return self.mydeck._PAGE_CONFIG['touch']
 
 
 class ImageOrFile:

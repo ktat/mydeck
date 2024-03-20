@@ -28,6 +28,7 @@ class App:
     use_trigger: bool = False
 
     key_command: dict = {}
+    touch_command: dict = {}
 
     def __init__(self, mydeck: 'MyDeck'):
         """Constructor pass MyDeck instance."""
@@ -44,6 +45,8 @@ class App:
         self.stop: bool = False
         # dict: key is page name and value is key number.
         self.page_key: dict = {}
+        # list: contains page names
+        self.page: list = []
         # trigger for trigger app
         self.trigger: Any[None, Event] = None
         # if first time in loop
@@ -83,6 +86,8 @@ class AppBase(App):
         self.mydeck = mydeck
         if option.get("page_key") is not None:
             self.page_key = option["page_key"]
+        if option.get("page") is not None:
+            self.page = option["page"]
         if option.get("command") is not None:
             self.command = option["command"]
 

@@ -217,19 +217,6 @@ class ExceptionVirtualDeckConstructor(Exception):
 class VirtualDeck:
     """Virtual Deck Class. It is emmulated Class of StreamDeck.DeviceManager"""
 
-    # TODO: it should be app
-    def render_touchscreen_sample_image(self, args):
-        logging.debug(args)
-        x: int = args.get("x") or 0
-        y: int = args.get("y") or 0
-        im = Image.new('RGB', (800, 100), (0, 0, 0))
-        draw = ImageDraw.Draw(im)
-        font = ImageFont.truetype(
-            "/usr/share/fonts/truetype/freefont/FreeSans.ttf", 25)
-        position_text = "Clicked x: {0:d}, y: {1:d}".format(x, y)
-        draw.text((250, 35), text=position_text, fill="white", font=font)
-        self.set_touchscreen_image(im, 0, 0, 800, 100)
-
     def __init__(self, opt: dict, input: 'DeckInput', output: 'DeckOutput'):
         """Pass Virutal Deck option, DeckInput instance and DeckOutput instance."""
         self.real_deck: StreamDeck = None
@@ -238,18 +225,9 @@ class VirtualDeck:
         self.touchscreen_image = None
         self._dial_count: int = 0
         self._dial_states: Dict[int, int] = {}
-
-        def default_dial_callback(self, dial, event, value):
-            logging.debug("[DIAL] self: %s, dial: %s, event: %s, value: %s",
-                          self, dial, event, value)
-
-        def default_touchscreen_callback(self, event, args):
-            self.render_touchscreen_sample_image(args)
-            logging.debug(
-                "[TOUCH] self: %s, event: %s, args: %s", self, event, args)
-
-        self.dial_callback: function = default_dial_callback
-        self.touchscreen_callback: function = default_touchscreen_callback
+        self.dial_callback: function = lambda event, dial, value: None
+        self.touchscreen_callback: function = lambda event, x, y: None
+        self.key_callback: function
 
         key_count = opt.get('key_count')
         if type(key_count) is not int:
@@ -295,7 +273,7 @@ class VirtualDeck:
 
     def is_visual(self) -> bool:
         """Always returns true if not real deck."""
-        if self.has_real_deck:
+        if self.has_real_deck():
             is_visual: Optional[bool] = self.real_deck.is_visual()
             return is_visual is not None and is_visual
 
@@ -387,6 +365,7 @@ class VirtualDeck:
         if self.has_real_deck():
             self.real_deck.set_touchscreen_image(
                 image, x_pos, y_pos, width, height)
+
         self.touchscreen_image = image
         self.output.output(self.current_key_status, self.touchscreen_image)
 
@@ -414,7 +393,7 @@ class VirtualDeck:
         sn = self.get_serial_number()
         MyDecksManager.ConfigQueue[sn].put({"exit": True})
 
-        if self.has_real_deck:
+        if self.has_real_deck():
             self.real_deck.close()
 
         # for web server
@@ -424,6 +403,15 @@ class VirtualDeck:
         return self.is_touch_interface
 
     def touchscreen_image_format(self) -> dict:
+        """Format of touchscreen image. Currently it returns fixed dict.
+
+        {
+            'size': (800, 100),
+            'format': 'png',
+            'flip': (None, None),
+            'rotation': None,
+        }
+        """
         plus = StreamDeckPlus
         return {
             'size': (plus.TOUCHSCREEN_PIXEL_WIDTH, plus.TOUCHSCREEN_PIXEL_HEIGHT),
@@ -433,7 +421,7 @@ class VirtualDeck:
         }
 
     def set_poll_frequency(self, freq: int) -> None:
-        if self.has_real_deck:
+        if self.has_real_deck():
             self.real_deck.set_poll_frequency(freq)
 
     def dial_count(self) -> int:
@@ -441,16 +429,16 @@ class VirtualDeck:
 
     def set_dial_callback(self, func) -> None:
         self.dial_callback = func
-        if self.has_real_deck:
+        if self.has_real_deck():
             self.real_deck.set_dial_callback(func)
 
     def set_touchscreen_callback(self, func) -> None:
         self.touchscreen_callback = func
-        if self.has_real_deck:
+        if self.has_real_deck():
             self.real_deck.set_touchscreen_callback(func)
 
     def set_touchscreen_callback_async(self, async_callback, loop=None) -> None:
-        if self.has_real_deck:
+        if self.has_real_deck():
             self.real_deck.set_touchscreen_callback_async(async_callback)
 
         import asyncio
@@ -463,7 +451,7 @@ class VirtualDeck:
         self.set_touchscreen_callback(callback)
 
     def set_dial_callback_async(self, async_callback, loop=None) -> None:
-        if self.has_real_deck:
+        if self.has_real_deck():
             self.real_deck.set_dial_callback_async(async_callback)
 
         import asyncio
@@ -500,7 +488,7 @@ class DeckOutput:
         self.deck = deck
         self.config["id"] = self.deck.id()
 
-    def output(self, key_status: dict):
+    def output(self, key_status: dict, touchscreen_image):
         pass
 
 

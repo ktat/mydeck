@@ -71,7 +71,8 @@ class DeckOutputWebHandler(http.server.BaseHTTPRequestHandler):
         from .my_decks_manager import VirtualDeck
 
         deck: VirtualDeck = self.idDeckMap[id]
-        deck.touchscreen_callback(deck, x, y)
+        if deck.touchscreen_callback is not None:
+            deck.touchscreen_callback(deck, x, y)
 
     # https://towardsdatascience.com/the-strange-size-of-python-objects-in-memory-ce87bdfbb97f
     def actualsize(self, input_obj):
