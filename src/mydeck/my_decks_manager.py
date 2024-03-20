@@ -3,6 +3,7 @@ import base64
 import http.server
 import logging
 import random
+import typing
 import re
 import sys
 import time
@@ -236,11 +237,16 @@ class VirtualDeck:
         return True
 
     def is_visual(self) -> bool:
-        """Always returns true."""
+        """Always returns true if not real deck."""
+        if self.has_real_deck:
+            is_visual: typing.Optional[bool] = self.real_deck.is_visual()
+            return is_visual is not None and is_visual
+
         return True
 
     def get_serial_number(self) -> str:
-        """Returns the serial number of device(dummy string or from configuration)."""
+        """Returns the serial number of device(real deck value or dummy string or from configuration)."""
+
         return self.serial_number
 
     def open(self):
@@ -286,13 +292,19 @@ class VirtualDeck:
         if self.has_real_deck():
             self.real_deck.reset()
 
-    def deck_type(self):
+    def deck_type(self) -> str:
         """Do nothing."""
-        pass
+        if self.has_real_deck():
+            deck_type: typing.Optional[str] = self.real_deck.deck_type()
+            if deck_type is not None:
+                return deck_type
+
+        return "VirtualDeck"
 
     def set_brightness(self, d1):
         """Do nothing."""
-        pass
+        if self.has_real_deck():
+            return self.real_deck.set_brightness(d1)
 
     def set_key_callback(self, func):
         """Set key callback"""
@@ -328,10 +340,6 @@ class VirtualDeck:
             'rotation': None,
         }
 
-    def set_brigthness(self):
-        """Do nothing."""
-        pass
-
     def close(self):
         """Close deck."""
         self._exit = True
@@ -351,7 +359,6 @@ class VirtualDeck:
 
 class DeckOutput:
     """Deck output base Class. This should not be used directly.
-    use FromOption method and get the intance of the subclass.
     """
 
     def __init__(self, opt: dict):
