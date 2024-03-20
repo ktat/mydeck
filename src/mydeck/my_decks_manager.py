@@ -10,6 +10,7 @@ import time
 import traceback
 import yaml
 import queue
+from .lock import Lock
 from PIL import Image
 from StreamDeck.DeviceManager import DeviceManager
 from StreamDeck.Devices.StreamDeck import StreamDeck
@@ -279,8 +280,11 @@ class VirtualDeck:
 
         if self.has_real_deck():
             for i in range(self.key_count()):
-                self.real_deck.set_key_image(i, None)
-            time.sleep(0.1)
+                # TODO: lock works correctly?
+                Lock.do_with_lock(self.get_serial_number(),
+                                  lambda: self.real_deck.set_key_image(i, None))
+                # if lock works correctly, following line is not needed.
+                time.sleep(0.04)
 
     def reset(self):
         """Reset key images."""
@@ -315,8 +319,8 @@ class VirtualDeck:
     def set_key_image(self, key, image):
         """Set key image."""
         if self.has_real_deck():
-            image2 = PILHelper.to_native_format(self.real_deck, image)
-            self.real_deck.set_key_image(key, image2)
+            self.real_deck.set_key_image(
+                key, PILHelper.to_native_format(self.real_deck, image))
         if self.current_key_status.get(key) is None:
             self.current_key_status[key] = {}
 

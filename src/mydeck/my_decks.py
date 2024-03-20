@@ -306,11 +306,11 @@ class MyDeck:
             self.set_alert_off()
         if self.deck is not None and name != self._current_page and self.has_page_key_config(name):
             self.set_previous_page(self._current_page)
-            self.stop_working_apps()
+            Lock.do_with_lock(self.deck.get_serial_number(),
+                              lambda: self.stop_working_apps())
             self._current_page = name
             self.set_game_status_off()
-            Lock.do_with_lock(self.deck.get_serial_number(),
-                              lambda: self.deck.reset_keys())
+            self.deck.reset_keys()
             self.key_setup()
             self.run_page_command(name)
             self.run_hook_apps('page_change')
