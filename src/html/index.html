@@ -40,6 +40,11 @@
             border-radius: 10px;
         }
 
+        img.key_image {
+            width: 100px;
+            height: 100px;
+        }
+
         div.app {
             padding-bottom: 5px;
         }
@@ -152,18 +157,22 @@
             <div class="app">
                 <h1>Deck {{ id }} (sn: {{ serial_number }})</h1>
                 <span v-for="i in key_count">
-                    <img :src="'data:image/png;base64,' + items.data.key[i - 1]"
+                    <img :src="'data:image/png;base64,' + items.data.key[i - 1]" class="key_image"
                         :onclick="'tap(this, &quot;' + id + '&quot;, ' + (i - 1) + ')'"
                         @click.right.prevent="openSettingModal(i)">
                     <span :class="'mod' + (i % columns)"></span>
                 </span>
                 <span v-for="i in dials">
-                    <input type="range" min="0" max="100" :value='items.data.dial_states[i]' class="slider" id="myRange"
-                        :onchange="' changeDial(this, &quot;' + id + '&quot;, ' + i + ',this.value)'">
+                    <span v-if="items.data">
+                        <input type="range" min="0" max="100" :value='items.data.dial_states[i]' class="slider"
+                            id="myRange" :onchange="' changeDial(this, &quot;' + id + '&quot;, ' + i + ',this.value)'">
+                    </span>
                 </span>
-                <div v-if=" has_touchscreen">
-                    <img :src="'data:image/png;base64,' + items.data.touch" class="touchscreen"
-                        :onclick="'tapScreen(this, &quot;' + id + '&quot;, event.offsetX, event.offsetY)'">
+                <div v-if="has_touchscreen">
+                    <div v-if="items.data">
+                        <img :src="'data:image/png;base64,' + items.data.touch" class="touchscreen"
+                            :onclick="'tapScreen(this, &quot;' + id + '&quot;, event.offsetX, event.offsetY)'">
+                    </div>
                 </div>
             </div>
             <div v-if="settingMode" id="settingModal">
@@ -475,7 +484,6 @@
         }
 
         function tapScreen(e, id, x, y) {
-            setTimeout(() => { buttonOpacity(e, 50) });
             axios.get(baseURL + 'api/' + id + '/touch/' + x + '/' + y);
         }
 
