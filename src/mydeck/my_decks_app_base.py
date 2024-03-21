@@ -15,8 +15,14 @@ class ExceptionNoDeck(Exception):
 
 class App:
     """Commn base class of an application and a game."""
+
+    class AppType:
+        KEY = 1
+        DIAL = 2
+        TOUCHSCREEN = 3
+
     # app type
-    app_type: int = 1  # 1: KEY, 2: DIAL, 3: TOUCH
+    app_type: int = AppType.KEY
     # if app reuquires thread, true
     use_thread: bool = False
     # if app works in background, set True
@@ -64,13 +70,13 @@ class App:
         return "%s" % self.__class__.__name__
 
     def is_key_app(self) -> bool:
-        return self.app_type == 1
+        return self.app_type == App.AppType.KEY
 
     def is_dial_app(self) -> bool:
-        return self.app_type == 2
+        return self.app_type == App.AppType.DIAL
 
     def is_touchscreen_app(self) -> bool:
-        return self.app_type == 3
+        return self.app_type == App.AppType.TOUCHSCREEN
 
 
 class GameAppBase(App):
@@ -295,8 +301,8 @@ class HookAppBase(App):
 
 
 class TouchAppBase(AppBase):
-    app_type: int = 3  # 3: TOUCHSCREEN
+    app_type: int = App.AppType.TOUCHSCREEN
 
 
 class DialAppBase(AppBase):
-    app_type: int = 2  # 2: DIAL
+    app_type: int = App.AppType.DIAL

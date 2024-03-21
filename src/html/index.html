@@ -162,15 +162,15 @@
                         @click.right.prevent="openSettingModal(i)">
                     <span :class="'mod' + (i % columns)"></span>
                 </span>
-                <span v-for="i in dials">
-                    <span v-if="items.data">
+                <span v-if="items.data">
+                    <span v-for="i in dials">
                         <input type="range" min="0" max="100" :value='items.data.dial_states[i]' class="slider"
-                            id="myRange" :onClick="dialChanged=1"
-                            :onchange="'changeDial(this, &quot;' + id + '&quot;, ' + i + ',this.value)'">
+                            id="myRange" v-on:mousedown="dialChanged=1" v-on:mouseup="dialChanged=0"
+                            :onchange="'changeDial(this, &quot;' + id + '&quot;, ' + i + ',this.value);'">
                     </span>
                 </span>
-                <div v-if="has_touchscreen">
-                    <div v-if="items.data">
+                <div v-if="items.data">
+                    <div v-if="has_touchscreen">
                         <img :src="'data:image/png;base64,' + items.data.touch" class="touchscreen"
                             :onclick="'tapScreen(this, &quot;' + id + '&quot;, event.offsetX, event.offsetY)'">
                     </div>
@@ -462,14 +462,6 @@
                                             if (this.items.data) {
                                                 let currentDialStates = this.items.data.dial_states;
                                                 let nextDialStates = this.deviceInfo.dial_states;
-                                                if (this.dialChanged == 1) {
-                                                    // workaround to avoid change dial while onchange event
-                                                    if (currentDialStates[i] == nextDialStates[i]) {
-                                                        setTimeout(function () {
-                                                            this.dialChanged = 0;
-                                                        }.bind(this), 1000);
-                                                    }
-                                                }
                                             }
                                             if (this.dialChanged === 0) {
                                                 this.key_count = this.deviceInfo.key_count;
