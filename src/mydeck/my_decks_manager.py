@@ -4,18 +4,17 @@ import http.server
 import logging
 import random
 import re
-import sys
 import time
 import traceback
 import yaml
 import queue
 from .lock import Lock
-from PIL import Image, ImageFont, ImageDraw
+from PIL import Image
 from StreamDeck.DeviceManager import DeviceManager
 from StreamDeck.Devices.StreamDeck import StreamDeck
 from StreamDeck.Devices.StreamDeckPlus import StreamDeckPlus
 from io import BytesIO
-from typing import Union, Optional, Dict, Any
+from typing import Optional, Dict, Any, Callable
 from StreamDeck.ImageHelpers import PILHelper
 
 
@@ -225,9 +224,9 @@ class VirtualDeck:
         self.touchscreen_image = None
         self._dial_count: int = 0
         self._dial_states: Dict[int, int] = {}
-        self.dial_callback: function = lambda event, dial, value: None
-        self.touchscreen_callback: function = lambda event, x, y: None
-        self.key_callback: function
+        self.dial_callback: Callable = lambda deck, event, dial, value: None
+        self.touchscreen_callback: Callable = lambda deck, event, args: None
+        self.key_callback: Callable = lambda deck, key, flag: None
 
         key_count = opt.get('key_count')
         if type(key_count) is not int:

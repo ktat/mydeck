@@ -1,5 +1,5 @@
 from PIL import Image, ImageDraw, ImageFont
-from mydeck import MyDeck, ThreadAppBase, ImageOrFile
+from mydeck import MyDeck, TouchAppBase
 import logging
 
 # whole image size
@@ -7,8 +7,7 @@ X: int = 800
 Y: int = 100
 
 
-class AppTouchscreenSample(ThreadAppBase):
-    use_thread = False
+class AppTouchscreenSample(TouchAppBase):
     _touchscreen_conf = {
         "app_command": "TouchScreenSample",
     }

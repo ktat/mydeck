@@ -382,7 +382,7 @@ class MyDeck:
 
         # Register callback function for the time when a key state changes.
         deck.set_touchscreen_callback(
-            lambda deck, x, y: self.touchscreen_change_callback(x, y))
+            lambda deck, event, args: self.touchscreen_change_callback(event, args))
 
     def set_touchscreen(self, conf: dict, use_lock: bool = True):
         """Set touchscreen image"""
@@ -558,6 +558,7 @@ class MyDeck:
 
     def touchscreen_change_callback(self, event, pos: dict):
         """Call a callback according to a touchscreen is touched"""
+
         deck = self.deck
         conf = self.touchscreen_config().get(self.current_page())
         command = conf.get("app_command")
@@ -565,7 +566,7 @@ class MyDeck:
             found = False
             if self.config is not None:
                 for app in self.config.apps:
-                    if app.name()[0:14] != "AppTouchscreen":
+                    if not app.is_touchscreen_app():
                         continue
 
                     if app.page is not None and self.current_page() in app.page:
@@ -583,6 +584,7 @@ class MyDeck:
 
     def key_change_callback(self, key: int, state: bool):
         """Call a callback according to a key is pushed"""
+
         deck = self.deck
         if deck is not None:
             # Print new key state
@@ -642,7 +644,7 @@ class MyDeck:
                         found = False
                         if self.config is not None:
                             for app in self.config.apps:
-                                if app.name()[0:14] == "AppTouchscreen" or app.name()[0:7] == "AppDial":
+                                if not app.is_key_app():
                                     continue
 
                                 if app.page_key is not None and app.page_key.get(self.current_page()):

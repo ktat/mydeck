@@ -4,7 +4,6 @@ import json
 import glob
 import psutil
 import os
-import sys
 import logging
 from StreamDeck.Devices.StreamDeck import TouchscreenEventType, DialEventType
 from typing import Union
@@ -67,12 +66,12 @@ class DeckOutputWebHandler(http.server.BaseHTTPRequestHandler):
         deck: VirtualDeck = self.idDeckMap[id]
         deck.dial_callback(deck, key, event, value)
 
-    def call_touchscreen_call_back(self, id, x, y):
+    def call_touchscreen_call_back(self, id: str, event: int, args: dict):
         from .my_decks_manager import VirtualDeck
 
         deck: VirtualDeck = self.idDeckMap[id]
         if deck.touchscreen_callback is not None:
-            deck.touchscreen_callback(deck, x, y)
+            deck.touchscreen_callback(deck, event, args)
 
     # https://towardsdatascience.com/the-strange-size-of-python-objects-in-memory-ce87bdfbb97f
     def actualsize(self, input_obj):
@@ -136,9 +135,10 @@ class DeckOutputWebHandler(http.server.BaseHTTPRequestHandler):
                     self.idDeckMap[id]._dial_states[dial_num] = value
                     self.res_dial_changed(id, dial_num, value)
                 elif re.search("touch", m.group(2)):
-                    x: int = int(m.group(3))
-                    y: int = int(m.group(4))
-                    self.res_touchscreen_tapped(id, x, y)
+                    args: dict = {}
+                    args["x"] = int(m.group(3))
+                    args["y"] = int(m.group(4))
+                    self.res_touchscreen_tapped(id, args)
                 else:
                     key: int = int(m.group(2))
                     return self.res_key_tapped(id, key)
@@ -262,9 +262,9 @@ class DeckOutputWebHandler(http.server.BaseHTTPRequestHandler):
         self.text_headers(200, 'plain')
         self.wfile.write(b"Dial Changed")
 
-    def res_touchscreen_tapped(self, id: int, x: int, y: int):
+    def res_touchscreen_tapped(self, id: str, args: dict):
         self.call_touchscreen_call_back(
-            id, TouchscreenEventType.SHORT, {"x": x, "y": y})
+            id, TouchscreenEventType.SHORT, args)
         self.text_headers(200, 'plain')
         self.wfile.write(b"Screen Tapped")
 

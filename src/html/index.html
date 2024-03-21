@@ -165,7 +165,8 @@
                 <span v-for="i in dials">
                     <span v-if="items.data">
                         <input type="range" min="0" max="100" :value='items.data.dial_states[i]' class="slider"
-                            id="myRange" :onchange="' changeDial(this, &quot;' + id + '&quot;, ' + i + ',this.value)'">
+                            id="myRange" :onClick="dialChanged=1"
+                            :onchange="'changeDial(this, &quot;' + id + '&quot;, ' + i + ',this.value)'">
                     </span>
                 </span>
                 <div v-if="has_touchscreen">
@@ -357,6 +358,7 @@
                                 settingKey: 0,
                                 settingType: null,
                                 settingData: defaultData(),
+                                dialChanged: 0,
                             },
                             methods: {
                                 fillRequired: function () {
@@ -457,8 +459,22 @@
                                 loadData: function () {
                                     axios.get(baseURL + 'api/' + i).then(
                                         (response) => {
-                                            this.key_count = this.deviceInfo.key_count;
-                                            this.items = response;
+                                            if (this.items.data) {
+                                                let currentDialStates = this.items.data.dial_states;
+                                                let nextDialStates = this.deviceInfo.dial_states;
+                                                if (this.dialChanged == 1) {
+                                                    // workaround to avoid change dial while onchange event
+                                                    if (currentDialStates[i] == nextDialStates[i]) {
+                                                        setTimeout(function () {
+                                                            this.dialChanged = 0;
+                                                        }.bind(this), 1000);
+                                                    }
+                                                }
+                                            }
+                                            if (this.dialChanged === 0) {
+                                                this.key_count = this.deviceInfo.key_count;
+                                                this.items = response;
+                                            }
                                         })
                                 },
                             },

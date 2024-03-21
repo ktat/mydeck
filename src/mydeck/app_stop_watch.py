@@ -4,7 +4,6 @@ import sys
 
 from PIL import Image, ImageDraw, ImageFont
 from mydeck import AppBase, ImageOrFile, MyDeck
-from typing import NoReturn
 
 # whole image size
 X: int = 100
@@ -40,7 +39,7 @@ class AppStopWatch(AppBase):
             t = threading.Thread(target=lambda: self.count_up(key), args=())
             t.start()
 
-    def count_up(self, key: int) -> NoReturn:
+    def count_up(self, key: int) -> None:
         t = time.time()
         font = ImageFont.truetype(self.mydeck.font_path, 35)
         while True:
