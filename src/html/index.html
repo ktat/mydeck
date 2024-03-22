@@ -492,6 +492,8 @@
         }
 
         function tapScreen(e, id, x, y) {
+            x = Math.floor(x * 800 / 595);
+            y = Math.floor(y * 100 / 74.375);
             axios.get(baseURL + 'api/' + id + '/touch/' + x + '/' + y);
         }
 
