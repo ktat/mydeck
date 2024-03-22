@@ -323,17 +323,17 @@ class MyDeck:
             self.set_alert_off()
         if self.deck is not None and name != self._current_page and self.has_page_key_config(name):
             self.set_previous_page(self._current_page)
+            self._current_page = name
             Lock.do_with_lock(self.deck.get_serial_number(),
                               lambda: self.stop_working_apps())
-            self._current_page = name
             self.set_game_status_off()
             self.deck.reset_keys()
-            self.key_touchscreen_setup()
             self.run_page_command(name)
             self.run_hook_apps('page_change')
             if self.config is not None:
                 self.threading_apps(
                     self.config.apps, self.config.background_apps)
+            self.key_touchscreen_setup()
 
         # run hook page_change_any whenever set_current_page is called.
         self.run_hook_apps('page_change_any')
@@ -359,7 +359,6 @@ class MyDeck:
         key_count = self.key_count
         # Set initial key images.
         for key in range(deck.key_count()):
-
             page_configuration = self.key_config().get(self.current_page())
             if page_configuration is not None:
                 if page_configuration.get(key) is not None:
@@ -561,8 +560,7 @@ class MyDeck:
 
         deck = self.deck
         conf = self.touchscreen_config().get(self.current_page())
-        command = conf.get("app_command")
-        if command is not None:
+        if conf is not None and (command := conf.get("app_command")) is not None:
             found = False
             if self.config is not None:
                 for app in self.config.apps:
@@ -670,19 +668,7 @@ class MyDeck:
         for app in self.config.apps:
             app.stop_app()
 
-        i = 0
-        # when app is stopped, app make stop False
-        while sum(1 for e in self.config.working_apps()) > 0:
-            for app in self.config.working_apps():
-                if app.in_working:
-                    time.sleep(0.01)
-                    i += 1
-                    if i % 200 == 0:
-                        logging.debug(
-                            '%s still waiting to stop working apps', type(app))
-
     # handler to notify alert
-
     def handler_alert(self):
         """Handling alert is caused."""
         self.set_alert_on()
@@ -768,16 +754,20 @@ class MyDeck:
             return
 
         for app in apps:
-            if app.use_thread and app.is_in_target_page():
-                t = threading.Thread(target=lambda: app.start(), args=())
-                t.start()
-                if app.use_trigger:
-                    app.trigger.set()
+            if app.is_in_target_page():
+                if app.use_thread:
+                    t = threading.Thread(
+                        target=lambda: app.init_app_flag() and app.start(), args=())
+                    t.start()
+                    if app.use_trigger:
+                        app.trigger.set()
+                else:
+                    app.key_setup()
 
         if not self.is_background_thread_started:
             self.is_background_thread_started = True
             for bg_app in background_apps:
-                logging.debug(bg_app.name())
+                logging.debug("start background app: %s", bg_app.name())
                 t = threading.Thread(target=lambda: bg_app.start(), args=())
                 t.start()
 
@@ -960,6 +950,8 @@ class Config:
         """Reset apps"""
         for app in self.apps:
             app.stop = True
+            if app.is_trigger_app:
+                app.trigger.set()
 
         # destloy apps
         for app in self.apps:
@@ -1025,10 +1017,6 @@ class Config:
     def not_working_apps(self) -> List['AppBase']:
         """Return the list of the apps not working"""
         return list(filter(lambda app: app.use_thread and app.is_in_target_page() and not app.in_working, self.apps))
-
-    def working_apps(self) -> List['AppBase']:
-        """Return the list of the working apps"""
-        return list(filter(lambda app: app.use_thread and app.is_in_target_page() and app.in_working, self.apps))
 
     def modify_key_config_with_page(self, page: str, conf: dict):
         """Modify key configuration according to conf whose key is page name and value is configuration dict."""

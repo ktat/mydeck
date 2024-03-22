@@ -78,6 +78,12 @@ class App:
     def is_touchscreen_app(self) -> bool:
         return self.app_type == App.AppType.TOUCHSCREEN
 
+    def init_app_flag(self) -> True:
+        self.stop = False
+        self.is_first = True
+        self.in_working = False
+        return True
+
 
 class GameAppBase(App):
     """Base class of a game application"""
@@ -131,11 +137,13 @@ class AppBase(App):
             self.in_other_page = True
             return False
 
+    def set_image_to_touchscreen(self):
+        """Set image to touchscreen. Implement this method in subclass."""
+        pass
+
     # if use_thread is true, this method is call in thread
     def start(self) -> NoReturn:
         """Start application when the current page is the target of the app."""
-        if not self.is_in_target_page():
-            sys.exit()
 
         while True:
             logging.debug("%s is working", self.name())
@@ -143,13 +151,17 @@ class AppBase(App):
 
             # exit when main process is finished
             if self.check_to_stop():
+                logging.debug("%s should be stopped", self.name())
                 break
 
             try:
                 page = self.mydeck.current_page()
-                key = self.page_key.get(page)
-                if key is not None:
-                    self.set_image_to_key(key, page)
+                if self.is_key_app():
+                    key = self.page_key.get(page)
+                    if key is not None:
+                        self.set_image_to_key(key, page)
+                elif self.is_touchscreen_app():
+                    self.set_image_to_touchscreen()
             except Exception as e:
                 logging.critical(
                     'Error in app_base.start {} {}'.format(type(self), e))
@@ -158,10 +170,14 @@ class AppBase(App):
 
             if self.use_trigger:
                 self.trigger.wait()
+                logging.debug("%s is triggered", self.name())
                 self.trigger.clear()
 
             time.sleep(self.time_to_sleep)
             self.is_first = False
+
+        logging.debug("%s is finished", self.name())
+        self.init_app_flag()
         sys.exit()
 
     def check_to_stop(self) -> bool:
@@ -175,14 +191,9 @@ class AppBase(App):
 
     def stop_app(self):
         """Stop application. It must be called within app."""
-        if self.in_working:
-            if self.use_trigger:
-                self.trigger.set()
-
-            # initialize app flags
-            self.stop = False
-            self.is_first = True
-            self.in_working = False
+        self.stop = True
+        if self.use_trigger:
+            self.trigger.set()
 
     def key_setup(self):
         """Setup app keys. If command is given as option, set key to command."""
@@ -269,6 +280,7 @@ class BackgroundAppBase(App):
             time.sleep(self.sleep)
 
         logging.debug("background(%s) app exit", self.name())
+        self.init_app_flag()
         sys.exit()
 
 
@@ -302,6 +314,24 @@ class HookAppBase(App):
 
 class TouchAppBase(AppBase):
     app_type: int = App.AppType.TOUCHSCREEN
+
+    def key_setup(self):
+        """Setup app keys. If command is given as option, set key to command."""
+        if self.command is not None:
+            touchscreen_config = self.mydeck.touchscreen_config()
+            # TODO
+
+    # check current page is whther app's target or not
+    def is_in_target_page(self) -> bool:
+        """Return true when the current page is the target of the app."""
+
+        page = self.mydeck.current_page()
+
+        if page in self.page:
+            return True
+        else:
+            self.in_other_page = True
+            return False
 
 
 class DialAppBase(AppBase):

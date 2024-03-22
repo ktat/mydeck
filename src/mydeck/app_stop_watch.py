@@ -61,6 +61,7 @@ class AppStopWatch(AppBase):
                           andhor="ms", fill="white")
                 self.mydeck.update_key_image(key, self.mydeck.render_key_image(
                     ImageOrFile(im), "STOP/START", "black"), False)
+        self.init_app_flag()
         sys.exit()
 
     def toggle_count(self):
