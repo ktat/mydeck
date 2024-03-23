@@ -79,15 +79,19 @@ class App:
     def is_touchscreen_app(self) -> bool:
         return self.app_type == App.AppType.TOUCHSCREEN
 
-    def init_app_flag(self) -> True:
+    def init_app_flag(self) -> bool:
         self.stop = False
         self.is_first = True
         self.in_working = False
         return True
 
-    def debug(self, message: str):
+    def debug(self, message: str) -> None:
+        app_address: str = "(unknown)"
+        search = re.search(r'at ([^>]+)>', str(self))
+        if search is not None:
+            app_address = search.group(1)
         logging.debug("[%s] %s %s in %s at %s (%s)", self.mydeck.deck.id(),
-                      self.name(), message, self.mydeck.current_page(), datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"), re.search(r'at ([^>]+)>', str(self)).group(1))
+                      self.name(), message, self.mydeck.current_page(), datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"), app_address)
 
 
 class GameAppBase(App):
@@ -126,7 +130,7 @@ class AppBase(App):
             "Implemnt set_image_to_key in subclass for app to use thread anytime.")
 
     # implment it in subclass
-    def set_image_to_touchscreen(self, page: str):
+    def set_image_to_touchscreen(self):
         """Set image to key. Implement this method in subclass."""
         logging.critical(
             "Implemnt set_image_to_key in subclass for app to use thread anytime.")
@@ -141,10 +145,6 @@ class AppBase(App):
         else:
             self.in_other_page = True
             return False
-
-    def set_image_to_touchscreen(self):
-        """Set image to touchscreen. Implement this method in subclass."""
-        pass
 
     # if use_thread is true, this method is call in thread
     def start(self) -> NoReturn:

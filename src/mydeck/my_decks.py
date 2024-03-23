@@ -185,6 +185,8 @@ class MyDeck:
 
     def __init__(self, opt: dict, server_port: int):
         deck = opt.get('deck')
+        if deck is not None:
+            logging.critical("deck is required")
         self.server_port: int = server_port
         self.deck: VirtualDeck = deck
         self.key_count: int = self.deck.key_count()
