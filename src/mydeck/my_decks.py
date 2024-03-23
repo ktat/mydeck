@@ -606,21 +606,22 @@ class MyDeck:
                     # Use a scoped-with on the deck to ensure we're the only thread
                     # using it right now.
 
-                    # Reset deck, clearing all button images.
-                    deck.reset()
+                    with deck:
+                        # Reset deck, clearing all button images.
+                        deck.reset()
 
-                    # informa program is end to other thread
-                    self._exit = True
+                        # informa program is end to other thread
+                        self._exit = True
 
-                    if self.config is not None:
-                        for app in self.config.apps:
-                            self.debug("stop app: %s" % app.name())
-                            app.stop = True
+                        if self.config is not None:
+                            for app in self.config.apps:
+                                self.debug("stop app: %s" % app.name())
+                                app.stop = True
 
-                    time.sleep(2)
+                        time.sleep(2)
 
-                    # Close deck handle, terminating internal worker threads.
-                    deck.close()
+                        # Close deck handle, terminating internal worker threads.
+                        deck.close()
 
                     sys.exit()
 
