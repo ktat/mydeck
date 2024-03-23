@@ -15,6 +15,7 @@ import importlib
 import logging
 import traceback
 import shutil
+import datetime
 from .my_decks_manager import VirtualDeck
 
 from cairosvg import svg2png
@@ -185,7 +186,7 @@ class MyDeck:
     def __init__(self, opt: dict, server_port: int):
         deck = opt.get('deck')
         self.server_port: int = server_port
-        self.deck: StreamDeckOriginalV2 = deck
+        self.deck: VirtualDeck = deck
         self.key_count: int = self.deck.key_count()
         self.font_path = "/usr/share/fonts/truetype/freefont/FreeSans.ttf"
         self.config: Optional['Config'] = None
@@ -224,6 +225,11 @@ class MyDeck:
             self._config_file = opt.get('config') or ''
             self._KEY_CONFIG_GAME = {}
             self.config = Config(self, self._config_file)
+
+    def debug(self, message: str):
+        """Output debug message"""
+        logging.debug("[%s] %s in %s at %s", self.deck.id(
+        ), message, self.current_page(), datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
 
     def init_deck(self):
         """Initialize deck. Reflect configuration and setup keys."""
@@ -304,7 +310,7 @@ class MyDeck:
         """Set given page name as previous page"""
         if name[0] != '~' and (len(self._previous_pages) == 0 or self._previous_pages[-1] != name):
             self._previous_pages.append(name)
-        logging.debug(self._previous_pages)
+        self.debug("previous page %s" % self._previous_pages)
 
     def current_page(self) -> str:
         """Return current page name"""
@@ -470,7 +476,7 @@ class MyDeck:
             with wand.image.Image(filename=file_path):
                 return True
         except Exception as e:
-            logging.debug("Error in check_icon_file: {}".format(e))
+            self.debug("Error in check_icon_file: {}".format(e))
             os.rename(file_path, file_path + '.back')
             return False
 
@@ -586,8 +592,7 @@ class MyDeck:
         deck = self.deck
         if deck is not None:
             # Print new key state
-            logging.debug("Deck {} Key {} = {}, page = {}".format(
-                deck.id(), key, state, self.current_page()))
+            self.debug("Key %s = %s" % (key, state))
 
         # Check if the key is changing to the pressed state.
         if state:
@@ -607,7 +612,7 @@ class MyDeck:
 
                     if self.config is not None:
                         for app in self.config.apps:
-                            logging.debug("stop app: %s" % app.name())
+                            self.debug("stop app: %s" % app.name())
                             app.stop = True
 
                     time.sleep(2)
@@ -755,6 +760,10 @@ class MyDeck:
 
         for app in apps:
             if app.is_in_target_page():
+                if app.is_touchscreen_app() and not self.deck.is_touch():
+                    continue
+                if app.is_dial_app() and not self.deck.is_dial():
+                    continue
                 if app.use_thread:
                     t = threading.Thread(
                         target=lambda: app.init_app_flag() and app.start(), args=())
@@ -767,7 +776,7 @@ class MyDeck:
         if not self.is_background_thread_started:
             self.is_background_thread_started = True
             for bg_app in background_apps:
-                logging.debug("start background app: %s", bg_app.name())
+                self.debug("start background app: %s" % bg_app.name())
                 t = threading.Thread(target=lambda: bg_app.start(), args=())
                 t.start()
 
@@ -780,18 +789,6 @@ class MyDeck:
 
         t = threading.Thread(target=lambda: self.update_config(), args=())
         t.start()
-
-        time.sleep(0.5)
-
-        i = 0
-        if self.config is not None:
-            while sum(1 for e in self.config.not_working_apps()) > 0:
-                for app in self.config.not_working_apps():
-                    if app.is_in_target_page() and not app.in_working:
-                        time.sleep(0.01)
-                        i += 1
-                        if i % 200 == 0:
-                            logging.debug('%s still waiting to start app', app)
 
     def abs_key(self, key: int) -> int:
         """If key is negative number, chnage it as positive number"""
@@ -823,7 +820,7 @@ class MyDeck:
                     self.config.save_config()
                     self.config.reflect_config(True)
 
-        logging.debug("update_config is exited")
+        self.debug("update_config is exited")
         sys.exit()
 
 

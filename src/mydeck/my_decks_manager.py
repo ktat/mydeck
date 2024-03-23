@@ -401,6 +401,9 @@ class VirtualDeck:
     def is_touch(self) -> bool:
         return self.is_touch_interface
 
+    def is_dial(self) -> bool:
+        return self.dial_count() > 0
+
     def touchscreen_image_format(self) -> dict:
         """Format of touchscreen image. Currently it returns fixed dict.
 

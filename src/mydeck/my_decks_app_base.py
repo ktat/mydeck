@@ -4,6 +4,7 @@ import datetime
 import traceback
 from threading import Event
 import logging
+import re
 
 from typing import NoReturn, TYPE_CHECKING, Any
 from . import MyDeck
@@ -84,6 +85,10 @@ class App:
         self.in_working = False
         return True
 
+    def debug(self, message: str):
+        logging.debug("[%s] %s %s in %s at %s (%s)", self.mydeck.deck.id(),
+                      self.name(), message, self.mydeck.current_page(), datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"), re.search(r'at ([^>]+)>', str(self)).group(1))
+
 
 class GameAppBase(App):
     """Base class of a game application"""
@@ -146,12 +151,12 @@ class AppBase(App):
         """Start application when the current page is the target of the app."""
 
         while True:
-            logging.debug("%s is working", self.name())
+            self.debug("working")
             self.in_working = True
 
             # exit when main process is finished
             if self.check_to_stop():
-                logging.debug("%s should be stopped", self.name())
+                self.debug("should be stopped")
                 break
 
             try:
@@ -164,19 +169,19 @@ class AppBase(App):
                     self.set_image_to_touchscreen()
             except Exception as e:
                 logging.critical(
-                    'Error in app_base.start {} {}'.format(type(self), e))
+                    '[{}] Error in app_base.start {} {} at {}'.format(self.mydeck.deck.id(), type(self), e, self.mydeck.current_page()))
                 logging.debug(traceback.format_exc())
                 break
 
             if self.use_trigger:
                 self.trigger.wait()
-                logging.debug("%s is triggered", self.name())
+                self.debug("triggered")
                 self.trigger.clear()
 
             time.sleep(self.time_to_sleep)
             self.is_first = False
 
-        logging.debug("%s is finished", self.name())
+        self.debug("finished")
         self.init_app_flag()
         sys.exit()
 
@@ -279,7 +284,7 @@ class BackgroundAppBase(App):
 
             time.sleep(self.sleep)
 
-        logging.debug("background(%s) app exit", self.name())
+        self.debug("app exit")
         self.init_app_flag()
         sys.exit()
 
