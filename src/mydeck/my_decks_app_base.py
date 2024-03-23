@@ -93,6 +93,18 @@ class App:
         logging.debug("[%s] %s %s in %s at %s (%s)", self.mydeck.deck.id(),
                       self.name(), message, self.mydeck.current_page(), datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"), app_address)
 
+    def touchscreen_width(self) -> int:
+        if self.mydeck.deck.is_touch():
+            if (size := self.mydeck.deck.touchscreen_image_format().get("size")) is not None:
+                return int(size[0])
+        return 0
+
+    def touchscreen_height(self) -> int:
+        if self.mydeck.deck.is_touch():
+            if (size := self.mydeck.deck.touchscreen_image_format().get("size")) is not None:
+                return int(size[1])
+        return 0
+
 
 class GameAppBase(App):
     """Base class of a game application"""

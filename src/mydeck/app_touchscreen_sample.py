@@ -2,10 +2,6 @@ from PIL import Image, ImageDraw, ImageFont
 from mydeck import MyDeck, TouchAppBase
 import logging
 
-# whole image size
-X: int = 800
-Y: int = 100
-
 
 class AppTouchscreenSample(TouchAppBase):
     _touchscreen_conf = {
@@ -32,4 +28,8 @@ class AppTouchscreenSample(TouchAppBase):
         draw.text((250, 35), text=position_text, fill="white", font=font)
         draw.rectangle([x, y, x + 10, y + 10], fill="yellow")
         self.mydeck.set_touchscreen(
-            {"image": im, "x": 0, "y": 0, "width": 800, "height": 100})
+            {
+                "image": im, "x": 0, "y": 0,
+                "width": self.touchscreen_width(),
+                "height": self.touchscreen_height(),
+            })
