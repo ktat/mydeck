@@ -266,13 +266,13 @@ class VirtualDeck:
         self.update_lock = threading.RLock()
 
     def __enter__(self):
-        if self.has_real_deck:
+        if self.has_real_deck():
             self.real_deck.__enter__()
         else:
             self.update_lock.acquire()
 
     def __exit__(self, type: Any, value: Any, traceback: Any) -> None:
-        if self.has_real_deck:
+        if self.has_real_deck():
             self.real_deck.__exit__(type, value, traceback)
         else:
             self.update_lock.release()
