@@ -25,7 +25,7 @@ class AppCalendar(TriggerAppBase):
         font = ImageFont.truetype(self.mydeck.font_path, 25)
         draw.text((10, 67), font=font, text=str(now.year), fill="white")
 
-        self.mydeck.update_key_image(
+        self.update_key_image(
             key,
             self.mydeck.render_key_image(
                 ImageOrFile(im),

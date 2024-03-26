@@ -113,6 +113,6 @@ class AppTouchscreenAnimation(TouchAppBase):
                 fill=selected_color,
             )
 
-        self.mydeck.set_touchscreen(
+        self.set_touchscreen(
             {"image": im, "x": 0, "y": 0, "width": 800, "height": 100}
         )

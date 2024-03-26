@@ -16,6 +16,7 @@ import logging
 import traceback
 import shutil
 import datetime
+import time
 from .my_decks_manager import VirtualDeck
 
 from cairosvg import svg2png
@@ -28,7 +29,7 @@ from .lock import Lock
 DEFAULT_PORT: int = 3000
 
 if TYPE_CHECKING:
-    from .my_decks_app_base import AppBase, BackgroundAppBase, HookAppBase
+    from .my_decks_app_base import App, AppBase, BackgroundAppBase, HookAppBase
 
 
 class ExceptionInvalidMyDecksConfig(Exception):
@@ -212,6 +213,7 @@ class MyDeck:
         self._GAME_KEY_CONFIG: dict = {}
         self._config_file: str = ''
         self._config_file_mtime: float = 0
+        self.page_apps: dict[str, list[App]] = {}
 
         myname: Optional[str] = opt.get('myname')
         if myname is not None:
@@ -616,7 +618,7 @@ class MyDeck:
                         if self.config is not None:
                             for app in self.config.apps:
                                 self.debug("stop app: %s" % app.name())
-                                app.stop = True
+                                app._stop = True
 
                         time.sleep(2)
 
@@ -761,20 +763,26 @@ class MyDeck:
         if self._exit:
             return
 
-        for app in apps:
-            if app.is_in_target_page():
-                if app.is_touchscreen_app() and not self.deck.is_touch():
-                    continue
-                if app.is_dial_app() and not self.deck.is_dial():
-                    continue
-                if app.use_thread:
-                    t = threading.Thread(
-                        target=lambda: app.init_app_flag() and app.start(), args=())
-                    t.start()
-                    if app.use_trigger:
-                        app.trigger.set()
-                else:
-                    app.key_setup()
+        page_name = self.current_page()
+        if (page_apps := self.page_apps.get(page_name)) is not None:
+            while len(page_apps) > 0:
+                app = page_apps.pop()
+                app.debug("try to stop!")
+                app.stop_app()
+
+        self.page_apps[page_name] = []
+
+        for app in filter(lambda app: app.is_in_target_page() and app.can_work(), apps):
+            if app.use_thread:
+                app.init_app_flag()
+                t = threading.Thread(
+                    target=lambda: app.start(), args=())
+                t.start()
+                self.page_apps[page_name].append(app)
+                if app.use_trigger:
+                    app.trigger.set()
+            else:
+                app.key_setup()
 
         if not self.is_background_thread_started:
             self.is_background_thread_started = True
@@ -789,9 +797,10 @@ class MyDeck:
             t = threading.Thread(
                 target=lambda: web_server_app.start(), args=())
             t.start()
+            self.page_apps[page_name].append(t)
 
-        t = threading.Thread(target=lambda: self.update_config(), args=())
-        t.start()
+            t = threading.Thread(target=lambda: self.update_config(), args=())
+            t.start()
 
     def abs_key(self, key: int) -> int:
         """If key is negative number, chnage it as positive number"""
@@ -949,7 +958,7 @@ class Config:
     def reset_apps(self):
         """Reset apps"""
         for app in self.apps:
-            app.stop = True
+            app._stop = True
             if app.is_trigger_app:
                 app.trigger.set()
 

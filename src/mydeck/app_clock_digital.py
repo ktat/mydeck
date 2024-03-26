@@ -20,7 +20,7 @@ class AppClockDigital(ThreadAppBase):
             now.hour, now.minute, now.second)
         draw.text((2, 33), font=font, text=time_text, fill="white")
 
-        self.mydeck.update_key_image(
+        self.update_key_image(
             key,
             self.mydeck.render_key_image(
                 ImageOrFile(im),

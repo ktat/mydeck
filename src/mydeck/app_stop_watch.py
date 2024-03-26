@@ -31,7 +31,7 @@ class AppStopWatch(AppBase):
             self.mydeck.set_key_conf(page, key, self._key_conf)
 
     def do_start(self):
-        self.stop = False
+        self.stop(False)
         page = self.mydeck.current_page()
         key = self.page_key.get(page)
         if key is not None:
@@ -66,6 +66,6 @@ class AppStopWatch(AppBase):
 
     def toggle_count(self):
         if self.in_working:
-            self.stop = True
+            self.stop(True)
         else:
             self.do_start()

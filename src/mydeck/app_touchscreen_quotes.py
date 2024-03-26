@@ -3,6 +3,7 @@ from mydeck import MyDeck, TouchAppBase
 import random
 import re
 import requests
+import datetime
 
 
 class AppTouchscreenQuotes(TouchAppBase):
@@ -42,7 +43,8 @@ class AppTouchscreenQuotes(TouchAppBase):
 
         draw.text((10, 10), text=quote_text + "\n by " +
                   quote_author, font=font, fill="white")
-        self.mydeck.set_touchscreen(
+
+        self.set_touchscreen(
             {
                 "image": im, "x": 0, "y": 0,
                 "width": self.touchscreen_width(),

@@ -27,7 +27,7 @@ class AppTouchscreenSample(TouchAppBase):
         position_text = "Clicked x: {0:d}, y: {1:d}".format(x, y)
         draw.text((250, 35), text=position_text, fill="white", font=font)
         draw.rectangle([x, y, x + 10, y + 10], fill="yellow")
-        self.mydeck.set_touchscreen(
+        self.set_touchscreen(
             {
                 "image": im, "x": 0, "y": 0,
                 "width": self.touchscreen_width(),

@@ -6,8 +6,6 @@ import sys
 class AppWebServer(BackgroundAppBase):
     # if app requires thread, set it to True
     use_thread = True
-    # need to stop thread
-    stop = False
     # class variable
     IS_ALREADY_WORKING: bool = False
 
@@ -26,5 +24,5 @@ class AppWebServer(BackgroundAppBase):
             server = DeckOutputWebServer()
             server.run(self.port)
             logging.info("exit in start")
-            self.stop = True
+            self.stop(True)
             sys.exit()

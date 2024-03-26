@@ -10,7 +10,7 @@ class GameWhacAMole(GameAppBase):
 
     def __init__(self, mydeck: MyDeck, start_key_num: int = 0):
         self.in_game = False
-        self.stop = False
+        self._stop = False
         self.exit = False
         self.data = {
             "score": 0,
@@ -100,7 +100,7 @@ class GameWhacAMole(GameAppBase):
             self.in_game = True
             if not mydeck.in_game_status():
                 break
-            if self.exit or self.stop:
+            if self.exit or self._stop:
                 self.in_game = False
                 break
 
@@ -155,10 +155,10 @@ class GameWhacAMole(GameAppBase):
                         time.sleep(1)
                     mydeck.exit_game()
                 if conf["name"] == "restart":
-                    self.stop = True
+                    self._stop = True
                     while self.in_game:
                         time.sleep(0.5)
-                    self.stop = False
+                    self._stop = False
                     self.key_setup(self.data["mode"])
                 if conf["name"] == "mole":
                     if self.data["left_second"] > 0:

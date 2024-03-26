@@ -51,7 +51,7 @@ class App:
         # app is running now
         self.in_working: bool = False
         # need to stop thread
-        self.stop: bool = False
+        self._stop: bool = False
         # dict: key is page name and value is key number.
         self.page_key: dict = {}
         # list: contains page names
@@ -67,6 +67,9 @@ class App:
         if self.mydeck.deck is None:
             raise ExceptionNoDeck
 
+    def stop(self, flg: bool) -> None:
+        self._stop = flg
+
     def name(self) -> str:
         return "%s" % self.__class__.__name__
 
@@ -80,7 +83,7 @@ class App:
         return self.app_type == App.AppType.TOUCHSCREEN
 
     def init_app_flag(self) -> bool:
-        self.stop = False
+        self.stop(False)
         self.is_first = True
         self.in_working = False
         return True
@@ -104,6 +107,9 @@ class App:
             if (size := self.mydeck.deck.touchscreen_image_format().get("size")) is not None:
                 return int(size[1])
         return 0
+
+    def can_work(self) -> bool:
+        return (self.is_touchscreen_app() and self.mydeck.deck.is_touch()) or (self.is_dial_app() and self.mydeck.deck.is_dial()) or self.is_key_app()
 
 
 class GameAppBase(App):
@@ -138,14 +144,12 @@ class AppBase(App):
     # implment it in subclass
     def set_image_to_key(self, key: int, page: str):
         """Set image to key. Implement this method in subclass."""
-        logging.critical(
-            "Implemnt set_image_to_key in subclass for app to use thread anytime.")
+        pass
 
     # implment it in subclass
     def set_image_to_touchscreen(self):
         """Set image to key. Implement this method in subclass."""
-        logging.critical(
-            "Implemnt set_image_to_key in subclass for app to use thread anytime.")
+        pass
 
     # check current page is whther app's target or not
     def is_in_target_page(self) -> bool:
@@ -158,6 +162,21 @@ class AppBase(App):
             self.in_other_page = True
             return False
 
+    def check_to_stop(self) -> bool:
+        """Return true when the deck exists or current page is not in the target of app."""
+
+        if self.mydeck._exit or self._stop or not self.is_in_target_page():
+            self.stop_app()
+            return True
+
+        return False
+
+    def stop_app(self):
+        """Stop application. It must be called within app."""
+        self.stop(True)
+        if self.use_trigger:
+            self.trigger.set()
+
     # if use_thread is true, this method is call in thread
     def start(self) -> NoReturn:
         """Start application when the current page is the target of the app."""
@@ -168,17 +187,14 @@ class AppBase(App):
 
             # exit when main process is finished
             if self.check_to_stop():
-                self.debug("should be stopped")
                 break
 
             try:
                 page = self.mydeck.current_page()
-                if self.is_key_app():
-                    key = self.page_key.get(page)
-                    if key is not None:
-                        self.set_image_to_key(key, page)
-                elif self.is_touchscreen_app():
-                    self.set_image_to_touchscreen()
+                key = self.page_key.get(page)
+                if key is not None:
+                    self.set_image_to_key(key, page)
+                self.set_image_to_touchscreen()
             except Exception as e:
                 logging.critical(
                     '[{}] Error in app_base.start {} {} at {}'.format(self.mydeck.deck.id(), type(self), e, self.mydeck.current_page()))
@@ -190,27 +206,30 @@ class AppBase(App):
                 self.debug("triggered")
                 self.trigger.clear()
 
-            time.sleep(self.time_to_sleep)
+            # check_to_stop whlie sleep time. wait 0.2 sec or time_to_sleep
+            should_break: bool = False
+            sleep_time: float = min(self.time_to_sleep, 0.2)
+            for _ in range(int(self.time_to_sleep / sleep_time)):
+                if self.check_to_stop():
+                    should_break = True
+                    break
+                time.sleep(sleep_time)
+            if should_break:
+                break
+
             self.is_first = False
 
         self.debug("finished")
         self.init_app_flag()
         sys.exit()
 
-    def check_to_stop(self) -> bool:
-        """Return true when the deck exists or current page is not in the target of app."""
+    def update_key_image(self, key: int, image):
+        if self.check_to_stop() is False:
+            self.mydeck.update_key_image(key, image)
 
-        if self.mydeck._exit or self.stop or not self.is_in_target_page():
-            self.stop_app()
-            return True
-
-        return False
-
-    def stop_app(self):
-        """Stop application. It must be called within app."""
-        self.stop = True
-        if self.use_trigger:
-            self.trigger.set()
+    def set_touchscreen(self, opt: dict):
+        if self.check_to_stop() is False:
+            self.mydeck.set_touchscreen(opt)
 
     def key_setup(self):
         """Setup app keys. If command is given as option, set key to command."""
@@ -272,7 +291,7 @@ class BackgroundAppBase(App):
         """Pass MyDeck instance and configuration"""
         super().__init__(mydeck)
         # need to stop thread
-        self.stop: bool = False
+        self._stop: bool = False
         # sleep time in thread
         self.sleep: float = 1
 
@@ -296,7 +315,7 @@ class BackgroundAppBase(App):
 
             time.sleep(self.sleep)
 
-        self.debug("app exit")
+        self.debug("finished")
         self.init_app_flag()
         sys.exit()
 

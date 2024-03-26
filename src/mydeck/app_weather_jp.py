@@ -161,7 +161,7 @@ class AppWeatherJp(TriggerAppBase):
                 draw.text((10, 43 + (19-l)), font=font,
                           text=self.area.display_name, fill=(255, 255, 255))
 
-            self.mydeck.update_key_image(
+            self.update_key_image(
                 key,
                 self.mydeck.render_key_image(
                     ImageOrFile(im),

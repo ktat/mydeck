@@ -64,14 +64,18 @@ class AppBingPhoto(TriggerAppBase):
                     if image_res.status_code == requests.codes.ok:
                         icon_file = image_prefix + ext
 
-                        with open(icon_file, mode="wb") as f:
-                            f.write(image_res.content)
-                        im = Image.open(icon_file)
-                        percent = 100 / im.width
-                        im_resized = im.resize(
-                            (int(im.width * percent), int(im.height * percent)))
-                        im_resized.save(icon_file, format=ext, quality=95)
-        self.mydeck.update_key_image(
+                        try:
+                            with open(icon_file, mode="wb") as f:
+                                f.write(image_res.content)
+                            im = Image.open(icon_file)
+                            percent = 100 / im.width
+                            im_resized = im.resize(
+                                (int(im.width * percent), int(im.height * percent)))
+                            im_resized.save(icon_file, format=ext, quality=95)
+                        except Exception as e:
+                            self.debug("error: %s" % e)
+
+        self.update_key_image(
             key,
             self.mydeck.render_key_image(
                 ImageOrFile(icon_file),

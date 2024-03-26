@@ -28,7 +28,7 @@ class AppCommunicateDeck(AppBase):
             self.mydeck.set_key_conf(page, key, self._key_conf)
             conf = self.page_cache.get(page)
             if conf is not None:
-                self.mydeck.update_key_image(key, self.mydeck.render_key_image(ImageOrFile(
+                self.update_key_image(key, self.mydeck.render_key_image(ImageOrFile(
                     conf["image"]), conf.get("label") or '', conf.get("background_color") or ''))
 
     def communicate(self):
@@ -59,7 +59,7 @@ class AppCommunicateDeck(AppBase):
                         self.index[page][to_key] += 1
 
                     if conf is not None:
-                        self.mydeck.update_key_image(key, self.mydeck.render_key_image(ImageOrFile(
+                        self.update_key_image(key, self.mydeck.render_key_image(ImageOrFile(
                             conf["image"]), conf.get("label") or '', conf.get("background_color") or ''))
                         self.page_cache[page] = conf
                     break

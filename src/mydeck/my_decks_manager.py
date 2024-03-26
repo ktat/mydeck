@@ -327,11 +327,8 @@ class VirtualDeck:
 
         if self.has_real_deck():
             for i in range(self.key_count()):
-                # TODO: lock works correctly?
                 Lock.do_with_lock(self.get_serial_number(),
                                   lambda: self.real_deck.set_key_image(i, None))
-                # if lock works correctly, following line is not needed.
-                time.sleep(0.04)
 
     def reset(self):
         """Reset key images."""

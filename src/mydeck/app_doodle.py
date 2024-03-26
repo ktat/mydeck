@@ -68,7 +68,8 @@ class AppDoodle(TriggerAppBase):
                     im_resized = im_cropped.resize(
                         (int(im_cropped.width * percent), int(im_cropped.height * percent)))
                     im_resized.save(icon_file, format=ext, quality=95)
-        self.mydeck.update_key_image(
+
+        self.update_key_image(
             key,
             self.mydeck.render_key_image(
                 ImageOrFile(icon_file),

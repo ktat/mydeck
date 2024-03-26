@@ -68,7 +68,7 @@ class AppClock(ThreadAppBase):
     def set_image_to_key(self, key: int, page: str):
         hms = self.get_current_hms()
         im = self.get_current_clock_image(hms)
-        self.mydeck.update_key_image(
+        self.update_key_image(
             key,
             self.mydeck.render_key_image(
                 ImageOrFile(im),
