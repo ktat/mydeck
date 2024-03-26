@@ -162,6 +162,12 @@
                         @click.right.prevent="openSettingModal(i)">
                     <span :class="'mod' + (i % columns)"></span>
                 </span>
+                <div v-if="items.data">
+                    <div v-if="has_touchscreen">
+                        <img :src="'data:image/png;base64,' + items.data.touch" class="touchscreen"
+                            :onclick="'tapScreen(this, &quot;' + id + '&quot;, event.offsetX, event.offsetY)'">
+                    </div>
+                </div>
                 <span v-if="items.data">
                     <span v-for="i in dials">
                         <input type="range" min="0" max="100" :value='items.data.dial_states[i]' class="slider"
@@ -169,12 +175,6 @@
                             :onchange="'changeDial(this, &quot;' + id + '&quot;, ' + i + ',this.value);'">
                     </span>
                 </span>
-                <div v-if="items.data">
-                    <div v-if="has_touchscreen">
-                        <img :src="'data:image/png;base64,' + items.data.touch" class="touchscreen"
-                            :onclick="'tapScreen(this, &quot;' + id + '&quot;, event.offsetX, event.offsetY)'">
-                    </div>
-                </div>
             </div>
             <div v-if="settingMode" id="settingModal">
                 <div id="closeModal" @click.left="closeSettingModal()">&#x274c;</div>
