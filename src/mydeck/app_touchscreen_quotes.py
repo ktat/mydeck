@@ -3,12 +3,11 @@ from mydeck import MyDeck, TouchAppBase
 import random
 import re
 import requests
-import datetime
 
 
 class AppTouchscreenQuotes(TouchAppBase):
     use_thread: bool = True
-    quotes = []
+    quotes: dict = {"results": []}
 
     def __init__(self, mydeck: MyDeck, option: dict = {}):
         super().__init__(mydeck, option)
@@ -18,21 +17,34 @@ class AppTouchscreenQuotes(TouchAppBase):
         pass
 
     def set_image_to_touchscreen(self):
-        im = Image.new("RGB", (800, 100), (0, 0, 0))
+        size: tuple[int, int] = self.mydeck.deck.touchscreen_image_format()[
+            "size"]
+        im = Image.new("RGB", size, (0, 0, 0))
         draw = ImageDraw.Draw(im)
         font = ImageFont.truetype(self.mydeck.font_path, 25)
         quotes = AppTouchscreenQuotes.quotes
 
-        if len(quotes) == 0:
-            response = requests.get("https://api.quotable.io/quotes?limit=500")
+        if len(quotes["results"]) == 0:
+            try:
+                response = requests.get(
+                    "https://api.quotable.io/quotes?limit=500")
 
-            if response.status_code == 200:
-                quotes = response.json()
-            else:
-                quote_text = "Failed to retrieve a quote"
-
-        if len(quotes) == 0:
-            return
+                if response.status_code == 200:
+                    quotes = response.json()
+                else:
+                    quotes["results"] = [
+                        {
+                            "content": "Failed to retrieve a quote: " + str(response.status_code),
+                            "author": "mydeck"
+                        }
+                    ]
+            except Exception as e:
+                quotes["results"] = [
+                    {
+                        "content": "Failed to retrieve a quote: " + str(e),
+                        "author": "mydeck"
+                    }
+                ]
 
         random_quote = random.choice(quotes["results"])
         quote_text = random_quote["content"]

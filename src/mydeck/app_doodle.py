@@ -9,6 +9,8 @@ import time
 import glob
 from PIL import Image
 
+GOOGLE_LOGO_URL = "https://www.google.com/favicon.ico"
+
 
 class AppDoodle(TriggerAppBase):
     use_hour_trigger: bool = True
@@ -46,14 +48,17 @@ class AppDoodle(TriggerAppBase):
             res = requests.get(doodles_api_url)
             if res.status_code == requests.codes.ok:
                 data: list = json.loads(res.text)
-                image_url: str = 'https:' + data[0]["high_res_url"]
-                date: list = data[0]['run_date_array']
-                ext: str = ""
+                image_url = GOOGLE_LOGO_URL
+                self.doodle_name: str = "Google"
+                ext: str = "ico"
+                if len(data) > 0:
+                    image_url: str = 'https:' + data[0]["high_res_url"]
+                    date: list = data[0]['run_date_array']
+                    self.doodle_name = data[0]['name']
+
                 m = re.search('\.(\w+)$', image_url)
                 if m is not None and m.group(1) is not None:
                     ext = m.group(1)
-
-                self.doodle_name: str = data[0]['name']
 
                 image_res = requests.get(image_url)
                 if image_res.status_code == requests.codes.ok:
@@ -68,16 +73,19 @@ class AppDoodle(TriggerAppBase):
                     im_resized = im_cropped.resize(
                         (int(im_cropped.width * percent), int(im_cropped.height * percent)))
                     im_resized.save(icon_file, format=ext, quality=95)
+                else:
+                    self.debug("Not assumed response text: %s" % res.text)
 
-        self.update_key_image(
-            key,
-            self.mydeck.render_key_image(
-                ImageOrFile(icon_file),
-                "{0:02d}/{1:02d}".format(d.year, d.month),
-                'black',
-                False,
+        if icon_file != "":
+            self.update_key_image(
+                key,
+                self.mydeck.render_key_image(
+                    ImageOrFile(icon_file),
+                    "{0:02d}/{1:02d}".format(d.year, d.month),
+                    'black',
+                    False,
+                )
             )
-        )
 
     def open_browser(self):
         command = ['google-chrome', '--profile-directory=Default',

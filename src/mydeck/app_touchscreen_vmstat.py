@@ -14,7 +14,9 @@ class AppTouchscreenVmstat(TouchAppBase):
         pass
 
     def set_image_to_touchscreen(self):
-        im = Image.new("RGB", (800, 100), (0, 0, 0))
+        size: tuple[int, int] = self.mydeck.deck.touchscreen_image_format()[
+            "size"]
+        im = Image.new("RGB", size, (0, 0, 0))
         draw = ImageDraw.Draw(im)
         font = ImageFont.truetype(self.mydeck.font_path, 10)
         cp = subprocess.run(["vmstat", "1", "5"], capture_output=True)

@@ -21,7 +21,9 @@ class AppTouchscreenSample(TouchAppBase):
     def render_touchscreen_sample_image(self, args):
         x: int = args.get("x") or 0
         y: int = args.get("y") or 0
-        im = Image.new('RGB', (800, 100), (0, 0, 0))
+        size: tuple[int, int] = self.mydeck.deck.touchscreen_image_format()[
+            "size"]
+        im = Image.new('RGB', size, (0, 0, 0))
         draw = ImageDraw.Draw(im)
         font = ImageFont.truetype(self.mydeck.font_path, 25)
         position_text = "Clicked x: {0:d}, y: {1:d}".format(x, y)
