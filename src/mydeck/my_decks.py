@@ -213,7 +213,7 @@ class MyDeck:
         self._GAME_KEY_CONFIG: dict = {}
         self._config_file: str = ''
         self._config_file_mtime: float = 0
-        self.page_apps: dict[str, list[App]] = {}
+        self.page_apps: dict[str, list[AppBase]] = {}
 
         myname: Optional[str] = opt.get('myname')
         if myname is not None:
@@ -766,7 +766,7 @@ class MyDeck:
         page_name = self.current_page()
         if (page_apps := self.page_apps.get(page_name)) is not None:
             while len(page_apps) > 0:
-                app = page_apps.pop()
+                app: AppBase = page_apps.pop()
                 app.debug("try to stop!")
                 app.stop_app()
 
@@ -797,10 +797,9 @@ class MyDeck:
             t = threading.Thread(
                 target=lambda: web_server_app.start(), args=())
             t.start()
-            self.page_apps[page_name].append(t)
 
-            t = threading.Thread(target=lambda: self.update_config(), args=())
-            t.start()
+            t2 = threading.Thread(target=lambda: self.update_config(), args=())
+            t2.start()
 
     def abs_key(self, key: int) -> int:
         """If key is negative number, chnage it as positive number"""

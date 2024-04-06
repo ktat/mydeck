@@ -3,11 +3,10 @@ import time
 from mydeck import MyDeck, BackgroundAppBase
 import logging
 
+
 class AppTrigger(BackgroundAppBase):
     # if app reuquire thread, true
     use_thread = True
-    # need to stop thread
-    stop = False
 
     def __init__(self, mydeck: MyDeck, config: dict = {}):
         super().__init__(mydeck)
@@ -37,4 +36,3 @@ class AppTrigger(BackgroundAppBase):
 
             # sleep untile next munite
             time.sleep(datetime.datetime.now().second % 60)
-

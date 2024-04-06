@@ -205,6 +205,7 @@ class DeckOutputWebHandler(http.server.BaseHTTPRequestHandler):
                 "serial_number": deck.get_serial_number(),
                 "columns": deck.columns(),
                 "has_touchscreen": deck.is_touch(),
+                "touchscreen_size": deck.touchscreen_size,
                 "dials": deck.dial_count(),
                 "dial_states": deck.dial_states(),
             }

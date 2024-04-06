@@ -3,11 +3,10 @@ import sys
 from mydeck import MyDeck, BackgroundAppBase
 from typing import Callable, Optional
 
+
 class AppAlert(BackgroundAppBase):
     # if app reuquire thread, true
     use_thread = True
-    # need to stop thread
-    stop = False
 
     _check_function: Optional[Callable] = None
     _check_interval: int = 300
@@ -17,7 +16,7 @@ class AppAlert(BackgroundAppBase):
     in_working = False
     is_background_app = True
 
-    def __init__ (self, mydeck: MyDeck, config: dict):
+    def __init__(self, mydeck: MyDeck, config: dict):
         alert_key_config: dict = {}
         check_interval = config.get("check_interval")
         if check_interval is not None and type(check_interval) == int:
@@ -25,7 +24,7 @@ class AppAlert(BackgroundAppBase):
         retry_interval = config.get("retry_interval")
         if retry_interval is not None and type(retry_interval) == int:
             self._retry_interval = retry_interval
-        conf = config.get("key_config")
+        conf: Optional[dict] = config.get("key_config")
         if conf is not None and type(conf) == dict:
             alert_key_config = conf
 
@@ -55,7 +54,7 @@ class AppAlert(BackgroundAppBase):
                     self.mydeck.set_alert_on()
                 else:
                     self.mydeck.handler_alert_stop()
-                    self.in_alert =False
+                    self.in_alert = False
                     self.mydeck.set_alert_off()
 
             if self.mydeck._exit:

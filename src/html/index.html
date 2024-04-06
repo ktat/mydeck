@@ -109,9 +109,6 @@
 
         .touchscreen {
             margin-left: 5px;
-            /* Actual size is 800 x 100 */
-            width: 595;
-            height: 74.375;
         }
 
         div[id^="block"].on {
@@ -165,6 +162,7 @@
                 <div v-if="items.data">
                     <div v-if="has_touchscreen">
                         <img :src="'data:image/png;base64,' + items.data.touch" class="touchscreen"
+                            :style="{ width: touchscreen_size[0] * 595 / 800 + 'px', height: touchscreen_size[1] * 74.375 / 100 + 'px' }"
                             :onclick="'tapScreen(this, &quot;' + id + '&quot;, event.offsetX, event.offsetY)'">
                     </div>
                 </div>
@@ -354,6 +352,7 @@
                                 dials: res.data[i].dials,
                                 dial_states: res.data[i].dial_states,
                                 has_touchscreen: res.data[i].has_touchscreen,
+                                touchscreen_size: res.data[i].touchscreen_size,
                                 settingMode: false,
                                 settingKey: 0,
                                 settingType: null,

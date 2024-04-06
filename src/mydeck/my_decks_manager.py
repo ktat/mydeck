@@ -92,6 +92,7 @@ class VirtualDeckConfig:
         self._dials: int = 0
         self._has_touch_interface: bool = False
         self._serial_number: str
+        self._touchscreen_size: tuple[int, int] = (0, 0)
 
         real_deck: StreamDeck = opt.get("real_deck")
         if real_deck is not None:
@@ -116,6 +117,15 @@ class VirtualDeckConfig:
             has_touchscreen: Optional[bool] = opt.get('has_touchscreen')
             if has_touchscreen is not None and has_touchscreen:
                 self._has_touch_interface = has_touchscreen
+                size: Optional[tuple[int, int]] = opt.get("touchscreen_size")
+                if size is not None:
+                    self._touchscreen_size = (size[0], size[1])
+                else:
+                    plus = StreamDeckPlus
+                    self._touchscreen_size = (
+                        plus.TOUCHSCREEN_PIXEL_WIDTH, plus.TOUCHSCREEN_PIXEL_HEIGHT
+                    )
+
             num_of_dials: Optional[int] = opt.get('dial_count')
             if num_of_dials is not None and num_of_dials is not None and num_of_dials > 0:
                 self._dials = num_of_dials
@@ -159,6 +169,9 @@ class VirtualDeckConfig:
     def has_touchscreen(self) -> bool:
         return self._has_touch_interface
 
+    def touchscreen_size(self) -> tuple[int, int]:
+        return self._touchscreen_size
+
     def config(self) -> dict:
         return {
             'id': self.id(),
@@ -167,6 +180,7 @@ class VirtualDeckConfig:
             'serial_number': self.serial_number(),
             "dial_count": self.dials(),
             "has_touchscreen": self.has_touchscreen(),
+            "touchscreen_size": self.touchscreen_size(),
         }
 
 
@@ -184,6 +198,7 @@ class VirtualDecksConfig:
           serial_number: 'dummy1'
           has_touchscreen: true
           dial_count: 2
+          touchscreen_size: [400, 100]
         2:
           key_count: 6
           columns: 3
@@ -221,6 +236,8 @@ class VirtualDeck:
         """Pass Virutal Deck option, DeckInput instance and DeckOutput instance."""
         self.real_deck: StreamDeck = None
         self.is_touch_interface: bool = False
+        plus = StreamDeckPlus
+        self.touchscreen_size: tuple[int, int] = (0, 0)
         self._exit: bool = False
         self.touchscreen_image = None
         self._dial_count: int = 0
@@ -253,6 +270,13 @@ class VirtualDeck:
         has_touch: Optional[int] = opt.get('has_touchscreen')
         if has_touch is not None and has_touch is True:
             self.is_touch_interface = True
+            size: Optional[tuple[int, int]] = opt.get("touchscreen_size")
+            if size is not None and len(size) == 2:
+                self.touchscreen_size = (size[0], size[1])
+            else:
+                self.touchscreen_size = (
+                    plus.TOUCHSCREEN_PIXEL_WIDTH, plus.TOUCHSCREEN_PIXEL_HEIGHT
+                )
         self.serial_number: str = serial_number
         self.firmware_version: str = 'dummy firmware'
         self.input: 'DeckInput' = input

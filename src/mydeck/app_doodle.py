@@ -48,11 +48,11 @@ class AppDoodle(TriggerAppBase):
             res = requests.get(doodles_api_url)
             if res.status_code == requests.codes.ok:
                 data: list = json.loads(res.text)
-                image_url = GOOGLE_LOGO_URL
+                image_url: str = GOOGLE_LOGO_URL
                 self.doodle_name: str = "Google"
                 ext: str = "ico"
                 if len(data) > 0:
-                    image_url: str = 'https:' + data[0]["high_res_url"]
+                    image_url = 'https:' + data[0]["high_res_url"]
                     date: list = data[0]['run_date_array']
                     self.doodle_name = data[0]['name']
 
