@@ -2,7 +2,7 @@
 
 - To configure [STREAM DECK](https://www.elgato.com/ja/stream-deck) easily
 - To use  virtual devices compatible with STREAM DECK
-- Web Interface for virtual devices
+- Web Interface for virtual devices and real device
 
 Check [the instruction](https://onlinux.systems/guides/20220520_how-to-set-up-elgatos-stream-deck-on-ubuntu-linux-2204) at first when you haven't setup STREAM DECK.
 
