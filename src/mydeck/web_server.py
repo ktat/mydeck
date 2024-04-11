@@ -94,6 +94,14 @@ class DeckOutputWebHandler(http.server.BaseHTTPRequestHandler):
     def do_GET(self):
         if self.path == '/':
             return self.res_file_html('src/html/index.html')
+        elif (m := re.search("(/js/[^/]+\.js)", self.path)) is not None:
+            js_path = m.group(1)
+            logging.debug('src/html' + js_path)
+            with open('src/html' + js_path, mode="rb") as f:
+                try:
+                    return self.response_js(f)
+                except Exception as e:
+                    pass
         elif self.path == '/chart/status':
             return self.res_file_html('src/html/chart-status.html')
         elif (m := re.search("(/src/Assets/[^/]+\.(\w+))", self.path)) is not None and m.group(2) is not None:
@@ -103,6 +111,7 @@ class DeckOutputWebHandler(http.server.BaseHTTPRequestHandler):
                 try:
                     return self.response_image(f, ext)
                 except Exception as e:
+                    logging.debug(e)
                     pass
         elif self.path == '/api/status':
             return self.res_status()
@@ -182,6 +191,12 @@ class DeckOutputWebHandler(http.server.BaseHTTPRequestHandler):
     def response_404(self):
         self.text_headers(404, 'plain')
         self.wfile.write(bytes("404 not found: {}".format(self.path), 'ascii'))
+
+    def response_js(self, f):
+        self.send_response(200)
+        self.send_header("Content-Type", 'application/javascript')
+        self.end_headers()
+        self.wfile.write(f.read())
 
     def response_image(self, f, ext):
         self.send_response(200)
