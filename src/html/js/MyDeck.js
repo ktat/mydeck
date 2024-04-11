@@ -202,7 +202,6 @@ const MyDeck = {
     }.bind(this), 200);
   },
   template: `
-  <div id="app">
     <div
       id="block1"
       :class="modal_block_class"
@@ -253,7 +252,6 @@ const MyDeck = {
           />
         </span>
       </span>
-    </div>
     <div v-if="settingMode" id="settingModal">
       <div id="closeModal" @click.left="closeSettingModal()">&#x274c;</div>
       <h2>Key Setting</h2>

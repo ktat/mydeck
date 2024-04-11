@@ -3,6 +3,7 @@ const id2sn = {};
 const App = {
     data() {
         return {
+            page: 1,
             items: [],
             images: [],
         }
@@ -49,21 +50,45 @@ const App = {
     },
     template: `
             <div id="container">
-                APIs
-                <ul>
-                    <li><a href="/api/status">Status JSON</a></li>
-                    <li><a href="/api/resource">Resouse JSON</a></li>
-                    <li><a href="/api/device_info">DeviceInfo JSON</a></li>
-                    <li><a href="/api/images">images JSON</a></li>
-                    <li><a href="/api/device_key_images">Devices and its images JSON</a></li>
-                </ul>
-                Status Chart
-                <ul>
-                    <li><a href="/chart/status">Status Chart</a></li>
-                </ul>
-                <div v-for="config in items" :key="config.id">
-                    <mydeck :config="config" />
+                <div id="header-menu" class="header-menu">
+                    <strong>MyDeck</strong>
+                    <div class="dropdown">
+                        <a class="dropbtn" @click="page=1">Decks</a>
+                    </div>
+                    <div class="dropdown">
+                        <a class="dropbtn">APIs</a>
+                        <div class="dropdown-content">
+                            <a target="_blank" href="/api/status">Status JSON &#x29c9;</a>
+                            <a target="_blank" href="/api/device_info">DeviceInfo JSON &#x29c9;</a>
+                            <a target="_blank" href="/api/images">images JSON &#x29c9;</a>
+                            <a target="_blank" href="/api/device_key_images">Devices and its images JSON &#x29c9;</a>
+                            <a target="_blank" href="/api/resource">Resouse JSON &#x29c9;</a>
+                        </div>
+                    </div>
+                    <div class="dropdown">
+                        <a class="dropbtn">Status Chart</a>
+                        <div class="dropdown-content">    
+                            <a target="_blank" href="/chart/status">Status Chart &#x29c9;</a>
+                        </div>
+                    </div>
+                    <div class="dropdown">
+                        <a class="dropbtn">?</a>
+                        <div class="dropdown-content">    
+                        <a @click="page=2">help</a>
+                        <a target="_blank" href="https://github.com/ktat/mydeck">GitHub &#x29c9;</a>
+                        </div>
+                    </div>
                 </div>
+                <div id="app-container">
+                    <div v-if="page === 1">
+                            <div v-for="config in items" :key="config.id" class="mydeck">
+                                <mydeck :config="config" />
+                        </div>
+                    </div>
+                    <div v-if="page === 2">
+                        <help />
+                    </div>
+                </div>                        
             </div>
         `
 };
