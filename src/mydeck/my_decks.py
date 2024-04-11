@@ -817,11 +817,11 @@ class MyDeck:
 
     def update_config(self):
         from .my_decks_manager import MyDecksManager
+        sn = self.deck.get_serial_number()
         while True:
             if self.deck.is_closed():
                 break
 
-            sn = self.deck.get_serial_number()
             if MyDecksManager.ConfigQueue.get(sn) is not None:
                 data = MyDecksManager.ConfigQueue[sn].get()
                 if data.get('exit'):
@@ -958,7 +958,7 @@ class Config:
         """Reset apps"""
         for app in self.apps:
             app._stop = True
-            if app.is_trigger_app:
+            if app.use_trigger:
                 app.trigger.set()
 
         # destloy apps
