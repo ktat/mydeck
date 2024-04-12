@@ -3,14 +3,28 @@
 <head>
     <meta name="viewport" content="width=device-width,initial-scale=1">
     <title>Virtual Decks</title>
-    <!-- Vue.jsのCDNリンク -->
-    <script src="https://unpkg.com/vue@next"></script>
-    <!-- AxiosのCDNリンク -->
-    <script src="https://unpkg.com/axios/dist/axios.min.js"></script>
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
     <style>
-        #help {
-            overflow-x: none;
+        h1 {
+            color: #ddf
+        }
+
+        h1 a {
+            text-decoration: none;
+            color: #77f
+        }
+
+        h2,
+        h3 {
+            color: #aaf
+        }
+
+        hr.separator {
+            border: 0;
+            height: 1px;
+            background: #eee;
+            margin: 0 5px 0px 5px;
+            padding: 0;
         }
 
         #header-menu {
@@ -75,9 +89,8 @@
         }
 
         #app-container {
-            margin-top: 50px;
             margin-left: 20px;
-            padding-top: 0px;
+            padding-top: 50px;
         }
 
         body,
@@ -85,7 +98,8 @@
         div {
             margin-left: 0px;
             margin-right: 0px;
-            padding: 0px;
+            margin-top: 0px;
+            padding-top: 0px;
         }
 
         h2 {
@@ -179,7 +193,7 @@
         }
 
         div#container {
-            overflow: scroll;
+            overflow: none;
         }
 
         div.mydeck {

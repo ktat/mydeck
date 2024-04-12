@@ -4,7 +4,7 @@ const Help = {
         }
     },
     template: `
-        <div id="help">
+        <div id="help-container">
         <h1>Help</h1>
         <h2>How to configure button?</h2>
         <p>1. right click the button which you want to change.</p>

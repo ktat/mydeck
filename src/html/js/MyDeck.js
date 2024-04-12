@@ -60,7 +60,9 @@ const dataModifier = {
 
 const MyDeck = {
   props: {
-    config: Object
+    config: Object,
+    full: Boolean,
+    page: String,
   },
   data() {
     return {
@@ -208,7 +210,7 @@ const MyDeck = {
       @click.left="closeSettingModal()"
     ></div>
     <div class="app">
-      <h1>Deck {{ config.id }} (sn: {{ config.serial_number }})</h1>
+      <h1 v-if="!full">Deck {{ config.id }} (sn: {{ config.serial_number }}) <a target="_blank" :href="'#full-device-'+config.id" title="Open this deck in new tab">&#x29c9;</a></h1>
         <span v-for="i in key_count">
           <img
             :src="'data:image/png;base64,' + items.data.key[i - 1]"

@@ -1,9 +1,10 @@
-const baseURL = location.href;
+const baseURL = location.href.replace(location.hash, "");
+const page = location.hash.replace("#", "");
 const id2sn = {};
 const App = {
     data() {
         return {
-            page: 1,
+            page: page || "home",
             items: [],
             images: [],
         }
@@ -50,43 +51,55 @@ const App = {
     },
     template: `
             <div id="container">
-                <div id="header-menu" class="header-menu">
+                <div id="header-menu" class="header-menu" v-if="!page.match('^full-device')">
                     <strong>MyDeck</strong>
                     <div class="dropdown">
-                        <a class="dropbtn" @click="page=1">Decks</a>
+                        <a class="dropbtn">Decks</a>
+                        <div class="dropdown-content">
+                            <a @click="page=1" href="/">All Decks</a>
+                            <hr class="separator" />
+                            <template v-for="config in items" :key="config.id">
+                                <a @click="page='device-' + config.id" :href="'#device-' + config.id">{{config.id}}: {{config.serial_number}}</a>
+                            </template>
+                        </div>
                     </div>
                     <div class="dropdown">
                         <a class="dropbtn">APIs</a>
                         <div class="dropdown-content">
-                            <a target="_blank" href="/api/status">Status JSON &#x29c9;</a>
-                            <a target="_blank" href="/api/device_info">DeviceInfo JSON &#x29c9;</a>
-                            <a target="_blank" href="/api/images">images JSON &#x29c9;</a>
-                            <a target="_blank" href="/api/device_key_images">Devices and its images JSON &#x29c9;</a>
-                            <a target="_blank" href="/api/resource">Resouse JSON &#x29c9;</a>
-                        </div>
-                    </div>
-                    <div class="dropdown">
-                        <a class="dropbtn">Status Chart</a>
-                        <div class="dropdown-content">    
-                            <a target="_blank" href="/chart/status">Status Chart &#x29c9;</a>
+                            <a target="_blank" href="/api/device_info">DeviceInfo API &#x29c9;</a>
+                            <a target="_blank" href="/api/status">Status API &#x29c9;</a>
+                            <a target="_blank" href="/api/images">Asset Images API &#x29c9;</a>
+                            <a target="_blank" href="/api/device_key_images">Devices' images API &#x29c9;</a>
+                            <a target="_blank" href="/api/resource">Resouse API &#x29c9;</a>
                         </div>
                     </div>
                     <div class="dropdown">
                         <a class="dropbtn">?</a>
                         <div class="dropdown-content">    
-                        <a @click="page=2">help</a>
-                        <a target="_blank" href="https://github.com/ktat/mydeck">GitHub &#x29c9;</a>
+                        <a @click="page='help'" href="/#help">Help</a>
+                        <a target="_blank" href="/chart/status">Status Chart &#x29c9;</a>
+                        <a target="_blank" href="https://github.com/ktat/mydeck/">GitHub &#x29c9;</a>
                         </div>
                     </div>
                 </div>
-                <div id="app-container">
-                    <div v-if="page === 1">
-                            <div v-for="config in items" :key="config.id" class="mydeck">
-                                <mydeck :config="config" />
-                        </div>
-                    </div>
-                    <div v-if="page === 2">
+                <div :id="'app-container'+ (page.match('^full-device') ? '-full' : '')">
+                    <div v-if="page === 'help'">
                         <help />
+                    </div>
+                    <div v-else-if="page.match(/^(full-)?device-/)">
+                        <template v-for="config in items" :key="config.id">
+                            <div v-if="'device-' + config.id === page" class="mydeck">
+                                <mydeck :config="config" />
+                            </div>
+                            <div v-else-if="'full-device-' + config.id === page" class="mydeck">
+                                <mydeck :config="config" :full="true" />
+                            </div>
+                        </template>
+                    </div>
+                    <div v-else>
+                        <div v-for="config in items" :key="config.id" class="mydeck">
+                            <mydeck :config="config" />
+                        </div>
                     </div>
                 </div>                        
             </div>
