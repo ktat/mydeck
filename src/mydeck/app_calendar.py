@@ -9,6 +9,13 @@ Y: int = 100
 
 class AppCalendar(TriggerAppBase):
     use_day_trigger: bool = True
+    sample_data = {
+        "command": [
+            "google-chrome",
+            "--profile-directory=Default",
+            "https://calendar.google.com/calendar/u/0/",
+        ]
+    }
 
     def set_image_to_key(self, key: int, page: str):
         now = datetime.datetime.now()

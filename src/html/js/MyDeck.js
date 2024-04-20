@@ -241,7 +241,7 @@ const MyDeck = {
     },
     loadSampleSetting: function () {
       axios.get(baseURL + 'api/app/' + this.settingData.app.app + '/sample_data/').then((res) => {
-        this.settingData.app.config = JSON.stringify(res.data);
+        this.settingData.app.config = JSON.stringify(res.data, null, 4);
       });
     },
     loadData: function () {
