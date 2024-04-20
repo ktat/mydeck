@@ -43,6 +43,8 @@ class App:
     touch_command: dict = {}
     dial_command: dict = {}
 
+    sample_data: dict = {}
+
     def __init__(self, mydeck: 'MyDeck'):
         """Constructor pass MyDeck instance."""
         self.mydeck: 'MyDeck'

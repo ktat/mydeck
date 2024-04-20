@@ -112,6 +112,9 @@ class DeckOutputWebHandler(http.server.BaseHTTPRequestHandler):
                 except Exception as e:
                     logging.debug(e)
                     pass
+        elif (m := re.search("^/api/app/(\w+)/sample_data/$", self.path)) is not None and m.group(1) is not None:
+            app_name = m.group(1)
+            return self.res_app_sample_data(app_name)
         elif self.path == '/api/status':
             return self.res_status()
         elif self.path == '/api/resource':
@@ -211,6 +214,16 @@ class DeckOutputWebHandler(http.server.BaseHTTPRequestHandler):
         self.text_headers()
         with open(file, 'r+b') as f:
             self.wfile.write(f.read())
+
+    def res_app_sample_data(self, app_name: str):
+        from importlib import import_module
+        module = import_module(f"mydeck.{app_name}")
+        logging.debug(dir(module))
+        # Convert the string to camel case
+        camel_case_app_name = ''.join(word.title()
+                                      for word in app_name.split('_'))
+        data = getattr(module, camel_case_app_name).sample_data
+        self.api_json_response(data)
 
     def res_device_info(self):
         from .my_decks_manager import VirtualDeck

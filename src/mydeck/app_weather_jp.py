@@ -123,6 +123,12 @@ class JMASearch:
 
 class AppWeatherJp(TriggerAppBase):
     use_hour_trigger: bool = True
+    sample_data = {
+        "area": "大阪府",
+        "area_temp": "大阪",
+        "display_name": "Osaka",
+        "division": "大阪府",
+    }
 
     def __init__(self, mydeck: MyDeck, option: dict = {}):
         super().__init__(mydeck, option)

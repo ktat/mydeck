@@ -239,6 +239,11 @@ const MyDeck = {
       }
       this.closeSettingModal();
     },
+    loadSampleSetting: function () {
+      axios.get(baseURL + 'api/app/' + this.settingData.app.app + '/sample_data/').then((res) => {
+        this.settingData.app.config = JSON.stringify(res.data);
+      });
+    },
     loadData: function () {
       axios.get(baseURL + 'api/' + this.config.id).then(
         (response) => {
@@ -448,6 +453,7 @@ const MyDeck = {
             @change="
               settingData.app.app = $event.target.value;
               ok = fillRequired();
+              loadSampleSetting();
             "
           >
           <option value="">select app</option>

@@ -1110,7 +1110,7 @@ class Config:
             "option": {}
         }
         for config_key in data["config"].keys():
-            if config_key != "page_key" & config_key != "page":
+            if config_key != "page_key" and config_key != "page":
                 app_data['option'][config_key] = data["config"][config_key]
 
         if for_touchscreen:
