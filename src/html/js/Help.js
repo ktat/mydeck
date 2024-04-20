@@ -1,45 +1,67 @@
 const Help = {
     data() {
-        return {
-        }
+        return {};
     },
     template: `
-        <div id="help-container">
-        <h1>Help</h1>
-        <h2>How to configure button?</h2>
-        <p>1. right click the button which you want to change.</p>
-        <p>2. setting modal is opend</p>
-        <p>3. select the type</p>
-        <ul>
-        <li>Deck Command ... Currently &quote;Change Page&quote; only.</li>
-        <li>Chrome ... Open chrome browser.</li>
-        <li>Command ... Execute command.</li>
-        </ul>
-        <h3>Type: Deck Command</h3>
-        <p>1. Select Command</p>
-        Choose &quote;Change Page&quote;
-        <p>2. Deck commnad argument</p>
-        Any string is OK which express the page name.
-        <p>3. Image Path</p>
-        Choose an image from dropdown list.
-        <p>4. Label</p>
-        Any string is OK. It is shown as button label.
-        <h3>Type: Chrome</h3>
-        <p>1. Profile</p>
-        Choose a profile of Chrome.
-        <p>2. URL</p>
-        URL which you want to open.
-        <p>3. Image Path(optional)</p>
-        Choose an image from dropdown list. If you don't choose, use favicon of the URL.
-        <p>4. Label</p>
-        Any string is OK. It is shown as button label.
-        <h3>Type: Command</h3>
-        <p>1. Command</p>
-        Command which you want to execute.
-        <p>2. Image Path</p>
-        Choose an image from dropdown list.
-        <p>3. Label</p>
-        Any string is OK. It is shown as button label.
-        </div>
-    `
-}
+            <div id="help-container">
+                <h1>Help</h1>
+                <h2>How to configure button/touchscreen/dial?</h2>
+                <ol>
+                    <li>right click the button/touchscreen/dial which you want to change.</li>
+                    <li>setting modal is opend</li>
+                    <li>select the type
+                        <ul>
+                            <li>Deck Command ... Currently &quot;Change Page&quot; only</li>
+                            <li>Chrome ... Open chrome browser</li>
+                            <li>Command ... Execute command</li>
+                            <li>App ... choose the application you want to run on the target</li>
+                            <li>Delete Setting ... delete setting & app from the target</li>
+                        </ul>
+                    </li>
+                </ol>
+                <h3>Type: Deck Command</h3>
+                <ol>
+                    <li>Select Command</li>
+                    <p>Choose &quot;Change Page&quot;</p>
+                    <li>Deck commnad argument</li>
+                    <p>Any string is OK which express the page name.</p>
+                    <li>Image Path</li>
+                    <p>Choose an image from dropdown list.</p>
+                    <li>Label</li>
+                    <p>Any string is OK. It is shown as button label.</p>
+                </ol>
+                <h3>Type: Chrome</h3>
+                <ol>
+                    <li>Profile</li>
+                    <p>Choose a profile of Chrome.</p>
+                    <li>URL</li>
+                    <p>URL which you want to open.</p>
+                    <li>Image Path(optional)</li>
+                    <p>Choose an image from dropdown list. If you don't choose, use favicon of the URL.</p>
+                    <li>Label</li>
+                    <p>Any string is OK. It is shown as button label.</p>
+                </ol>
+                <h3>Type: Command</h3>
+                <ol>
+                    <li>Command</li>
+                    <p>Command which you want to execute.</p>
+                    <li>Image Path</li>
+                    <p>Choose an image from dropdown list.</p>
+                    <li>Label</li>
+                    <p>Any string is OK. It is shown as button label.</p>
+                </ol>
+                <h3>Type: App</h3>
+                <ol>
+                    <li>App</li>
+                    <p>Choose an application from dropdown list.</p>
+                    <li>JSON</li>
+                    <p>JSON string which is passed to the application.</p>
+                </ol>
+                <h3>Type: Delete Setting</h3>
+                <ol>
+                    <li>Delete Setting</li>
+                    <p>Push "Delete" Button, then the setting is deleted.</p>
+                </ol>
+            </div>
+        `
+};
