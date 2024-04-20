@@ -94,10 +94,9 @@ class DeckOutputWebHandler(http.server.BaseHTTPRequestHandler):
     def do_GET(self):
         if self.path == '/':
             return self.res_file_html('src/html/index.html')
-        elif (m := re.search("(/js/[^/]+\.js)", self.path)) is not None:
-            js_path = m.group(1)
-            logging.debug('src/html' + js_path)
-            with open('src/html' + js_path, mode="rb") as f:
+        elif (m := re.search("(/(?:js|css)/[^/]+\.(?:js|css))", self.path)) is not None:
+            js_or_css_path = m.group(1)
+            with open('src/html' + js_or_css_path, mode="rb") as f:
                 try:
                     return self.response_js(f)
                 except Exception as e:
@@ -121,6 +120,8 @@ class DeckOutputWebHandler(http.server.BaseHTTPRequestHandler):
             return self.res_device_info()
         elif self.path == '/api/images':
             return self.res_images()
+        elif self.path == '/api/apps':
+            return self.res_apps()
         elif self.path == '/api/device_key_images':
             return self.res_device_key_images()
         elif (m := re.search('^/api/([^/]+)(?:/(\d+|(?:dial|touch)/(\d+)/(\d+)))?$', self.path)) is not None:
@@ -249,6 +250,7 @@ class DeckOutputWebHandler(http.server.BaseHTTPRequestHandler):
     def res_resource(self):
         from .my_decks import MyDecks
         json_data: dict[str, int] = {
+
             "apps": {},
             "memory": 0
         }
@@ -267,6 +269,10 @@ class DeckOutputWebHandler(http.server.BaseHTTPRequestHandler):
     def res_images(self):
         json_data: list = glob.glob("./src/Assets/*.png", recursive=False)
         self.api_json_response(json_data)
+
+    def res_apps(self):
+        from . import my_decks_app_base
+        self.api_json_response(list(my_decks_app_base.APP_NAMES.keys()))
 
     def res_key_tapped(self, id: str, key: int):
         self.call_key_call_back(id, key)
@@ -297,6 +303,7 @@ class DeckOutputWebHandler(http.server.BaseHTTPRequestHandler):
 
         data: dict = json.loads(json_str)
         deck_id: Union[str, None] = data.pop('id', None)
+
         if deck_id is not None:
             deck = self.idDeckMap[deck_id]
             sn: str = deck.get_serial_number()

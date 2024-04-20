@@ -1,6 +1,5 @@
 from inspect import isclass
-from pkgutil import iter_modules,extend_path
-from pathlib import Path
+from pkgutil import iter_modules, extend_path
 from importlib import import_module
 
 from .my_decks_manager import *
@@ -8,21 +7,32 @@ from .my_decks import *
 from .my_decks_app_base import *
 from .window_check_base import *
 
+import re
+
 # iterate through the modules in the current package
 package_dir = extend_path(__path__, __name__)
 
 for item in iter_modules(package_dir):
     module_name = item.name
+    from . import my_decks_app_base
+
     if module_name in ["my_decks_manager", "my_decks", "base_app", "window_check_base"]:
         continue
     # import the module and iterate through its attributes
     module = import_module(f"{__name__}.{module_name}")
     for attribute_name in dir(module):
-        attribute = getattr(module, attribute_name)
+        if re.match(r"^app_", module_name):
+            if not my_decks_app_base.APP_NAMES.get(module_name) and not vars(module).get("is_background_app").__bool__():
+                my_decks_app_base.APP_NAMES[module_name] = True
+        elif not my_decks_app_base.GAME_NAMES.get(module_name) and re.match(r"^game", module_name):
+            my_decks_app_base.GAME_NAMES[module_name] = True
 
-        if isclass(attribute):
-            # Add the class to this package's variables
-            globals()[attribute_name] = attribute
+    attribute = getattr(module, attribute_name)
+    if isclass(attribute):
+        # Add the class to this package's variables
+        globals()[attribute_name] = attribute
+
+# fmt: off
 
 # for mypy: cannot use dynamic loading with mypy
 from .app_alert import *

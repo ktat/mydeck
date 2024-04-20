@@ -9,6 +9,9 @@ import re
 from typing import NoReturn, TYPE_CHECKING, Any
 from . import MyDeck
 
+APP_NAMES: dict[str, bool] = {}
+GAME_NAMES: dict[str, bool] = {}
+
 
 class ExceptionNoDeck(Exception):
     pass

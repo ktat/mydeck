@@ -19,6 +19,13 @@ const defaultData = () => {
       image: null,
       label: '',
     },
+    app: {
+      app: '',
+      config: "{}",
+    },
+    delete: {
+      delete: false,
+    },
   }
 };
 // very simple validation definition
@@ -38,6 +45,10 @@ const required = {
     'arg': [{ type: 'string' }],
     'image': [{ type: 'path' }],
     'label': [{ type: 'string' }],
+  },
+  'app': {
+    'app': [{ type: 'string' }],
+    'config': [{ type: 'json' }],
   },
 };
 // data modifier
@@ -84,6 +95,7 @@ const MyDeck = {
       touchscreen_size: this.config.touchscreen_size,
       baseURL: this.config.baseURL,
       images: this.config.images,
+      apps: this.config.apps,
       key_count: this.config.key_count
     };
   },
@@ -116,7 +128,15 @@ const MyDeck = {
       const invalidString = (data, optional) => {
         return (!optional && !data) || (!optional && typeof (data) !== 'string') || (!optional && data.length === 0);
       }
-      if (r === 'string') {
+      if (r === 'json') {
+        try {
+          JSON.parse(data)
+        } catch {
+          valid = false;
+        }
+      } else if (r === 'bool') {
+        valid = type(data) === 'boolean';
+      } else if (r === 'string') {
         valid = !invalidString(data, optional);
       } else if (r === 'url') {
         if (invalidString(data, optional) || (data && data.length > 0 && !data.match("^https?://.+?\\..+?"))) {
@@ -180,7 +200,17 @@ const MyDeck = {
       data.id = this.id;
       data.serial_number = data.serial_number;
       data.key = this.settingKey;
-      axios.post(baseURL + 'api/key_setting/', data);
+      if (data.app) {
+        data.app = data.app.replace(/^app_/, '').replace(/_(\w)/g, (_, c) => c.toUpperCase());
+        data.app = data.app.charAt(0).toUpperCase() + data.app.slice(1);
+        data.config = JSON.parse(data.config)
+        axios.post(baseURL + 'api/key_setting/', data);
+      } else if (this.settingType === 'delete') {
+        data.delete = true
+        axios.post(baseURL + 'api/key_setting/', data);
+      } else {
+        axios.post(baseURL + 'api/key_setting/', data);
+      }
       this.closeSettingModal();
     },
     loadData: function () {
@@ -269,6 +299,8 @@ const MyDeck = {
           <option value="deck_command">Deck Command</option>
           <option value="chrome">Chrome</option>
           <option value="command">Command</option>
+          <option value="app">App</option>
+          <option value="delete">Delete Setting</option>
         </select>
         <!-- TODO: use component -->
         <div v-if="settingType == 'deck_command'">
@@ -340,8 +372,7 @@ const MyDeck = {
             "
           >
             <option value="">select image</option>
-            <option v-for="im in images" :value="im">{{ im }}</option></select
-          ><br />
+            <option v-for="im in images" :value="im">{{ im }}</option></select><br />
           Label: <span :class="checkResult.label"></span><br />
           <input
             type="text"
@@ -371,8 +402,7 @@ const MyDeck = {
             "
           >
             <option value="">select image</option>
-            <option v-for="im in images" :value="im">{{ im }}</option></select
-          ><br />
+            <option v-for="im in images" :value="im">{{ im }}</option></select><br />
           Label: <span :class="checkResult.label"></span><br />
           <input
             type="text"
@@ -382,6 +412,26 @@ const MyDeck = {
             @input="ok = fillRequired()"
           />
         </div>
+        <div v-if="settingType == 'app'">
+          App: <span :class="checkResult.app"></span><br />
+          <select
+            @change="
+              settingData.app.app = $event.target.value;
+              ok = fillRequired();
+            "
+          >
+          <option value="">select app</option>
+          <option v-for="app in apps" :value="app">{{ app }}</option></select><br />
+          Setting JSON: <span :class="checkResult.config"></span><br />
+          <textarea class="setting_json"
+          v-model="settingData.app.config"
+          @input="ok = fillRequired()"
+          ></textarea>
+        </div>
+        <div v-if="settingType == 'delete'">
+          <p>Are you sure to delete this setting?</p>
+          <input type="button" value="Delete" @click.left="settingDone()" />
+        </div>        
         <div v-if="settingType != null && ok">
           <input type="button" value="SAVE" @click.left="settingDone()" />
         </div>

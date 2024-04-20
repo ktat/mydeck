@@ -12,40 +12,46 @@ const App = {
     mounted() {
         axios.get(baseURL + "api/images").then((res) => {
             const images = res.data;
-            axios.get(baseURL + "api/device_info").then((res) => {
-                // console.log(res)
-                const keys = Object.keys(res.data).sort()
-                keys.forEach((i, v) => {
-                    id2sn["app" + i] = res.data[i]["serial_number"];
+
+            axios.get(baseURL + "api/apps").then((res) => {
+                const apps = res.data;
+
+                axios.get(baseURL + "api/device_info").then((res) => {
+                    // console.log(res)
+                    const keys = Object.keys(res.data).sort()
+                    keys.forEach((i, v) => {
+                        id2sn["app" + i] = res.data[i]["serial_number"];
+                    });
+                    console.log(id2sn);
+                    const items = [];
+                    keys.forEach((i, v) => {
+                        items.push({
+                            ok: false,
+                            serial_number: id2sn['app' + i],
+                            modal_block_class: 'off',
+                            images: images,
+                            apps: apps,
+                            iconImage: "",
+                            key_count: [],
+                            items: {},
+                            id: i,
+                            checkResult: {},
+                            deviceInfo: res.data[i],
+                            columns: res.data[i].columns,
+                            dials: res.data[i].dials,
+                            dial_states: res.data[i].dial_states,
+                            has_touchscreen: res.data[i].has_touchscreen,
+                            touchscreen_size: res.data[i].touchscreen_size,
+                            settingMode: false,
+                            settingKey: 0,
+                            settingType: null,
+                            dialChanged: 0,
+                        })
+                    });
+                    this.items = items;
+                }).catch((error) => {
+                    console.error('APIからのデータ取得中にエラーが発生しました:', error);
                 });
-                console.log(id2sn);
-                const items = [];
-                keys.forEach((i, v) => {
-                    items.push({
-                        ok: false,
-                        serial_number: id2sn['app' + i],
-                        modal_block_class: 'off',
-                        images: images,
-                        iconImage: "",
-                        key_count: [],
-                        items: {},
-                        id: i,
-                        checkResult: {},
-                        deviceInfo: res.data[i],
-                        columns: res.data[i].columns,
-                        dials: res.data[i].dials,
-                        dial_states: res.data[i].dial_states,
-                        has_touchscreen: res.data[i].has_touchscreen,
-                        touchscreen_size: res.data[i].touchscreen_size,
-                        settingMode: false,
-                        settingKey: 0,
-                        settingType: null,
-                        dialChanged: 0,
-                    })
-                });
-                this.items = items;
-            }).catch((error) => {
-                console.error('APIからのデータ取得中にエラーが発生しました:', error);
             });
         });
     },

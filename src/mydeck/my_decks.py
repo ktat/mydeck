@@ -17,6 +17,7 @@ import traceback
 import shutil
 import datetime
 import time
+import queue
 from .my_decks_manager import VirtualDeck
 
 from cairosvg import svg2png
@@ -798,8 +799,9 @@ class MyDeck:
                 target=lambda: web_server_app.start(), args=())
             t.start()
 
-            t2 = threading.Thread(target=lambda: self.update_config(), args=())
-            t2.start()
+        t2 = threading.Thread(
+            target=lambda: self.update_config(), args=())
+        t2.start()
 
     def abs_key(self, key: int) -> int:
         """If key is negative number, chnage it as positive number"""
@@ -817,17 +819,31 @@ class MyDeck:
 
     def update_config(self):
         from .my_decks_manager import MyDecksManager
-        sn = self.deck.get_serial_number()
+        sn: str = self.deck.get_serial_number()
+
         while True:
             if self.deck.is_closed():
                 break
 
             if MyDecksManager.ConfigQueue.get(sn) is not None:
                 data = MyDecksManager.ConfigQueue[sn].get()
+
                 if data.get('exit'):
                     break
 
-                if self.config.update_page_config_content(self.current_page(), data):
+                save: bool = False
+                if data.get("delete"):
+                    self.deck.set_key_image(data['key'], None)
+                    save = self.config.delete_key_app_config(
+                        self.current_page(), data)
+                elif data.get("app"):
+                    save = self.config.update_app_config_content(
+                        self.current_page(), data)
+                else:
+                    save = self.config.update_page_config_content(
+                        self.current_page(), data)
+
+                if save:
                     self.config.save_config()
                     self.config.reflect_config(True)
 
@@ -896,15 +912,53 @@ class Config:
 
         return None
 
-    def update_page_config_content(self, page: str, data: dict) -> bool:
-        key = data.pop('key', None)
-        if key is None or re.match('\D', str(key)) is not None:
+    def delete_key_app_config(self, page: str, data: dict) -> bool:
+        key_str: Optional[str] = data.pop('key', None)
+        if key_str is None or re.match('\D', str(key_str)) is not None:
             return False
-        key = int(key)
+        modified = False
+
+        key: int = int(key_str)
+        app_configs: Optional[list] = self._config_content_origin.get("apps")
+        if app_configs is not None:
+            new_app_configs: list = []
+            for app_config in app_configs:
+                if app_config.get("option") and app_config["option"].get("page_key"):
+                    if app_config["option"]["page_key"].get(page) == key:
+                        app_config["option"]["page_key"].pop(page)
+                        modified = True
+                    if len(app_config["option"]["page_key"]) == 0:
+                        modified = True
+                    else:
+                        new_app_configs.append(app_config)
+                else:
+                    new_app_configs.append(app_config)
+            self._config_content_origin["apps"] = new_app_configs
+
+        page_configs: Optional[dict] = self._config_content_origin.get(
+            "page_config")
+        if page_configs is not None and page_configs.get(page) is not None:
+            page_config = page_configs.get(page)
+            if page_config is not None and page_config.get("keys") is not None:
+                if page_config["keys"].get(key):
+                    page_config["keys"].pop(key)
+                    modified = True
+                elif key == self.mydeck.key_count and page_config["keys"].get(-1):
+                    page_config["keys"].pop(-1)
+                    modified = True
+
+        return modified
+
+    def update_page_config_content(self, page: str, data: dict) -> bool:
+        key_str: Optional[str] = data.pop('key', None)
+        if key_str is None or re.match('\D', str(key_str)) is not None:
+            return False
+        key: int = int(key_str)
         page_config: Optional[dict] = self._config_content_origin.get(
             'page_config')
         if page_config is None or type(page_config) is not dict:
             return False
+
         current_page_config: Optional[dict] = page_config.get(page)
         if current_page_config is None or type(current_page_config) is not dict:
             return False
@@ -913,7 +967,103 @@ class Config:
             return False
 
         self._config_content_origin['page_config'][page]['keys'][key] = data
+        self.check_and_override_app_config(page, key)
+
         return True
+
+    def check_and_override_app_config(self, page: str, key: int):
+        """Check and override app configuration"""
+        app_configs: Optional[list] = self._config_content_origin.get("apps")
+        if app_configs is not None:
+            new_app_configs: list = []
+            for config in app_configs:
+                if config.get("option") and config["option"].get("page_key"):
+                    if config["option"]["page_key"].get(page) == key:
+                        config["option"]["page_key"].pop(page)
+                    if len(config["option"]["page_key"]) != 0:
+                        new_app_configs.append(config)
+                else:
+                    new_app_configs.append(config)
+            self._config_content_origin["apps"] = new_app_configs
+
+    def update_app_config_content(self, page: str, data: dict) -> bool:
+        app_name: Optional[str] = data.pop('app', None)
+        if app_name is None:
+            return False
+        key_str: Optional[str] = data.pop('key', None)
+        if key_str is None or re.match('\D', str(key_str)) is not None:
+            return False
+        key: int = int(key_str)
+
+        app_data: dict = {
+            "app": app_name,
+            "option": {}
+        }
+        for config_key in data["config"].keys():
+            if config_key != "page_key":
+                app_data['option'][config_key] = data["config"][config_key]
+
+        return self.unify_app_config(page, key, app_data)
+
+    def unify_app_config(self, page: str, key: int, new_app_config: dict) -> bool:
+        MODIFY: int = 1
+        ADD: int = 2
+        modify_status = ADD  # 1: modify, 2: add new app
+
+        app_config: Optional[list] = self._config_content_origin.get("apps")
+        if app_config is None:
+            app_config = []
+        self._config_content_origin["apps"] = app_config
+        for existing_config in app_config:
+            # if same app config exists
+            if existing_config["app"] == new_app_config["app"]:
+                origin_page_key = existing_config["option"].pop("page_key")
+                # if option exists except page_key is same
+                if existing_config["option"] == new_app_config["option"]:
+                    # same setting and same key
+                    if origin_page_key.get(page) and origin_page_key[page] == key:
+                        # smae setting and same key, do nothing
+                        return False
+                    else:
+                        existing_config["option"]["page_key"] = origin_page_key
+                        # same setting and different page and key, add new_app_config
+                        if page not in existing_config["option"]["page_key"]:
+                            existing_config["option"]["page_key"][page] = key
+                            modify_status = MODIFY
+                # different config, but same key, remove config
+                elif origin_page_key[page] == key:
+                    app_config.remove(existing_config)
+
+                existing_config["option"]["page_key"] = origin_page_key
+            elif existing_config.get("option") is not None and existing_config.get("option").get("page_key") is not None:
+                # different app already exists on the key in the page
+                if existing_config["option"]["page_key"].get(page) == key:
+                    # remove page from page_key
+                    existing_config["option"]["page_key"].pop(page)
+                    if len(existing_config["option"]["page_key"]) == 0:
+                        # if page_key is empty, remove the app and add new app at last
+                        app_config.remove(existing_config)
+
+        if modify_status == ADD:
+            new_app_config["option"]["page_key"] = {page: key}
+            app_config.append(new_app_config)
+
+        if modify_status > 0:
+            self.check_and_override_page_config(page, key)
+            return True
+
+        return False
+
+    def check_and_override_page_config(self, page: str, key: int):
+        """Check and override key configuration"""
+        page_config: Optional[dict] = self._config_content_origin.get(
+            "page_config")
+        if page_config is not None and page_config.get(page) is not None and page_config[page].get("keys") is not None:
+            # remove the key from the page
+            if page_config[page]["keys"].get(key) is not None:
+                page_config[page]["keys"].pop(key)
+            if key == self.mydeck.key_count and page_config[page]["keys"].get(-1):
+                page_config[page]["keys"].pop(-1)
 
     def parse(self, conf: dict):
         """Parse configuration file."""

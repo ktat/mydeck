@@ -393,6 +393,7 @@ class VirtualDeck:
             self.current_key_status[key] = {}
 
         self.current_key_status[key]["image"] = image
+
         self.output.output(self.current_key_status, self.touchscreen_image)
 
     def set_touchscreen_image(self, image, x_pos=0, y_pos=0, width=0, height=0):
@@ -579,6 +580,10 @@ class DeckOutputWeb(DeckOutput):
             _key_status[key] = v
 
         for key, v in _key_status.items():
+            if key_status[key]["image"] is None:
+                key_status[key]["image"] = Image.new(
+                    'RGBA', (100, 100), (0, 0, 0, 127))
+
             image_buffer = self.key_image_format(key_status[key]["image"])
             b64_image = base64.b64encode(image_buffer.getvalue())
 
