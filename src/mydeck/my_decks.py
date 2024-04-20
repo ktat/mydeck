@@ -1121,14 +1121,27 @@ class Config:
                 return False
 
             dial: int = int(dial_str)
-            return self.unify_app_config("page_dial", page, dial, app_data)
+            return self.unify_dial_app_config(page, dial, app_data)
         else:
             key_str: Optional[str] = data.pop('key', None)
             if key_str is None or re.match('\D', str(key_str)) is not None:
                 return False
 
             key: int = int(key_str)
-            return self.unify_app_config("page_key", page, key, app_data)
+            return self.unify_key_app_config(page, key, app_data)
+
+    def unify_key_app_config(self, page: str, key: int, new_app_config: dict) -> bool:
+        modify_status: int = self.unify_app_config(
+            "page_key", page, key, new_app_config)
+
+        if modify_status > 0:
+            self.check_and_override_page_config(page, key)
+            return True
+
+        return False
+
+    def unify_dial_app_config(self, page: str, key: int, new_app_config: dict) -> bool:
+        return self.unify_app_config("page_dial", page, key, new_app_config)
 
     def unify_app_config(self, conf_key: str, page: str, key: int, new_app_config: dict) -> bool:
         MODIFY: int = 1
@@ -1173,11 +1186,7 @@ class Config:
             new_app_config["option"][conf_key] = {page: key}
             app_config.append(new_app_config)
 
-        if modify_status > 0:
-            self.check_and_override_page_config(page, key)
-            return True
-
-        return False
+        return modify_status > 0
 
     def unify_touchscreen_app_config(self, page: str, new_app_config: dict) -> bool:
         MODIFY: int = 1
