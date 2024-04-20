@@ -990,20 +990,27 @@ class Config:
         app_name: Optional[str] = data.pop('app', None)
         if app_name is None:
             return False
-        key_str: Optional[str] = data.pop('key', None)
-        if key_str is None or re.match('\D', str(key_str)) is not None:
-            return False
-        key: int = int(key_str)
+
+        for_touchscreen: bool = data.pop('for_touchscreen', False)
 
         app_data: dict = {
             "app": app_name,
             "option": {}
         }
         for config_key in data["config"].keys():
-            if config_key != "page_key":
+            if config_key != "page_key" & config_key != "page":
                 app_data['option'][config_key] = data["config"][config_key]
 
-        return self.unify_app_config(page, key, app_data)
+        if not for_touchscreen:
+            if not for_touchscreen:
+                key_str: Optional[str] = data.pop('key', None)
+                if key_str is None or re.match('\D', str(key_str)) is not None:
+                    return False
+
+            key: int = int(key_str)
+            return self.unify_app_config(page, key, app_data)
+        else:
+            return self.unify_touchscreen_app_config(page, app_data)
 
     def unify_app_config(self, page: str, key: int, new_app_config: dict) -> bool:
         MODIFY: int = 1
@@ -1030,12 +1037,12 @@ class Config:
                         if page not in existing_config["option"]["page_key"]:
                             existing_config["option"]["page_key"][page] = key
                             modify_status = MODIFY
-                # different config, but same key, remove config
-                elif origin_page_key[page] == key:
-                    app_config.remove(existing_config)
+                        # different config, but same key, remove config
+                        elif origin_page_key[page] == key:
+                            app_config.remove(existing_config)
 
                 existing_config["option"]["page_key"] = origin_page_key
-            elif existing_config.get("option") is not None and existing_config.get("option").get("page_key") is not None:
+            elif existing_config.get("option") is not None and existing_config["option"].get("page_key") is not None:
                 # different app already exists on the key in the page
                 if existing_config["option"]["page_key"].get(page) == key:
                     # remove page from page_key
@@ -1053,6 +1060,42 @@ class Config:
             return True
 
         return False
+
+    def unify_touchscreen_app_config(self, page: str, new_app_config: dict) -> bool:
+        MODIFY: int = 1
+        ADD: int = 2
+        modify_status = ADD  # 1: modify, 2: add new app
+
+        app_config: Optional[list] = self._config_content_origin.get("apps")
+        if app_config is None:
+            app_config = []
+        self._config_content_origin["apps"] = app_config
+        for existing_config in app_config:
+            # if same app config exists
+            if existing_config["app"] == new_app_config["app"]:
+                origin_page: Optional[list] = existing_config["option"].pop(
+                    "page")
+                if origin_page is not None:
+                    if page in origin_page:
+                        # same setting and same page, do nothing
+                        return False
+                    else:
+                        origin_page.append(page)
+                        modify_status = MODIFY
+
+                existing_config["option"]["page"] = origin_page
+            elif existing_config.get("option") is not None:
+                if existing_config["option"].get("page") is not None:
+                    # different app already exists in the page
+                    if page in existing_config["option"]["page"]:
+                        existing_config["option"]["page"].remove(page)
+
+        if modify_status == ADD:
+            new_app_config["option"]["page"] = [page]
+            app_config.append(new_app_config)
+
+        return modify_status > 0
+
 
     def check_and_override_page_config(self, page: str, key: int):
         """Check and override key configuration"""

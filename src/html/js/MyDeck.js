@@ -3,6 +3,7 @@ const defaultData = () => {
   return {
     id: null,
     key: null,
+    for_touchscreen: false,
     chrome: {
       chrome: ['Default', ''],
       image: null,
@@ -178,11 +179,19 @@ const MyDeck = {
       this.initializeModal();
       this.settingMode = true;
       this.settingKey = i - 1;
+      this.settingTouchscreen = false;
+      this.modal_block_class = 'on';
+    },
+    openSettingModalTouchscreen: function () {
+      this.initializeModal();
+      this.settingMode = true;
+      this.settingTouchscreen = true;
       this.modal_block_class = 'on';
     },
     closeSettingModal: function () {
       this.initializeModal();
       this.settingMode = false;
+      this.settingTouchscreen = false;
       this.modal_block_class = 'off';
     },
     initializeModal: function () {
@@ -199,7 +208,11 @@ const MyDeck = {
       }
       data.id = this.id;
       data.serial_number = data.serial_number;
-      data.key = this.settingKey;
+      if (this.settingTouchscreen) {
+        data.for_touchscreen = true;
+      } else {
+        data.key = this.settingKey;
+      }
       if (data.app) {
         data.app = data.app.replace(/^app_/, '').replace(/_(\w)/g, (_, c) => c.toUpperCase());
         data.app = data.app.charAt(0).toUpperCase() + data.app.slice(1);
@@ -259,6 +272,7 @@ const MyDeck = {
               width: (touchscreen_size[0] * 595) / 800 + 'px',
               height: (touchscreen_size[1] * 74.375) / 100 + 'px',
             }"
+            @click.right.prevent="openSettingModalTouchscreen()"
             :onclick="
               'tapScreen(this, &quot;' +
               id +
@@ -287,7 +301,7 @@ const MyDeck = {
     <div v-if="settingMode" id="settingModal">
       <div id="closeModal" @click.left="closeSettingModal()">&#x274c;</div>
       <h2>Key Setting</h2>
-      DeckID: {{ id }} / Key: {{ settingKey }}<br />
+      DeckID: {{ id }} <span v-if="settingTouchscreen === true">Touchscreen</span><span v-else>/ Key: {{ settingKey }}</span><br />
       <form id="setting">
         <select
           @change="
@@ -296,9 +310,11 @@ const MyDeck = {
           "
         >
           <option>select type</option>
+          <template v-if="settingTouchscreen === false">
           <option value="deck_command">Deck Command</option>
           <option value="chrome">Chrome</option>
           <option value="command">Command</option>
+          </template>
           <option value="app">App</option>
           <option value="delete">Delete Setting</option>
         </select>
@@ -421,7 +437,14 @@ const MyDeck = {
             "
           >
           <option value="">select app</option>
-          <option v-for="app in apps" :value="app">{{ app }}</option></select><br />
+          <template v-for="app in apps">
+            <template v-if="settingTouchscreen === true && app.match('app_touchscreen')">
+              <option :value="app">{{ app }}</option>
+            </template>
+            <template v-if="!settingTouchscreen && !app.match('app_touchscreen')">
+              <option :value="app">{{ app }}</option>
+            </template>
+          </select><br />
           Setting JSON: <span :class="checkResult.config"></span><br />
           <textarea class="setting_json"
           v-model="settingData.app.config"
