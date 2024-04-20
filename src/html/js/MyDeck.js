@@ -287,13 +287,13 @@ const MyDeck = {
             type="range"
             min="0"
             max="100"
-            :value="items.data.dial_states[i]"
+            :value="items.data.dial_states[i-1]"
             class="slider"
             id="myRange"
             v-on:mousedown="dialChanged = 1"
             v-on:mouseup="dialChanged = 0"
             :onchange="
-              'changeDial(this, &quot;' + id + '&quot;, ' + i + ',this.value);'
+              'changeDial(this, &quot;' + id + '&quot;, ' + (i-1) + ',this.value);'
             "
           />
         </span>

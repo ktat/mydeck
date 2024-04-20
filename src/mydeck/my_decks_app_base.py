@@ -41,6 +41,7 @@ class App:
 
     key_command: dict = {}
     touch_command: dict = {}
+    dial_command: dict = {}
 
     def __init__(self, mydeck: 'MyDeck'):
         """Constructor pass MyDeck instance."""
@@ -57,6 +58,8 @@ class App:
         self._stop: bool = False
         # dict: key is page name and value is key number.
         self.page_key: dict = {}
+        # dict: key is page name and value is dial number.
+        self.page_dial: dict = {}
         # list: contains page names
         self.page: list = []
         # trigger for trigger app
@@ -139,6 +142,8 @@ class AppBase(App):
         self.mydeck = mydeck
         if option.get("page_key") is not None:
             self.page_key = option["page_key"]
+        if option.get("page_dial") is not None:
+            self.page_dial = option["page_dial"]
         if option.get("page") is not None:
             self.page = option["page"]
         if option.get("command") is not None:
@@ -159,7 +164,8 @@ class AppBase(App):
         """Return true when the current page is the target of the app."""
         page = self.mydeck.current_page()
         key = self.page_key.get(page)
-        if key is not None:
+        dial = self.page_dial.get(page)
+        if key is not None or dial is not None:
             return True
         else:
             self.in_other_page = True
@@ -234,6 +240,10 @@ class AppBase(App):
         if self.check_to_stop() is False:
             self.mydeck.set_touchscreen(opt)
 
+    def set_dial(self, opt: dict):
+        if self.check_to_stop() is False:
+            self.mydeck.set_dial(opt)
+
     def key_setup(self):
         """Setup app keys. If command is given as option, set key to command."""
         if self.command is not None:
@@ -245,6 +255,18 @@ class AppBase(App):
                 key_config[page_value[0]][page_value[1]] = {
                     "command": self.command,
                     "no_image": True,
+                }
+
+    def dial_setup(self):
+        """Setup app dials. If command is given as option, set dial to command."""
+        if self.command is not None:
+            dial_config = self.mydeck.dial_config()
+            for page_value in self.page_dial.items():
+                if dial_config.get(page_value[0]) is None:
+                    dial_config[page_value[0]] = {}
+
+                dial_config[page_value[0]][page_value[1]] = {
+                    "command": self.command,
                 }
 
     def is_required_process_hourly(self) -> bool:

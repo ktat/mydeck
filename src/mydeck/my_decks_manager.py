@@ -242,7 +242,7 @@ class VirtualDeck:
         self.touchscreen_image = None
         self._dial_count: int = 0
         self._dial_states: Dict[int, int] = {}
-        self.dial_callback: Callable = lambda deck, event, dial, value: None
+        self.dial_callback: Callable = lambda deck, dial, event, value: None
         self.touchscreen_callback: Callable = lambda deck, event, args: None
         self.key_callback: Callable = lambda deck, key, flag: None
 
@@ -265,7 +265,7 @@ class VirtualDeck:
         if dial_count is not None and dial_count > 0:
             self._dial_count = dial_count
             for i in range(self._dial_count):
-                self._dial_states[i] = 0
+                self.set_dial_states(i, 0)
 
         has_touch: Optional[int] = opt.get('has_touchscreen')
         if has_touch is not None and has_touch is True:
@@ -403,6 +403,9 @@ class VirtualDeck:
 
         self.touchscreen_image = image
         self.output.output(self.current_key_status, self.touchscreen_image)
+
+    def set_dial_states(self, dial, value):
+        self._dial_states[dial] = value
 
     def key_image_format(self) -> dict:
         """Format of key image. Currently it returns fixed dict.

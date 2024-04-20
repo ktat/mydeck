@@ -60,11 +60,11 @@ class DeckOutputWebHandler(http.server.BaseHTTPRequestHandler):
         deck.key_callback(deck, key, True)
         deck.key_callback(deck, key, False)
 
-    def call_dial_call_back(self, id, key, event, value):
+    def call_dial_call_back(self, id, dial_num, event, value):
         from .my_decks_manager import VirtualDeck
 
         deck: VirtualDeck = self.idDeckMap[id]
-        deck.dial_callback(deck, key, event, value)
+        deck.dial_callback(deck, dial_num, event, value)
 
     def call_touchscreen_call_back(self, id: str, event: int, args: dict):
         from .my_decks_manager import VirtualDeck
@@ -140,15 +140,17 @@ class DeckOutputWebHandler(http.server.BaseHTTPRequestHandler):
             # /id/key_num
             if m.group(2) is not None:
                 if re.search("dial/(\d+)", m.group(2)):
+                    from .my_decks_manager import VirtualDeck
                     dial_num: int = int(m.group(3))
                     value: int = int(m.group(4))
-                    self.idDeckMap[id]._dial_states[dial_num] = value
-                    self.res_dial_changed(id, dial_num, value)
+                    vdeck: VirtualDeck = self.idDeckMap[id]
+                    vdeck.set_dial_states(dial_num, value)
+                    return self.res_dial_changed(id, dial_num, value)
                 elif re.search("touch", m.group(2)):
                     args: dict = {}
                     args["x"] = int(m.group(3))
                     args["y"] = int(m.group(4))
-                    self.res_touchscreen_tapped(id, args)
+                    return self.res_touchscreen_tapped(id, args)
                 else:
                     key: int = int(m.group(2))
                     return self.res_key_tapped(id, key)
@@ -279,8 +281,8 @@ class DeckOutputWebHandler(http.server.BaseHTTPRequestHandler):
         self.text_headers(200, 'plain')
         self.wfile.write(b"Key Tapped")
 
-    def res_dial_changed(self, id: str, key: int, value: int):
-        self.call_dial_call_back(id, key, DialEventType.TURN, value)
+    def res_dial_changed(self, id: str, dial_num: int, value: int):
+        self.call_dial_call_back(id, dial_num, DialEventType.TURN, value)
         self.text_headers(200, 'plain')
         self.wfile.write(b"Dial Changed")
 

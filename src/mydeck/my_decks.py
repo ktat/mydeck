@@ -207,7 +207,7 @@ class MyDeck:
             'keys': {},
             'commands': {},
             'touch': {},
-            'dial': {},
+            'dials': {},
         }
         self._KEY_CONFIG_GAME: dict = {}
         self._KEY_ACTION_APP: dict = {}
@@ -263,7 +263,7 @@ class MyDeck:
         if self._config_file != '':
             self.config.reflect_config()
 
-        return self._PAGE_CONFIG.get('dial')
+        return self._PAGE_CONFIG.get('dials')
 
     def touchscreen_config(self):
         """Return deck touchscreen configuration"""
@@ -378,7 +378,10 @@ class MyDeck:
                     # Register callback function for the time when a key state changes.
                     deck.set_key_callback(
                         lambda deck, key, state: self.key_change_callback(key, state))
-        self.touchscreen_setup()
+        if self.deck.is_touch_interface:
+            self.touchscreen_setup()
+        if self.deck.is_dial():
+            self.dial_setup()
 
     def touchscreen_setup(self):
         """setup touchscreen"""
@@ -399,7 +402,27 @@ class MyDeck:
         if conf.get('image') is not None:
             self.update_touchscreen_image(conf, use_lock)
 
+    def dial_setup(self):
+        """setup dial"""
+        deck: VirtualDeck = self.deck
+
+        current_page = self.current_page()
+
+        page_configuration = self.dial_config().get(self.current_page())
+        if page_configuration is not None:
+            self.set_dial(page_configuration, True)
+
+        # Register callback function for the time when a key state changes.
+        deck.set_dial_callback(
+            lambda deck, dial_num, event, value: self.dial_change_callback(dial_num, event, value))
+
+    def set_dial(self, conf: dict, use_lock: bool = True):
+        """Set dial"""
+        # TODO
+        pass
+
     # set key image and label
+
     def set_key(self, key: int, conf: dict, use_lock: bool = True):
         """Set a key and its configuration."""
         key = self.abs_key(key)
@@ -588,6 +611,32 @@ class MyDeck:
                     if found:
                         break
 
+    def dial_change_callback(self, dial_num: int, event, value: int):
+        """Call a callback according to a dial is changed"""
+
+        deck = self.deck
+        dial_conf = self.dial_config().get(self.current_page())
+        if dial_conf is None:
+            return
+
+        conf: Optional[dict] = dial_conf.get(dial_num)
+        if conf is not None and (command := conf.get("app_command")) is not None:
+            found = False
+            if self.config is not None:
+                for app in self.config.apps:
+                    if not app.is_dial_app():
+                        continue
+
+                    if app.page_dial is not None and app.page_dial.get(self.current_page()) == dial_num:
+                        for key in app.dial_command.keys():
+                            if command == key:
+                                found = True
+                                cmd = app.dial_command[key]
+                                cmd(app, dial_num, event, value)
+                                break
+                    if found:
+                        break
+
     # Prints key state change information, updates rhe key image and performs any
     # associated actions when a key is pressed.
 
@@ -698,6 +747,12 @@ class MyDeck:
             conf = {}
         self._PAGE_CONFIG['keys'] = conf
 
+    def set_dial_config(self, conf):
+        """Set dial configuration."""
+        if conf is None:
+            conf = {}
+        self._PAGE_CONFIG['dials'] = conf
+
     def set_touchscreen_config(self, conf):
         """Set touchscreen configuration."""
         if conf is None:
@@ -756,6 +811,15 @@ class MyDeck:
             self._PAGE_CONFIG['touch'][page] = {}
 
         self._PAGE_CONFIG['touch'][page] = conf
+
+    def set_dial_conf(self, page: str, dial_num: int, conf: dict):
+        """Set a configuration of a touchscreen"""
+        if self._PAGE_CONFIG.get('dials') is None:
+            self._PAGE_CONFIG['dials'] = {}
+        if self._PAGE_CONFIG['dials'].get(page) is None:
+            self._PAGE_CONFIG['dials'][page] = {}
+
+        self._PAGE_CONFIG['dials'][page][dial_num] = conf
 
     def threading_apps(self, apps: List['AppBase'], background_apps: List['BackgroundAppBase']):
         """Run apps in thread"""
@@ -919,6 +983,8 @@ class Config:
 
     def delete_touchscreen_config(self, page: str) -> bool:
         app_configs: Optional[list] = self._config_content_origin.get("apps")
+        if app_configs is None:
+            app_configs = []
         new_app_configs: list = []
         modified = False
         for app_config in app_configs:
@@ -1139,7 +1205,7 @@ class Config:
     def parse(self, conf: dict):
         """Parse configuration file."""
         if self.mydeck is not None:
-            page_config = conf.get('page_config')
+            page_config: Optional[dict[str, dict]] = conf.get('page_config')
             if page_config is not None:
                 for page in page_config.keys():
                     key_config = page_config[page].get('keys')
@@ -1150,7 +1216,10 @@ class Config:
                     if touch_config is not None:
                         self.mydeck.set_touchscreen_config(
                             self.modify_touchscreen_config_with_page(page, touch_config))
-                    # TODO: dial
+                    dial_config = page_config[page].get('dials')
+                    if dial_config is not None:
+                        self.mydeck.set_dial_config(
+                            self.modify_dial_config_with_page(page, dial_config))
                     command_config = page_config[page].get('commands')
                     if command_config is not None:
                         self.mydeck.set_command_config(page, command_config)
@@ -1229,6 +1298,9 @@ class Config:
                         self.modify_key_config(app_conf['option']["key_config"]))
             elif o.is_hook_app:
                 self.append_hook_app(o)
+            elif o.is_dial_app():
+                self.apps.append(o)
+                o.dial_setup()
             else:
                 self.apps.append(o)
                 o.key_setup()
@@ -1256,6 +1328,16 @@ class Config:
         self.mydeck._PAGE_CONFIG['keys'][page] = self.modify_key_config(conf)
 
         return self.mydeck._PAGE_CONFIG['keys']
+
+    def modify_dial_config_with_page(self, page: str, conf: dict):
+        """Modify dial configuration according to conf whose key is page name and value is configuration dict."""
+
+        if self.mydeck._PAGE_CONFIG['dials'].get(page) is None:
+            self.mydeck._PAGE_CONFIG['dials'][page] = {}
+
+        self.mydeck._PAGE_CONFIG['dials'][page] = conf
+
+        return self.mydeck._PAGE_CONFIG['dials']
 
     def modify_key_config(self, conf: dict):
         """Modify key configuration with conf whose key is number of key and value is configuration dict."""
