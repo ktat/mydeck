@@ -833,9 +833,14 @@ class MyDeck:
 
                 save: bool = False
                 if data.get("delete"):
-                    self.deck.set_key_image(data['key'], None)
-                    save = self.config.delete_key_app_config(
-                        self.current_page(), data)
+                    if data.pop("for_touchscreen"):
+                        save = self.config.delete_touchscreen_config(
+                            self.current_page())
+                    else:
+                        self.deck.set_key_image(data['key'], None)
+                        save = self.config.delete_key_app_config(
+                            self.current_page(), data)
+
                 elif data.get("app"):
                     save = self.config.update_app_config_content(
                         self.current_page(), data)
@@ -912,13 +917,37 @@ class Config:
 
         return None
 
+    def delete_touchscreen_config(self, page: str) -> bool:
+        app_configs: Optional[list] = self._config_content_origin.get("apps")
+        new_app_configs: list = []
+        modified = False
+        for app_config in app_configs:
+            if app_config.get("option") and app_config["option"].get("page"):
+                pages: list = app_config["option"]["page"]
+                if page in pages:
+                    modified = True
+                    pages.remove(page)
+                    app_config["page"] = pages
+                    if len(app_config["page"]) != 0:
+                        new_app_configs.append(app_config)
+                else:
+                    new_app_configs.append(app_config)
+            else:
+                new_app_configs.append(app_config)
+
+        if modified:
+            self._config_content_origin["apps"] = new_app_configs
+
+        return modified
+
     def delete_key_app_config(self, page: str, data: dict) -> bool:
         key_str: Optional[str] = data.pop('key', None)
+
         if key_str is None or re.match('\D', str(key_str)) is not None:
             return False
+        key: int = int(key_str)
         modified = False
 
-        key: int = int(key_str)
         app_configs: Optional[list] = self._config_content_origin.get("apps")
         if app_configs is not None:
             new_app_configs: list = []
@@ -1095,7 +1124,6 @@ class Config:
             app_config.append(new_app_config)
 
         return modify_status > 0
-
 
     def check_and_override_page_config(self, page: str, key: int):
         """Check and override key configuration"""
