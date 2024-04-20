@@ -1155,7 +1155,7 @@ class Config:
         for existing_config in app_config:
             # if same app config exists
             if existing_config["app"] == new_app_config["app"]:
-                origin_page_key = existing_config["option"].pop(conf_key)
+                origin_page_key = existing_config["option"].pop(conf_key, {})
                 # if option exists except page_key is same
                 if existing_config["option"] == new_app_config["option"]:
                     # same setting and same key
@@ -1177,7 +1177,7 @@ class Config:
                 # different app already exists on the key in the page
                 if existing_config["option"][conf_key].get(page) == key:
                     # remove page from page_key
-                    existing_config["option"][conf_key].pop(page)
+                    existing_config["option"][conf_key].pop(page, None)
                     if len(existing_config["option"][conf_key]) == 0:
                         # if page_key is empty, remove the app and add new app at last
                         app_config.remove(existing_config)
