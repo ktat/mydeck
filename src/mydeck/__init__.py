@@ -41,6 +41,10 @@ from .app_clock import *
 from .app_clock_digital import *
 from .app_stop_watch import *
 from .app_touchscreen_sample import *
+from .app_touchscreen_quotes import *
+from .app_touchscreen_animation import *
+from .app_touchscreen_vmstat import *
+from .app_dial_sample import *
 from .app_weather_jp import *
 from .app_window_check_linux import *
 from .app_communicate_deck import *
