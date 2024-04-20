@@ -3,7 +3,9 @@ const defaultData = () => {
   return {
     id: null,
     key: null,
+    dial: null,
     for_touchscreen: false,
+    for_dial: false,
     chrome: {
       chrome: ['Default', ''],
       image: null,
@@ -22,6 +24,8 @@ const defaultData = () => {
     },
     app: {
       app: '',
+      key: null,
+      dial: null,
       config: "{}",
     },
     delete: {
@@ -84,6 +88,7 @@ const MyDeck = {
       dialChanged: 0,
       settingMode: false,
       settingKey: null,
+      settingDial: null,
       settingType: null,
       settingData: this.config.settingData,
       checkResult: {},
@@ -176,29 +181,34 @@ const MyDeck = {
       return valid;
     },
     openSettingModal: function (i) {
-      this.initializeModal();
-      this.settingMode = true;
+      this.initializeModal(true);
       this.settingKey = i - 1;
-      this.settingTouchscreen = false;
-      this.modal_block_class = 'on';
+    },
+    openSettingModalDial: function (i) {
+      this.initializeModal(true);
+      this.settingDial = i - 1;
     },
     openSettingModalTouchscreen: function () {
-      this.initializeModal();
-      this.settingMode = true;
+      this.initializeModal(true);
       this.settingTouchscreen = true;
-      this.modal_block_class = 'on';
     },
     closeSettingModal: function () {
-      this.initializeModal();
-      this.settingMode = false;
-      this.settingTouchscreen = false;
-      this.modal_block_class = 'off';
+      this.initializeModal(false);
     },
-    initializeModal: function () {
+    initializeModal: function (on) {
+      if (on) {
+        this.settingMode = true;
+        this.modal_block_class = 'on';
+      } else {
+        this.settingMode = false;
+        this.modal_block_class = 'off';
+      }
       this.settingType = null;
       this.checkResult = {};
-      this.settingData = defaultData();
+      this.settingTouchscreen = false;
       this.settingKey = null;
+      this.settingDial = null;
+      this.settingData = defaultData();
       this.ok = false;
     },
     settingDone: function () {
@@ -210,6 +220,9 @@ const MyDeck = {
       data.serial_number = data.serial_number;
       if (this.settingTouchscreen) {
         data.for_touchscreen = true;
+      } else if (this.settingDial !== null) {
+        data.for_dial = true;
+        data.dial = this.settingDial;
       } else {
         data.key = this.settingKey;
       }
@@ -292,6 +305,7 @@ const MyDeck = {
             id="myRange"
             v-on:mousedown="dialChanged = 1"
             v-on:mouseup="dialChanged = 0"
+            @click.right.prevent="openSettingModalDial(i)"
             :onchange="
               'changeDial(this, &quot;' + id + '&quot;, ' + (i-1) + ',this.value);'
             "
@@ -301,7 +315,7 @@ const MyDeck = {
     <div v-if="settingMode" id="settingModal">
       <div id="closeModal" @click.left="closeSettingModal()">&#x274c;</div>
       <h2>Key Setting</h2>
-      DeckID: {{ id }} <span v-if="settingTouchscreen === true">Touchscreen</span><span v-else>/ Key: {{ settingKey }}</span><br />
+      DeckID: {{ id }} <span v-if="settingTouchscreen === true">Touchscreen</span><span v-else>/ <template v-if="settingDial != null">Dial: {{ settingDial }}</template><template v-else>Key: {{ settingKey }}</template></span><br />
       <form id="setting">
         <select
           @change="
@@ -310,10 +324,10 @@ const MyDeck = {
           "
         >
           <option>select type</option>
-          <template v-if="settingTouchscreen === false">
-          <option value="deck_command">Deck Command</option>
-          <option value="chrome">Chrome</option>
-          <option value="command">Command</option>
+          <template v-if="settingTouchscreen === false && settingDial === null">
+            <option value="deck_command">Deck Command</option>
+            <option value="chrome">Chrome</option>
+            <option value="command">Command</option>
           </template>
           <option value="app">App</option>
           <option value="delete">Delete Setting</option>
@@ -441,9 +455,13 @@ const MyDeck = {
             <template v-if="settingTouchscreen === true && app.match('app_touchscreen')">
               <option :value="app">{{ app }}</option>
             </template>
-            <template v-if="!settingTouchscreen && !app.match('app_touchscreen')">
+            <template v-if="settingDial !== null && app.match('app_dial')">
               <option :value="app">{{ app }}</option>
             </template>
+            <template v-if="!settingTouchscreen && settingDial === null && !app.match('app_dial') && !app.match('app_touchscreen')">
+              <option :value="app">{{ app }}</option>
+            </template>
+          </template>
           </select><br />
           Setting JSON: <span :class="checkResult.config"></span><br />
           <textarea class="setting_json"

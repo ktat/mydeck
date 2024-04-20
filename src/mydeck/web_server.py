@@ -269,12 +269,15 @@ class DeckOutputWebHandler(http.server.BaseHTTPRequestHandler):
         self.api_json_response(json_data)
 
     def res_images(self):
-        json_data: list = glob.glob("./src/Assets/*.png", recursive=False)
-        self.api_json_response(json_data)
+        images: list = glob.glob("./src/Assets/*.png", recursive=False)
+        images.sort()
+        self.api_json_response(images)
 
     def res_apps(self):
         from . import my_decks_app_base
-        self.api_json_response(list(my_decks_app_base.APP_NAMES.keys()))
+        apps: list = list(my_decks_app_base.APP_NAMES.keys())
+        apps.sort()
+        self.api_json_response(apps)
 
     def res_key_tapped(self, id: str, key: int):
         self.call_key_call_back(id, key)

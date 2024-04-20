@@ -897,9 +897,12 @@ class MyDeck:
 
                 save: bool = False
                 if data.get("delete"):
-                    if data.pop("for_touchscreen"):
+                    if data.pop("for_touchscreen", False):
                         save = self.config.delete_touchscreen_config(
                             self.current_page())
+                    elif data.pop("for_dial", False):
+                        save = self.config.delete_dial_app_config(
+                            self.current_page(), data)
                     else:
                         self.deck.set_key_image(data['key'], None)
                         save = self.config.delete_key_app_config(
@@ -1006,29 +1009,21 @@ class Config:
 
         return modified
 
+    def delete_dial_app_config(self, page: str, data: dict) -> bool:
+        dial_str: Optional[str] = data.pop('dial', None)
+
+        if dial_str is None or re.match('\D', str(dial_str)) is not None:
+            return False
+        dial: int = int(dial_str)
+        return self.delete_key_dial_app_config("page_dial", page, dial)
+
     def delete_key_app_config(self, page: str, data: dict) -> bool:
         key_str: Optional[str] = data.pop('key', None)
 
         if key_str is None or re.match('\D', str(key_str)) is not None:
             return False
         key: int = int(key_str)
-        modified = False
-
-        app_configs: Optional[list] = self._config_content_origin.get("apps")
-        if app_configs is not None:
-            new_app_configs: list = []
-            for app_config in app_configs:
-                if app_config.get("option") and app_config["option"].get("page_key"):
-                    if app_config["option"]["page_key"].get(page) == key:
-                        app_config["option"]["page_key"].pop(page)
-                        modified = True
-                    if len(app_config["option"]["page_key"]) == 0:
-                        modified = True
-                    else:
-                        new_app_configs.append(app_config)
-                else:
-                    new_app_configs.append(app_config)
-            self._config_content_origin["apps"] = new_app_configs
+        modified: bool = self.delete_key_dial_app_config("page_key", page, key)
 
         page_configs: Optional[dict] = self._config_content_origin.get(
             "page_config")
@@ -1041,6 +1036,27 @@ class Config:
                 elif key == self.mydeck.key_count and page_config["keys"].get(-1):
                     page_config["keys"].pop(-1)
                     modified = True
+
+        return modified
+
+    def delete_key_dial_app_config(self, conf_key: str, page: str, key: int) -> bool:
+        modified = False
+
+        app_configs: Optional[list] = self._config_content_origin.get("apps")
+        if app_configs is not None:
+            new_app_configs: list = []
+            for app_config in app_configs:
+                if app_config.get("option") and app_config["option"].get(conf_key):
+                    if app_config["option"][conf_key].get(page) == key:
+                        app_config["option"][conf_key].pop(page)
+                        modified = True
+                    if len(app_config["option"][conf_key]) == 0:
+                        modified = True
+                    else:
+                        new_app_configs.append(app_config)
+                else:
+                    new_app_configs.append(app_config)
+            self._config_content_origin["apps"] = new_app_configs
 
         return modified
 
@@ -1087,6 +1103,7 @@ class Config:
             return False
 
         for_touchscreen: bool = data.pop('for_touchscreen', False)
+        for_dial: bool = data.pop('for_dial', False)
 
         app_data: dict = {
             "app": app_name,
@@ -1096,18 +1113,24 @@ class Config:
             if config_key != "page_key" & config_key != "page":
                 app_data['option'][config_key] = data["config"][config_key]
 
-        if not for_touchscreen:
-            if not for_touchscreen:
-                key_str: Optional[str] = data.pop('key', None)
-                if key_str is None or re.match('\D', str(key_str)) is not None:
-                    return False
+        if for_touchscreen:
+            return self.unify_touchscreen_app_config(page, app_data)
+        elif for_dial:
+            dial_str: Optional[str] = data.pop('dial', None)
+            if dial_str is None or re.match('\D', str(dial_str)) is not None:
+                return False
+
+            dial: int = int(dial_str)
+            return self.unify_app_config("page_dial", page, dial, app_data)
+        else:
+            key_str: Optional[str] = data.pop('key', None)
+            if key_str is None or re.match('\D', str(key_str)) is not None:
+                return False
 
             key: int = int(key_str)
-            return self.unify_app_config(page, key, app_data)
-        else:
-            return self.unify_touchscreen_app_config(page, app_data)
+            return self.unify_app_config("page_key", page, key, app_data)
 
-    def unify_app_config(self, page: str, key: int, new_app_config: dict) -> bool:
+    def unify_app_config(self, conf_key: str, page: str, key: int, new_app_config: dict) -> bool:
         MODIFY: int = 1
         ADD: int = 2
         modify_status = ADD  # 1: modify, 2: add new app
@@ -1119,7 +1142,7 @@ class Config:
         for existing_config in app_config:
             # if same app config exists
             if existing_config["app"] == new_app_config["app"]:
-                origin_page_key = existing_config["option"].pop("page_key")
+                origin_page_key = existing_config["option"].pop(conf_key)
                 # if option exists except page_key is same
                 if existing_config["option"] == new_app_config["option"]:
                     # same setting and same key
@@ -1127,27 +1150,27 @@ class Config:
                         # smae setting and same key, do nothing
                         return False
                     else:
-                        existing_config["option"]["page_key"] = origin_page_key
+                        existing_config["option"][conf_key] = origin_page_key
                         # same setting and different page and key, add new_app_config
-                        if page not in existing_config["option"]["page_key"]:
-                            existing_config["option"]["page_key"][page] = key
+                        if page not in existing_config["option"][conf_key]:
+                            existing_config["option"][conf_key][page] = key
                             modify_status = MODIFY
                         # different config, but same key, remove config
                         elif origin_page_key[page] == key:
                             app_config.remove(existing_config)
 
-                existing_config["option"]["page_key"] = origin_page_key
-            elif existing_config.get("option") is not None and existing_config["option"].get("page_key") is not None:
+                existing_config["option"][conf_key] = origin_page_key
+            elif existing_config.get("option") is not None and existing_config["option"].get(conf_key) is not None:
                 # different app already exists on the key in the page
-                if existing_config["option"]["page_key"].get(page) == key:
+                if existing_config["option"][conf_key].get(page) == key:
                     # remove page from page_key
-                    existing_config["option"]["page_key"].pop(page)
-                    if len(existing_config["option"]["page_key"]) == 0:
+                    existing_config["option"][conf_key].pop(page)
+                    if len(existing_config["option"][conf_key]) == 0:
                         # if page_key is empty, remove the app and add new app at last
                         app_config.remove(existing_config)
 
         if modify_status == ADD:
-            new_app_config["option"]["page_key"] = {page: key}
+            new_app_config["option"][conf_key] = {page: key}
             app_config.append(new_app_config)
 
         if modify_status > 0:
