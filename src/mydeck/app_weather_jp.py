@@ -3,6 +3,7 @@ from typing import Tuple, Optional
 from PIL import Image, ImageDraw, ImageFont
 import json
 import requests
+import logging
 import re
 import datetime
 
@@ -109,14 +110,23 @@ class JMASearch:
                 if area["area"]["name"] == self.area.area or area["area"]["code"] == self.area.area_code:
                     weather = area["weatherCodes"][0]
                     break
+            if weather is None:
+                logging.warning("No maching weather data found. %s" %
+                                data[0]["timeSeries"][0]["areas"])
             for area in data[0]["timeSeries"][1]["areas"]:
                 if area["area"]["name"] == self.area.area or area["area"]["code"] == self.area.area_code:
                     pop = area["pops"][0]
                     break
+            if pop is None:
+                logging.warning("No maching pop data found. %s" %
+                                data[0]["timeSeries"][1]["areas"])
             for area in data[0]["timeSeries"][2]["areas"]:
                 if area["area"]["name"] == self.area.area_temp or area["area"]["code"] == self.area.area_temp:
                     temp = area["temps"][0]
                     break
+            if temp is None:
+                logging.warning("No maching temp data found. %s" %
+                                data[0]["timeSeries"][2]["areas"])
             return JMAResult(weather, pop, temp)
         return None
 
