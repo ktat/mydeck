@@ -183,6 +183,34 @@ const MyDeck = {
     openSettingModal: function (i) {
       this.initializeModal(true);
       this.settingKey = i - 1;
+      const url = baseURL + 'api/device/' + this.id + '/key_config/current_page/' + this.settingKey + '/';
+      axios.get(url).then((response) => {
+        const res = response.data;
+        if (res.key_config) {
+          this.settingType = res.key_config["change_page"] ? "deck_command" : res.key_config["chrome"] ? "chrome" : "command";
+          if (this.settingType === "deck_command") {
+            this.settingData.deck_command.deck_command = "change_page";
+            this.settingData.deck_command.arg = res.key_config["change_page"];
+            this.iconImage = this.settingData.deck_command.image = res.key_config["image"];
+            this.settingData.deck_command.label = res.key_config["label"];
+          } else if (this.settingType === "chrome") {
+            this.settingData.chrome.chrome = res.key_config["chrome"];
+            this.iconImage = this.settingData.chrome.image = res.key_config["image"];
+            this.settingData.chrome.label = res.key_config["label"];
+          } else if (this.settingType === "command") {
+            this.settingData.command.command = res.key_config["command"];
+            this.iconImage = this.settingData.command.image = res.key_config["image"];
+            this.settingData.command.label = res.key_config["label"];
+          }
+        } else if (res.app_config) {
+          this.settingType = "app";
+          this.settingData.app.app = "app" + res.app_config["app"].replace(/([A-Z])/g, '_$1').toLowerCase();
+          console.log(this.settingData.app.app)
+          delete res.app_config.option["page_key"]
+          this.settingData.app.config = JSON.stringify(res.app_config.option, null, 4);
+        }
+        this.ok = this.fillRequired()
+      });
     },
     openSettingModalDial: function (i) {
       this.initializeModal(true);
@@ -240,9 +268,11 @@ const MyDeck = {
       this.closeSettingModal();
     },
     loadSampleSetting: function () {
-      axios.get(baseURL + 'api/app/' + this.settingData.app.app + '/sample_data/').then((res) => {
-        this.settingData.app.config = JSON.stringify(res.data, null, 4);
-      });
+      if (this.settingData.app.config === "{}") {
+        axios.get(baseURL + 'api/app/' + this.settingData.app.app + '/sample_data/').then((res) => {
+          this.settingData.app.config = JSON.stringify(res.data, null, 4);
+        });
+      }
     },
     loadData: function () {
       axios.get(baseURL + 'api/' + this.config.id).then(
@@ -323,6 +353,7 @@ const MyDeck = {
       DeckID: {{ id }} <span v-if="settingTouchscreen === true">Touchscreen</span><span v-else>/ <template v-if="settingDial != null">Dial: {{ settingDial }}</template><template v-else>Key: {{ settingKey }}</template></span><br />
       <form id="setting">
         <select
+          :value="settingType"
           @change="
             settingType = $event.target.value;
             iconImage = null;
@@ -341,6 +372,7 @@ const MyDeck = {
         <div v-if="settingType == 'deck_command'">
           Command:<br />
           <select
+            :value="settingData.deck_command.deck_command"
             @change="
               settingData.deck_command.deck_command = $event.target.value
             "
@@ -360,6 +392,7 @@ const MyDeck = {
           </div>
           Image Path: <span :class="checkResult.image"></span><br />
           <select
+            :value="settingData.deck_command.image"
             @change="
               settingData.deck_command.image = $event.target.value;
               ok = fillRequired();
@@ -398,6 +431,7 @@ const MyDeck = {
           /><br />
           Image Path(optional): <span :class="checkResult.image"></span><br />
           <select
+            :value="settingData.chrome.image"
             @change="
               settingData.chrome.image = $event.target.value;
               ok = fillRequired();
@@ -428,6 +462,7 @@ const MyDeck = {
           /><br />
           Image Path: <span :class="checkResult.image"></span><br />
           <select
+            :value="settingData.command.image"
             @change="
               settingData.command.image = $event.target.value;
               ok = fillRequired();
@@ -450,7 +485,9 @@ const MyDeck = {
         <div v-if="settingType == 'app'">
           App: <span :class="checkResult.app"></span><br />
           <select
+            :value="settingData.app.app"
             @change="
+              settingData.app.config = '{}';
               settingData.app.app = $event.target.value;
               ok = fillRequired();
               loadSampleSetting();

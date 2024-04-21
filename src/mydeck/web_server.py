@@ -6,6 +6,7 @@ import psutil
 import os
 import logging
 from StreamDeck.Devices.StreamDeck import TouchscreenEventType, DialEventType
+from typing import Optional
 from typing import Union
 
 # 100 x 100 blank image
@@ -115,6 +116,10 @@ class DeckOutputWebHandler(http.server.BaseHTTPRequestHandler):
         elif (m := re.search("^/api/app/(\w+)/sample_data/$", self.path)) is not None and m.group(1) is not None:
             app_name = m.group(1)
             return self.res_app_sample_data(app_name)
+        elif (m := re.search("^/api/device/(\w+)/key_config/current_page/(\d+)/$", self.path)) is not None:
+            id = m.group(1)
+            key_index = int(m.group(2))
+            return self.res_current_key_config(id, key_index)
         elif self.path == '/api/status':
             return self.res_status()
         elif self.path == '/api/resource':
@@ -218,12 +223,61 @@ class DeckOutputWebHandler(http.server.BaseHTTPRequestHandler):
     def res_app_sample_data(self, app_name: str):
         from importlib import import_module
         module = import_module(f"mydeck.{app_name}")
-        logging.debug(dir(module))
         # Convert the string to camel case
         camel_case_app_name = ''.join(word.title()
                                       for word in app_name.split('_'))
         data = getattr(module, camel_case_app_name).sample_data
         self.api_json_response(data)
+
+    def res_current_key_config(self, id: str, key_index: int):
+        from .my_decks_manager import VirtualDeck
+        from .my_decks import MyDecks
+
+        deck: VirtualDeck = self.idDeckMap[id]
+
+        page_config_config: dict = {}
+        apps_config: list = []
+        for mydeck in MyDecks.mydecks.values():
+            if mydeck.deck.get_serial_number() == deck.get_serial_number():
+                sn_alias = mydeck.myname
+                apps_config = MyDecks.mydecks[sn_alias].config._config_content_origin.get(
+                    "apps")
+                page_config_config = MyDecks.mydecks[sn_alias].config._config_content_origin.get(
+                    "page_config")
+                break
+
+        from .my_decks import MyDecks, MyDeck
+        page_name: str = ""
+        for sn_alias in MyDecks.mydecks.keys():
+            device: MyDeck = MyDecks.mydecks[sn_alias]
+            if device.deck.id() == id:
+                page_name = device.current_page()
+                break
+
+        if page_name == "":
+            return self.response_404()
+
+        target_key_config: Optional[dict] = None
+        if page_config_config is not None:
+            page_config = page_config_config.get(page_name)
+            if page_config is not None:
+                keys_config = page_config.get("keys")
+                if keys_config is not None:
+                    target_key_config = keys_config.get(key_index)
+
+        target_app_config: Optional[dict] = None
+        for app_config in apps_config:
+            if app_config.get("option") is not None:
+                if page_key := app_config["option"].get("page_key"):
+                    for page in page_key.keys():
+                        if page == page_name and page_key[page] == key_index:
+                            target_app_config = app_config
+                            break
+
+        return self.api_json_response({
+            "key_config": target_key_config,
+            "app_config": target_app_config
+        })
 
     def res_device_info(self):
         from .my_decks_manager import VirtualDeck
@@ -246,10 +300,10 @@ class DeckOutputWebHandler(http.server.BaseHTTPRequestHandler):
         self.api_json_response(self.pathKeyMap)
 
     def res_status(self):
-        from .my_decks import MyDecks
+        from .my_decks import MyDecks, MyDeck
         json_data: dict[str, dict] = {}
         for sn_alias in MyDecks.mydecks.keys():
-            device = MyDecks.mydecks[sn_alias]
+            device: MyDeck = MyDecks.mydecks[sn_alias]
             json_data[sn_alias] = {
                 "apps": [],
                 "current_page": device.current_page()
