@@ -1201,7 +1201,7 @@ class Config:
             # if same app config exists
             if existing_config["app"] == new_app_config["app"]:
                 origin_page: Optional[list] = existing_config["option"].pop(
-                    "page")
+                    "page", None)
                 if origin_page is not None:
                     if page in origin_page:
                         # same setting and same page, do nothing
