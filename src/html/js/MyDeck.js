@@ -364,7 +364,14 @@ const MyDeck = {
               iconImage = settingData.deck_command.image = './src/Assets/back.png';
               settingData.deck_command.label = 'Back';
               ok = true;
-            } else if (settingType == 'delete') {
+            } else if (settingType == 'Home') {
+                settingType='deck_command';
+                settingData.deck_command.deck_command = 'change_page';
+                settingData.deck_command.arg = '@HOME';
+                iconImage = settingData.deck_command.image = './src/Assets/home.png';
+                settingData.deck_command.label = 'Back';
+                ok = true;
+              } else if (settingType == 'delete') {
               settingData = defaultData();
               ok = false;
             }
@@ -374,6 +381,7 @@ const MyDeck = {
           <template v-if="settingTouchscreen === false && settingDial === null">
             <option value="deck_command">Deck Command</option>
             <option value="Back">Deck Command(Back)</option>
+            <option value="Home">Deck Command(Home)</option>
             <option value="chrome">Chrome</option>
             <option value="command">Command</option>
           </template>
