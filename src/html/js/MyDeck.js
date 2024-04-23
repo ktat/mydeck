@@ -198,7 +198,7 @@ const MyDeck = {
             this.iconImage = this.settingData.chrome.image = res.key_config["image"];
             this.settingData.chrome.label = res.key_config["label"];
           } else if (this.settingType === "command") {
-            this.settingData.command.command = res.key_config["command"];
+            this.settingData.command.command = res.key_config["command"].join(" ");
             this.iconImage = this.settingData.command.image = res.key_config["image"];
             this.settingData.command.label = res.key_config["label"];
           }
