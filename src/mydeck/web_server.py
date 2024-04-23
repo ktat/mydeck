@@ -235,14 +235,21 @@ class DeckOutputWebHandler(http.server.BaseHTTPRequestHandler):
 
         deck: VirtualDeck = self.idDeckMap[id]
 
-        page_config_config: dict = {}
-        apps_config: list = []
+        page_config_config: Optional[dict] = {}
+        apps_config: Optional[list] = []
         for mydeck in MyDecks.mydecks.values():
             if mydeck.deck.get_serial_number() == deck.get_serial_number():
                 sn_alias = mydeck.myname
-                apps_config = MyDecks.mydecks[sn_alias].config._config_content_origin.get(
-                    "apps")
-                page_config_config = MyDecks.mydecks[sn_alias].config._config_content_origin.get(
+                if MyDecks.mydecks[sn_alias] is None:
+                    continue
+                conf = MyDecks.mydecks[sn_alias].config
+                if conf is None:
+                    continue
+                if conf._config_content_origin is None:
+                    continue
+
+                apps_config = conf._config_content_origin.get("apps")
+                page_config_config = conf._config_content_origin.get(
                     "page_config")
                 break
 
@@ -266,13 +273,14 @@ class DeckOutputWebHandler(http.server.BaseHTTPRequestHandler):
                     target_key_config = keys_config.get(key_index)
 
         target_app_config: Optional[dict] = None
-        for app_config in apps_config:
-            if app_config.get("option") is not None:
-                if page_key := app_config["option"].get("page_key"):
-                    for page in page_key.keys():
-                        if page == page_name and page_key[page] == key_index:
-                            target_app_config = app_config
-                            break
+        if apps_config is not None:
+            for app_config in apps_config:
+                if app_config.get("option") is not None:
+                    if page_key := app_config["option"].get("page_key"):
+                        for page in page_key.keys():
+                            if page == page_name and page_key[page] == key_index:
+                                target_app_config = app_config
+                                break
 
         return self.api_json_response({
             "key_config": target_key_config,

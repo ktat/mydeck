@@ -387,8 +387,11 @@ class VirtualDeck:
     def set_key_image(self, key, image):
         """Set key image."""
         if self.has_real_deck():
-            self.real_deck.set_key_image(
-                key, PILHelper.to_native_format(self.real_deck, image))
+            if image is None:
+                self.real_deck.set_key_image(key, None)
+            else:
+                self.real_deck.set_key_image(
+                    key, PILHelper.to_native_format(self.real_deck, image))
         if self.current_key_status.get(key) is None:
             self.current_key_status[key] = {}
 

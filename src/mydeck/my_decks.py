@@ -321,9 +321,10 @@ class MyDeck:
         """Return current page name"""
         return self._current_page
 
-    def set_current_page_without_setup(self, name: str):
+    def set_current_page_without_setup(self, name: str, add_previous: bool = False):
         """Set given page name as current_page. but don't setup keys."""
-        self.set_previous_page(name)
+        if add_previous:
+            self.set_previous_page(name)
         self.set_alert_off()
         self._current_page = name
 
@@ -332,8 +333,11 @@ class MyDeck:
 
         if name[0] != "~ALERT":
             self.set_alert_off()
-        if self.deck is not None and name != self._current_page and self.has_page_key_config(name):
-            self.set_previous_page(self._current_page)
+        if self.deck is not None and name != self._current_page:
+            if not self.has_page_key_config(name):
+                pass
+            if add_previous:
+                self.set_previous_page(self._current_page)
             self._current_page = name
             Lock.do_with_lock(self.deck.get_serial_number(),
                               lambda: self.stop_working_apps())
@@ -348,6 +352,35 @@ class MyDeck:
 
         # run hook page_change_any whenever set_current_page is called.
         self.run_hook_apps('page_change_any')
+
+    def set_previouse_page_if_current_page_is_empty(self):
+        """Set previous page if current page is empty."""
+        current_page: str = self.current_page()
+
+        key_config = self.config._config_content["page_config"].get(
+            current_page)
+        apps_config = self.config._config_content["apps"]
+        set_previouse = True
+        if key_config is not None and key_config.get("keys") and len(key_config["keys"].keys()) > 0:
+            set_previouse = False
+
+        if apps_config is not None:
+            for app in apps_config:
+                option = app.get("option")
+                if option is None:
+                    continue
+                if option.get("page") is not None and current_page in option["page"]:
+                    set_previouse = False
+                    break
+                if option.get("page_key") is not None and current_page in option["page_key"]:
+                    set_previouse = False
+                    break
+                if option.get("page_dial") is not None and current_page in option["page_dial"]:
+                    set_previouse = False
+                    break
+
+        if set_previouse:
+            self.set_current_page(self.pop_last_previous_page(), False)
 
     def has_page_key_config(self, name: str) -> bool:
         """return true when page key config exists"""
@@ -650,7 +683,10 @@ class MyDeck:
 
         # Check if the key is changing to the pressed state.
         if state:
-            conf = self.key_config().get(self.current_page()).get(key)
+            current_page: str = self.current_page()
+            conf: Optional[dict] = None
+            if self.key_config().get(current_page) is not None:
+                conf = self.key_config()[current_page].get(key)
 
             # When an exit button is pressed, close the application.
             if conf is not None:
@@ -688,14 +724,14 @@ class MyDeck:
                         self.key_touchscreen_setup()
 
                 elif conf.get("command"):
-                    command = conf.get("command")
-                    subprocess.Popen(command)
+                    cmd = conf["command"]
+                    subprocess.Popen(cmd)
 
                 elif conf.get("chrome"):
-                    chrome = conf.get('chrome')
-                    command = ['google-chrome',
-                               '--profile-directory=' + chrome[0], chrome[1]]
-                    subprocess.Popen(command)
+                    chrome: list = conf['chrome']
+                    chrome_command = ['google-chrome',
+                                      '--profile-directory=' + chrome[0], chrome[1]]
+                    subprocess.Popen(chrome_command)
                 else:
                     command = conf.get("app_command")
                     if command is not None:
@@ -918,6 +954,7 @@ class MyDeck:
                 if save:
                     self.config.save_config()
                     self.config.reflect_config(True)
+                    self.set_previouse_page_if_current_page_is_empty()
 
         self.debug("update_config is exited")
         sys.exit()
@@ -1027,15 +1064,23 @@ class Config:
 
         page_configs: Optional[dict] = self._config_content_origin.get(
             "page_config")
-        if page_configs is not None and page_configs.get(page) is not None:
-            page_config = page_configs.get(page)
-            if page_config is not None and page_config.get("keys") is not None:
-                if page_config["keys"].get(key):
-                    page_config["keys"].pop(key)
-                    modified = True
-                elif key == self.mydeck.key_count and page_config["keys"].get(-1):
-                    page_config["keys"].pop(-1)
-                    modified = True
+        if page_configs is None:
+            page_configs = self._config_content_origin["page_configs"] = {}
+            modified = True
+        page_config: Optional[dict] = page_configs.get(page)
+        if page_config is None:
+            page_config = page_configs[page] = {"keys": {}}
+            modified = True
+        if page_config.get("keys") is None:
+            page_config["keys"] = {}
+            modified = True
+
+        if page_config["keys"].get(key):
+            page_config["keys"].pop(key)
+            modified = True
+        elif key == self.mydeck.key_count and page_config["keys"].get(-1):
+            page_config["keys"].pop(-1)
+            modified = True
 
         return modified
 
@@ -1068,14 +1113,14 @@ class Config:
         page_config: Optional[dict] = self._config_content_origin.get(
             'page_config')
         if page_config is None or type(page_config) is not dict:
-            return False
+            page_config = self._config_content_origin["page_config"] = {}
 
         current_page_config: Optional[dict] = page_config.get(page)
         if current_page_config is None or type(current_page_config) is not dict:
-            return False
+            current_page_config = page_config[page] = {"keys": {}}
         key_config: Optional[dict] = current_page_config.get('keys')
         if key_config is None and type(key_config) is not dict:
-            return False
+            key_config = current_page_config['keys'] = {}
 
         self._config_content_origin['page_config'][page]['keys'][key] = data
         self.check_and_override_app_config(page, key)

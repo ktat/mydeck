@@ -1,38 +1,3 @@
-// default data for settingData.
-const defaultData = () => {
-  return {
-    id: null,
-    key: null,
-    dial: null,
-    for_touchscreen: false,
-    for_dial: false,
-    chrome: {
-      chrome: ['Default', ''],
-      image: null,
-      label: '',
-    },
-    command: {
-      command: '',
-      image: null,
-      label: '',
-    },
-    deck_command: {
-      deck_command: '',
-      arg: '',
-      image: null,
-      label: '',
-    },
-    app: {
-      app: '',
-      key: null,
-      dial: null,
-      config: "{}",
-    },
-    delete: {
-      delete: false,
-    },
-  }
-};
 // very simple validation definition
 const required = {
   'chrome': {
@@ -106,6 +71,41 @@ const MyDeck = {
     };
   },
   methods: {
+    // default data for settingData.
+    defaultData: () => {
+      return {
+        id: null,
+        key: null,
+        dial: null,
+        for_touchscreen: false,
+        for_dial: false,
+        chrome: {
+          chrome: ['Default', ''],
+          image: null,
+          label: '',
+        },
+        command: {
+          command: '',
+          image: null,
+          label: '',
+        },
+        deck_command: {
+          deck_command: '',
+          arg: '',
+          image: null,
+          label: '',
+        },
+        app: {
+          app: '',
+          key: null,
+          dial: null,
+          config: "{}",
+        },
+        delete: {
+          delete: false,
+        },
+      }
+    },
     fillRequired: function () {
       this.checkResult = {};
       const data = this.settingData[this.settingType];
@@ -236,7 +236,7 @@ const MyDeck = {
       this.settingTouchscreen = false;
       this.settingKey = null;
       this.settingDial = null;
-      this.settingData = defaultData();
+      this.settingData = this.defaultData();
       this.ok = false;
     },
     settingDone: function () {
@@ -357,11 +357,23 @@ const MyDeck = {
           @change="
             settingType = $event.target.value;
             iconImage = null;
+            if (settingType == 'Back') {
+              settingType='deck_command';
+              settingData.deck_command.deck_command = 'change_page';
+              settingData.deck_command.arg = '@previous';
+              iconImage = settingData.deck_command.image = './src/Assets/back.png';
+              settingData.deck_command.label = 'Back';
+              ok = true;
+            } else if (settingType == 'delete') {
+              settingData = defaultData();
+              ok = false;
+            }
           "
         >
           <option>select type</option>
           <template v-if="settingTouchscreen === false && settingDial === null">
             <option value="deck_command">Deck Command</option>
+            <option value="Back">Deck Command(Back)</option>
             <option value="chrome">Chrome</option>
             <option value="command">Command</option>
           </template>
@@ -373,13 +385,11 @@ const MyDeck = {
           Command:<br />
           <select
             :value="settingData.deck_command.deck_command"
-            @change="
-              settingData.deck_command.deck_command = $event.target.value
-            "
+            @change="settingData.deck_command.deck_command = $event.target.value;"
           >
             <option value="">select command</option>
-            <option value="change_page">Change Page</option></select
-          ><br />
+            <option value="change_page">Change Page</option>
+          </select><br />
           Deck command argument: <span :class="checkResult.arg"></span><br />
           <input
             type="text"
@@ -402,8 +412,8 @@ const MyDeck = {
             "
           >
             <option value="">select image</option>
-            <option v-for="im in images" :value="im">{{ im }}</option></select
-          ><br />
+            <option v-for="im in images" :value="im">{{ im }}</option>
+          </select><br />
           Label: <span :class="checkResult.label"></span><br />
           <input
             type="text"
@@ -441,7 +451,8 @@ const MyDeck = {
             "
           >
             <option value="">select image</option>
-            <option v-for="im in images" :value="im">{{ im }}</option></select><br />
+            <option v-for="im in images" :value="im">{{ im }}</option>
+          </select><br />
           Label: <span :class="checkResult.label"></span><br />
           <input
             type="text"
@@ -472,7 +483,8 @@ const MyDeck = {
             "
           >
             <option value="">select image</option>
-            <option v-for="im in images" :value="im">{{ im }}</option></select><br />
+            <option v-for="im in images" :value="im">{{ im }}</option>
+          </select><br />
           Label: <span :class="checkResult.label"></span><br />
           <input
             type="text"

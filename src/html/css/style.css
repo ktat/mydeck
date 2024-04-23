@@ -139,9 +139,9 @@ div.app h1 {
 }
 
 #settingModal {
-    position: absolute;
+    position: fixed;
     left: 50%;
-    top: 50%;
+    top: 40%;
     transform: translate(-50%, -50%);
     color: white;
     border-radius: 10px;
@@ -201,7 +201,7 @@ div.mydeck {
 
 div[id^="block"].on {
     float: left;
-    position: absolute;
+    position: fixed;
     left: 0px;
     top: 0px;
     width: 100%;
@@ -213,7 +213,7 @@ div[id^="block"].on {
 
 div[id^="block"].off {
     float: left;
-    position: absolute;
+    position: fixed;
     left: 0px;
     top: 0px;
     width: 0px;
