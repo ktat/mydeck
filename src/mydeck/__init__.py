@@ -6,6 +6,7 @@ from .my_decks_manager import *
 from .my_decks import *
 from .my_decks_app_base import *
 from .window_check_base import *
+from .my_decks_starter import *
 
 import re
 

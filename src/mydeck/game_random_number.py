@@ -51,9 +51,6 @@ class GameRandomNumber(GameAppBase):
         mydeck.set_game_status_on()
         mydeck.set_current_page_without_setup("~GAME_RANDOM_NUMBER")
         self.data["mode"] = num
-        logging.debug("Opened '{}' device (serial number: '{}', fw: '{}')".format(
-            deck.deck_type(), deck.get_serial_number(), deck.get_firmware_version()
-        ))
 
         # Set initial screen brightness to 30%.
         deck.set_brightness(30)

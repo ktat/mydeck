@@ -388,3 +388,10 @@ class DeckOutputWebHandler(http.server.BaseHTTPRequestHandler):
             deck = self.idDeckMap[deck_id]
             sn: str = deck.get_serial_number()
             MyDecksManager.ConfigQueue[sn].put(data)
+
+    def log_message(self, format, *args):
+        message = format % args
+        logging.debug("%s - - [%s] %s" %
+                      (self.address_string(),
+                          self.log_date_time_string(),
+                          message.translate(self._control_char_table)))

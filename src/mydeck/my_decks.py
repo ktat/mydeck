@@ -103,7 +103,6 @@ class MyDecks:
             # continue
 
             serial_number: str = deck.get_serial_number()
-
             if self._one_deck_only:
                 if self.config is not None:
                     alert_func: Optional[Callable] = self.config.get(
@@ -180,15 +179,21 @@ class ExceptionNoConfig(Exception):
     pass
 
 
+class ExceptionNoDeckGiven(Exception):
+    """Exception when no deck is given"""
+    pass
+
+
 class MyDeck:
     """Class to control a device like STREAM DECK."""
     mydecks: MyDecks
     # path of font
 
     def __init__(self, opt: dict, server_port: int):
-        deck = opt.get('deck')
-        if deck is not None:
-            logging.critical("deck is required")
+        deck: Optional[VirtualDeck] = opt.get('deck')
+        if deck is None:
+            logging.critical("deck is required for MyDeck constructor")
+            raise (ExceptionNoDeckGiven)
         self.server_port: int = server_port
         self.deck: VirtualDeck = deck
         self.key_count: int = self.deck.key_count()
@@ -390,7 +395,7 @@ class MyDeck:
     def key_touchscreen_setup(self):
         """setup keys & touchscreen"""
         deck: VirtualDeck = self.deck
-        logging.warn("Opened '{}' device (serial number: '{}', fw: '{}', page: '{}')".format(
+        logging.debug("Opened '{}' device (serial number: '{}', fw: '{}', page: '{}')".format(
             deck.deck_type(), deck.get_serial_number(
             ), deck.get_firmware_version(), self.current_page()
         ))
@@ -1191,7 +1196,7 @@ class Config:
     def unify_app_config(self, conf_key: str, page: str, key: int, new_app_config: dict) -> bool:
         MODIFY: int = 1
         ADD: int = 2
-        modify_status = ADD  # 1: modify, 2: add new app
+        modify_status = ADD
 
         app_config: Optional[list] = self._config_content_origin.get("apps")
         if app_config is None:
