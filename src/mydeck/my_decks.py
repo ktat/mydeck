@@ -1198,6 +1198,8 @@ class Config:
         ADD: int = 2
         modify_status = ADD
 
+        new_page_key = new_app_config["option"].pop(conf_key, {})
+
         app_config: Optional[list] = self._config_content_origin.get("apps")
         if app_config is None:
             app_config = []
@@ -1208,19 +1210,32 @@ class Config:
                 origin_page_key = existing_config["option"].pop(conf_key, {})
                 # if option exists except page_key is same
                 if existing_config["option"] == new_app_config["option"]:
+                    new_app_config["option"][conf_key] = new_page_key
                     # same setting and same key
                     if origin_page_key.get(page) and origin_page_key[page] == key:
-                        # smae setting and same key, do nothing
+                        # same setting and same key, do nothing
+                        logging.debug(
+                            "### 1. Same setting and same key, do nothing")
                         return False
                     else:
                         existing_config["option"][conf_key] = origin_page_key
                         # same setting and different page and key, add new_app_config
-                        if page not in existing_config["option"][conf_key]:
+                        if existing_config["option"][conf_key].get(page):
                             existing_config["option"][conf_key][page] = key
                             modify_status = MODIFY
-                        # different config, but same key, remove config
-                        elif origin_page_key[page] == key:
-                            app_config.remove(existing_config)
+                            logging.debug(
+                                "### 2. Same setting and different page and key, add new_app_config")
+                        else:
+                            existing_config["option"][conf_key][page] = key
+                            modify_status = MODIFY
+                            logging.debug(
+                                "### 3. Same config, add different page key")
+                        break
+                elif origin_page_key.get(page) and origin_page_key[page] == key:
+                    # same app and different config and same key
+                    del origin_page_key[page]
+                    logging.debug(
+                        "### 4. Different config and same key, remove existing config")
 
                 existing_config["option"][conf_key] = origin_page_key
             elif existing_config.get("option") is not None and existing_config["option"].get(conf_key) is not None:
@@ -1231,6 +1246,11 @@ class Config:
                     if len(existing_config["option"][conf_key]) == 0:
                         # if page_key is empty, remove the app and add new app at last
                         app_config.remove(existing_config)
+                        logging.debug(
+                            "### 5. If page_key is empty, remove the app and add new app at last")
+
+        app_config[:] = list(filter(lambda c: c.get("option") and c["option"].get(
+            conf_key) and len(c['option'][conf_key].keys()) > 0, app_config))
 
         if modify_status == ADD:
             new_app_config["option"][conf_key] = {page: key}
