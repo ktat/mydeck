@@ -1230,7 +1230,7 @@ class Config:
                             modify_status = MODIFY
                             logging.debug(
                                 "### 3. Same config, add different page key")
-                        break
+
                 elif origin_page_key.get(page) and origin_page_key[page] == key:
                     # same app and different config and same key
                     del origin_page_key[page]
@@ -1248,6 +1248,9 @@ class Config:
                         app_config.remove(existing_config)
                         logging.debug(
                             "### 5. If page_key is empty, remove the app and add new app at last")
+
+            if modify_status == MODIFY:
+                break
 
         app_config[:] = list(filter(lambda c: c.get("option") and c["option"].get(
             conf_key) and len(c['option'][conf_key].keys()) > 0, app_config))
@@ -1275,10 +1278,16 @@ class Config:
                 if origin_page is not None:
                     if page in origin_page:
                         # same setting and same page, do nothing
+                        logging.debug(
+                            "a. same setting and same page, do nothing")
                         return False
                     else:
+                        logging.debug("b. append exsiting config")
                         origin_page.append(page)
                         modify_status = MODIFY
+                else:
+                    # not touchscreen app
+                    pass
 
                 existing_config["option"]["page"] = origin_page
             elif existing_config.get("option") is not None:
@@ -1286,6 +1295,13 @@ class Config:
                     # different app already exists in the page
                     if page in existing_config["option"]["page"]:
                         existing_config["option"]["page"].remove(page)
+                        logging.debug("c. remove page from existing config")
+
+            if modify_status == MODIFY:
+                break
+
+        app_config[:] = list(filter(lambda c: c.get("option") and c["option"].get(
+            "page") and len(c['option']["page"]) > 0, app_config))
 
         if modify_status == ADD:
             new_app_config["option"]["page"] = [page]
