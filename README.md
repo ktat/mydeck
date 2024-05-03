@@ -29,7 +29,17 @@ This is an alpha version software and I don't know much about Python.
 - Some code may be wrong for Python way
 - Exception handlings are not yet coded at all
 
-## How to run example
+## How to use?
+
+If you don't have STREAM DECK device, no worry.
+
+1. clone the code
+1. do `pip install .` and `mydeck` command is installed
+1. do `mydeck`
+   - if you change webserver port(default 3000), use `--port` option
+1. open `http://127.0.0.1:3000` to configure deck
+
+## How to run example without install `mydeck` command
 
 ### If you have STREAM DECK device
 
@@ -50,6 +60,8 @@ http://localhost:3000/
 
 ### Virutal Deck Configuration
 
+`mydeck` command configure it at first time when you use virtual deck. So you don't need to edit this manually.
+
 ```yaml
 1: # ID
   key_count: 4
@@ -62,6 +74,8 @@ http://localhost:3000/
 ```
 
 ### Page Configuration Rule
+
+You can edit config file with web interface.
 
 ```yaml
 page_config:
