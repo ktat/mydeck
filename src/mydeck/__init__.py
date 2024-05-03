@@ -23,7 +23,7 @@ for item in iter_modules(package_dir):
     module = import_module(f"{__name__}.{module_name}")
     for attribute_name in dir(module):
         if re.match(r"^app_", module_name):
-            if not my_decks_app_base.APP_NAMES.get(module_name) and not vars(module).get("is_background_app").__bool__():
+            if not my_decks_app_base.APP_NAMES.get(module_name) and "BackgroundAppBase" not in vars(module) and "WindowCheckBase" not in vars(module):
                 my_decks_app_base.APP_NAMES[module_name] = True
         elif not my_decks_app_base.GAME_NAMES.get(module_name) and re.match(r"^game", module_name):
             my_decks_app_base.GAME_NAMES[module_name] = True
