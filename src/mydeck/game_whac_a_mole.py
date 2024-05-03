@@ -2,7 +2,7 @@ from PIL import Image, ImageDraw, ImageFont
 import time
 import random
 import threading
-from mydeck import MyDeck, ImageOrFile, GameAppBase, ExceptionNoDeck
+from mydeck import MyDeck, ImageOrFile, GameAppBase, ExceptionNoDeck, ROOT_DIR
 
 
 class GameWhacAMole(GameAppBase):
@@ -23,7 +23,7 @@ class GameWhacAMole(GameAppBase):
         mydeck.add_game_key_conf({
             0 + start_key_num: {
                 "command": "WhacAMole",
-                "image": "./src/Assets/cat.png",
+                "image": ROOT_DIR+"/Assets/cat.png",
                 "label": "Whac-A-Mole",
                 "mode": 10,
             },
@@ -59,12 +59,12 @@ class GameWhacAMole(GameAppBase):
         mydeck.set_game_key(-4, {
             "name": "restart",
             "label": "RESTART",
-            "image": "./src/Assets/restart.png",
+            "image": ROOT_DIR+"/Assets/restart.png",
         })
 
         mydeck.set_game_key(-1, {
             "name": "exit",
-            "image": "./src/Assets/back.png",
+            "image": ROOT_DIR+"/Assets/back.png",
             "label": "exit Game"
         })
 
@@ -75,11 +75,11 @@ class GameWhacAMole(GameAppBase):
         mydeck = self.mydeck
         prev = None
         empty = {
-            "image": "./src/Assets/empty.png",
+            "image": ROOT_DIR+"/Assets/empty.png",
             "name": "empty"
         }
         mole = {
-            "image": "./src/Assets/cat.png",
+            "image": ROOT_DIR+"/Assets/cat.png",
             "name": "mole",
             "click": False,
         }
@@ -115,7 +115,7 @@ class GameWhacAMole(GameAppBase):
             if self.data["left_second"] <= 0:
                 self.data["left_second"] = 0
 
-            left_second_key["image"] = "./src/Assets/" + \
+            left_second_key["image"] = ROOT_DIR+"/Assets/" + \
                 str(self.data["left_second"]) + ".png"
             mydeck.set_game_key(-5, left_second_key)
 

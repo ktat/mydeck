@@ -1,4 +1,4 @@
-from mydeck import TriggerAppBase, ImageOrFile
+from mydeck import TriggerAppBase, ImageOrFile, ROOT_DIR
 import requests
 import json
 import subprocess
@@ -18,7 +18,7 @@ class AppDoodle(TriggerAppBase):
 
     _key_conf = {
         "app_command": "OpenDoodle",
-        "image": "./src/Assets/gray-box.png",
+        "image": ROOT_DIR + "/Assets/gray-box.png",
         "label": "Doodle",
     }
     key_command = {

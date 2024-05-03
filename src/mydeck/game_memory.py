@@ -1,7 +1,7 @@
 import time
 import random
 import logging
-from mydeck import MyDeck, GameAppBase, ExceptionNoDeck
+from mydeck import MyDeck, GameAppBase, ExceptionNoDeck, ROOT_DIR
 
 
 class GameMemory(GameAppBase):
@@ -16,25 +16,25 @@ class GameMemory(GameAppBase):
         mydeck.add_game_key_conf({
             0 + start_key_num: {
                 "command": "GameMemory",
-                "image": "./src/Assets/memory-game.png",
+                "image": ROOT_DIR+"/Assets/memory-game.png",
                 "label": "Memory 8",
                 "mode": 8,
             },
             1 + start_key_num: {
                 "command": "GameMemory",
-                "image": "./src/Assets/memory-game.png",
+                "image": ROOT_DIR+"/Assets/memory-game.png",
                 "label": "Memory 4",
                 "mode": 4,
             },
             2 + start_key_num: {
                 "command": "GameMemory",
-                "image": "./src/Assets/memory-game.png",
+                "image": ROOT_DIR+"/Assets/memory-game.png",
                 "label": "Memory 0",
                 "mode": 0,
             },
             3 + start_key_num: {
                 "command": "GameMemory",
-                "image": "./src/Assets/memory-game.png",
+                "image": ROOT_DIR+"/Assets/memory-game.png",
                 "label": "Memory VS",
                 "mode": -1,
             },
@@ -68,7 +68,7 @@ class GameMemory(GameAppBase):
             lambda deck, key, state: self.key_change_callback(key, state))
 
         empty = {
-            "image": "./src/Assets/cat.png",
+            "image": ROOT_DIR+"/Assets/cat.png",
             "name": "empty"
         }
 
@@ -100,15 +100,15 @@ class GameMemory(GameAppBase):
             key_name = 'number_vs'
             mydeck.set_game_key(-2, {
                 "name": "reverse",
-                "image": "./src/Assets/reverse.png",
+                "image": ROOT_DIR+"/Assets/reverse.png",
                 "label": 'reverse'
             })
 
         for i in range(0, 12):
             n = pos[i]
-            img = "./src/Assets/" + str(n) + ".png"
+            img = ROOT_DIR+"/Assets/" + str(n) + ".png"
             if wait_time <= 0:
-                img = "./src/Assets/cat.png"
+                img = ROOT_DIR+"/Assets/cat.png"
             mydeck.set_game_key(i, {
                 "image": img,
                 "name": "number_prepare",
@@ -118,7 +118,7 @@ class GameMemory(GameAppBase):
         if wait_time > 0:
             for i in range(0, wait_time + 1):
                 mydeck.set_game_key(-2, {
-                    "image": "./src/Assets/" + str(wait_time - i) + ".png",
+                    "image": ROOT_DIR+"/Assets/" + str(wait_time - i) + ".png",
                     "name": "num_of_wait",
                 })
                 if i < wait_time:
@@ -127,19 +127,19 @@ class GameMemory(GameAppBase):
         mydeck.set_game_key(-3, {
             "name": "restart",
             "label": "RESTART",
-            "image": "./src/Assets/restart.png",
+            "image": ROOT_DIR+"/Assets/restart.png",
         })
 
         mydeck.set_game_key(-1, {
             "name": "exit",
-            "image": "./src/Assets/back.png",
+            "image": ROOT_DIR+"/Assets/back.png",
             "label": "exit Game"
         })
 
         for i in range(0, 12):
             n = pos[i]
             mydeck.set_game_key(i, {
-                "image": "./src/Assets/cat.png",
+                "image": ROOT_DIR+"/Assets/cat.png",
                 "name": key_name,
                 "value": n,
                 "clicked": False,
@@ -174,7 +174,7 @@ class GameMemory(GameAppBase):
 
                     mydeck.set_key(13, {
                         "name": "num_of_try",
-                        "image": "./src/Assets/" + evaluate + ".png",
+                        "image": ROOT_DIR+"/Assets/" + evaluate + ".png",
                         "label": label
                     })
                 elif conf["name"] == "reverse":
@@ -211,7 +211,7 @@ class GameMemory(GameAppBase):
 
                     mydeck.set_key(13, {
                         "name": "num_of_try",
-                        "image": "./src/Assets/" + face + ".png",
+                        "image": ROOT_DIR+"/Assets/" + face + ".png",
                         "label": label
                     })
 
@@ -266,7 +266,7 @@ class GameMemory(GameAppBase):
         if self.data["vsmode"]:
             key_name = 'number_vs'
         n = {
-            "image": "./src/Assets/" + str(conf["value"]) + ".png",
+            "image": ROOT_DIR+"/Assets/" + str(conf["value"]) + ".png",
             "name": key_name,
             "value": conf["value"]
         }
@@ -289,7 +289,7 @@ class GameMemory(GameAppBase):
                 self.data['opened'] = None
                 for i in [opened, key]:
                     empty = {
-                        "image": "./src/Assets/cat.png",
+                        "image": ROOT_DIR + "/Assets/cat.png",
                         "name": "number",
                         "value": mydeck._GAME_KEY_CONFIG[i]["value"]
                     }

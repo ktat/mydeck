@@ -8,6 +8,10 @@ setup(
         "pyyaml",
         "streamdeck",
     ],
+    package_data = {
+      "": [".png", ".js", ".html", ".css"],
+      "mydeck": ["Assets/*", "html/*", "html/*/*"],
+    },
     entry_points={
         "console_scripts": [
             "mydeck = mydeck.my_decks_starter:main",

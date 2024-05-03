@@ -1,7 +1,7 @@
 import random
 import time
 import logging
-from mydeck import MyDeck, GameAppBase
+from mydeck import MyDeck, GameAppBase, ROOT_DIR
 from typing import List
 
 # 三目並べのビット
@@ -68,7 +68,7 @@ class GameTicTackToe(GameAppBase):
         mydeck.add_game_key_conf({
             0 + start_key_num: {
                 "command": "GameTicTacToe",
-                "image": "./src/Assets/tictacktoe.png",
+                "image": ROOT_DIR+"/Assets/tictacktoe.png",
                 "label": "TicTacToe",
             },
         })
@@ -121,17 +121,17 @@ class GameTicTackToe(GameAppBase):
             },
             9 + addional_key_count * 2: {
                 "name": "reverse",
-                "image": "./src/Assets/reverse.png",
+                "image": ROOT_DIR+"/Assets/reverse.png",
                 "label": "Reverse",
             },
             -2: {
                 "name": "restart",
-                "image": "./src/Assets/restart.png",
+                "image": ROOT_DIR+"/Assets/restart.png",
                 "label": "Restart",
             },
             -1: {
                 "name": "exit",
-                "image": "./src/Assets/back.png",
+                "image": ROOT_DIR+"/Assets/back.png",
                 "label": "exit Game"
             }
         }
@@ -151,7 +151,7 @@ class GameTicTackToe(GameAppBase):
         for key in key_conf.keys():
             conf = key_conf[key]
             if conf["name"] == "frame":
-                conf["image"] = "./src/Assets/cat.png"
+                conf["image"] = ROOT_DIR+"/Assets/cat.png"
                 conf["clicked"] = False
                 conf["user"] = None
             mydeck.set_game_key(key, conf)
@@ -171,9 +171,9 @@ class GameTicTackToe(GameAppBase):
                         if self.data.get("reverse") is None:
                             self.data["reverse"] = False
                         if self.data["reverse"]:
-                            conf["image"] = "./src/Assets/check.png"
+                            conf["image"] = ROOT_DIR+"/Assets/check.png"
                         else:
-                            conf["image"] = "./src/Assets/circle.png"
+                            conf["image"] = ROOT_DIR+"/Assets/circle.png"
                         conf["clicked"] = True
                         conf["user"] = 1
                         mydeck.set_game_key(key, conf)
@@ -358,23 +358,23 @@ class GameTicTackToe(GameAppBase):
             choose_conf["clicked"] = True
             choose_conf["user"] = 2
             if self.data["reverse"]:
-                choose_conf["image"] = "./src/Assets/circle.png"
+                choose_conf["image"] = ROOT_DIR+"/Assets/circle.png"
             else:
-                choose_conf["image"] = "./src/Assets/check.png"
+                choose_conf["image"] = ROOT_DIR+"/Assets/check.png"
             time.sleep(0.25)
             mydeck.set_game_key(choose_key, choose_conf)
 
         if winner is not None:
             conf = {
                 "name": "result",
-                "image": "./src/Assets/normal.png",
+                "image": ROOT_DIR+"/Assets/normal.png",
                 "label": "Draw!",
             }
             if winner == 1:
                 conf["label"] = "WIN!!"
-                conf["image"] = "./src/Assets/laugh.png"
+                conf["image"] = ROOT_DIR+"/Assets/laugh.png"
             elif winner == 2:
                 conf["label"] = "LOOSE!!"
-                conf["image"] = "./src/Assets/sad.png"
+                conf["image"] = ROOT_DIR+"/Assets/sad.png"
             # Draw
             mydeck.set_game_key(4 + self.addional_key_count, conf)

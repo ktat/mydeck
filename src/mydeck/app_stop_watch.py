@@ -3,7 +3,7 @@ import threading
 import sys
 
 from PIL import Image, ImageDraw, ImageFont
-from mydeck import AppBase, ImageOrFile, MyDeck
+from mydeck import AppBase, ImageOrFile, MyDeck, ROOT_DIR
 
 # whole image size
 X: int = 100
@@ -13,7 +13,7 @@ Y: int = 100
 class AppStopWatch(AppBase):
     _key_conf = {
         "app_command": "MyDeckStopWatchToggle",
-        "image": "./src/Assets/stopwatch.png",
+        "image": ROOT_DIR + "/Assets/stopwatch.png",
         "label": "Stop Watch",
     }
     key_command = {

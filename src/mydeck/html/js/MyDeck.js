@@ -361,14 +361,14 @@ const MyDeck = {
               settingType='deck_command';
               settingData.deck_command.deck_command = 'change_page';
               settingData.deck_command.arg = '@previous';
-              iconImage = settingData.deck_command.image = './src/Assets/back.png';
+              iconImage = settingData.deck_command.image = './Assets/back.png';
               settingData.deck_command.label = 'Back';
               ok = true;
             } else if (settingType == 'Home') {
                 settingType='deck_command';
                 settingData.deck_command.deck_command = 'change_page';
                 settingData.deck_command.arg = '@HOME';
-                iconImage = settingData.deck_command.image = './src/Assets/home.png';
+                iconImage = settingData.deck_command.image = './Assets/home.png';
                 settingData.deck_command.label = 'Back';
                 ok = true;
               } else if (settingType == 'delete') {
@@ -420,7 +420,7 @@ const MyDeck = {
             "
           >
             <option value="">select image</option>
-            <option v-for="im in images" :value="im">{{ im }}</option>
+            <option v-for="im in images" :value="im">{{ im.replace(/^.+\\//, '') }}</option>
           </select><br />
           Label: <span :class="checkResult.label"></span><br />
           <input
@@ -459,7 +459,7 @@ const MyDeck = {
             "
           >
             <option value="">select image</option>
-            <option v-for="im in images" :value="im">{{ im }}</option>
+            <option v-for="im in images" :value="im">{{ im.replace(/^.+\\//, '') }}</option>
           </select><br />
           Label: <span :class="checkResult.label"></span><br />
           <input
@@ -491,7 +491,7 @@ const MyDeck = {
             "
           >
             <option value="">select image</option>
-            <option v-for="im in images" :value="im">{{ im }}</option>
+            <option v-for="im in images" :value="im">{{ im.replace(/^.+\\//, '') }}</option>
           </select><br />
           Label: <span :class="checkResult.label"></span><br />
           <input

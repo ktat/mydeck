@@ -1,4 +1,4 @@
-from mydeck import AppBase, ImageOrFile, MyDeck
+from mydeck import AppBase, ImageOrFile, MyDeck, ROOT_DIR
 from typing import Optional, Dict
 
 
@@ -6,7 +6,7 @@ class AppCommunicateDeck(AppBase):
     """Sample application to communicate other deck"""
     _key_conf = {
         "app_command": "MyDeckCommunicateDeck",
-        "image": "./src/Assets/world.png",
+        "image": ROOT_DIR+"/Assets/world.png",
         "label": "Communicate",
     }
     key_command = {

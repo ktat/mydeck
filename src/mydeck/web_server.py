@@ -9,6 +9,8 @@ from StreamDeck.Devices.StreamDeck import TouchscreenEventType, DialEventType
 from typing import Optional
 from typing import Union
 
+ROOT_DIR = os.path.dirname(os.path.abspath(__file__))
+
 # 100 x 100 blank image
 BLANK_IMAGE = "iVBORw0KGgoAAAANSUhEUgAAAGQAAABkCAQAAADa613fAAAAaUlEQVR42u3PQREAAAgDoC251Y" \
     + "3g34MGNJMXKiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIi" \
@@ -94,17 +96,17 @@ class DeckOutputWebHandler(http.server.BaseHTTPRequestHandler):
 
     def do_GET(self):
         if self.path == '/':
-            return self.res_file_html('src/html/index.html')
+            return self.res_file_html(ROOT_DIR+'/html/index.html')
         elif (m := re.search("(/(?:js|css)/[^/]+\.(?:js|css))", self.path)) is not None:
             js_or_css_path = m.group(1)
-            with open('src/html' + js_or_css_path, mode="rb") as f:
+            with open(ROOT_DIR+'/html' + js_or_css_path, mode="rb") as f:
                 try:
                     return self.response_js(f)
                 except Exception as e:
                     pass
         elif self.path == '/chart/status':
-            return self.res_file_html('src/html/chart-status.html')
-        elif (m := re.search("(/src/Assets/[^/]+\.(\w+))", self.path)) is not None and m.group(2) is not None:
+            return self.res_file_html(ROOT_DIR+'/html/chart-status.html')
+        elif (m := re.search("^(.+/Assets/[^/]+\.(\w+))", self.path)) is not None and m.group(2) is not None:
             image_path = m.group(1)
             ext = m.group(2)
             with open('.' + image_path, mode="rb") as f:
@@ -344,7 +346,7 @@ class DeckOutputWebHandler(http.server.BaseHTTPRequestHandler):
         self.api_json_response(json_data)
 
     def res_images(self):
-        images: list = glob.glob("./src/Assets/*.png", recursive=False)
+        images: list = glob.glob(ROOT_DIR+"/Assets/*.png", recursive=False)
         images.sort()
         self.api_json_response(images)
 

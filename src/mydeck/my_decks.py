@@ -28,6 +28,7 @@ from StreamDeck.Devices import StreamDeckOriginalV2
 from .lock import Lock
 
 DEFAULT_PORT: int = 3000
+ROOT_DIR = os.path.dirname(os.path.abspath(__file__))
 
 if TYPE_CHECKING:
     from .my_decks_app_base import App, AppBase, BackgroundAppBase, HookAppBase
@@ -187,7 +188,6 @@ class ExceptionNoDeckGiven(Exception):
 class MyDeck:
     """Class to control a device like STREAM DECK."""
     mydecks: MyDecks
-    # path of font
 
     def __init__(self, opt: dict, server_port: int):
         deck: Optional[VirtualDeck] = opt.get('deck')
@@ -511,7 +511,7 @@ class MyDeck:
         if icon_file is not None:
             conf["image"] = icon_file
         else:
-            conf["image"] = "./src/Assets/world.png"
+            conf["image"] = ROOT_DIR+"/Assets/world.png"
 
     def save_image(self, icon_url: str, icon_file: str) -> Optional[str]:
         """Get image from icon_url and save it to icon_file"""

@@ -1,4 +1,4 @@
-from mydeck import MyDeck, TriggerAppBase, ImageOrFile
+from mydeck import MyDeck, TriggerAppBase, ImageOrFile, ROOT_DIR
 import requests
 import json
 import subprocess
@@ -16,7 +16,7 @@ class AppBingPhoto(TriggerAppBase):
     use_day_trigger: bool = True
     _key_conf = {
         "app_command": "OpenBing",
-        "image": "./src/Assets/gray-box.png",
+        "image": ROOT_DIR+"/Assets/gray-box.png",
         "label": "Bing Photo",
     }
     key_command = {
