@@ -77,6 +77,7 @@ const MyDeck = {
         id: null,
         key: null,
         dial: null,
+        root_dir: "",
         for_touchscreen: false,
         for_dial: false,
         chrome: {
@@ -278,6 +279,7 @@ const MyDeck = {
       axios.get(baseURL + 'api/' + this.config.id).then(
         (response) => {
           if (this.items.data) {
+            this.root_dir = this.items.data.root_dir;
             let currentDialStates = this.items.data.dial_states;
             let nextDialStates = this.config.deviceInfo.dial_states;
           }
@@ -361,14 +363,14 @@ const MyDeck = {
               settingType='deck_command';
               settingData.deck_command.deck_command = 'change_page';
               settingData.deck_command.arg = '@previous';
-              iconImage = settingData.deck_command.image = './Assets/back.png';
+              iconImage = settingData.deck_command.image = root_dir + '/Assets/back.png';
               settingData.deck_command.label = 'Back';
               ok = true;
             } else if (settingType == 'Home') {
                 settingType='deck_command';
                 settingData.deck_command.deck_command = 'change_page';
                 settingData.deck_command.arg = '@HOME';
-                iconImage = settingData.deck_command.image = './Assets/home.png';
+                iconImage = settingData.deck_command.image = root_dir + '/Assets/home.png';
                 settingData.deck_command.label = 'Back';
                 ok = true;
               } else if (settingType == 'delete') {

@@ -110,7 +110,7 @@ class DeckOutputWebHandler(http.server.BaseHTTPRequestHandler):
         elif (m := re.search("^(.+/Assets/[^/]+\.(\w+))", self.path)) is not None and m.group(2) is not None:
             image_path = m.group(1)
             ext = m.group(2)
-            with open('.' + image_path, mode="rb") as f:
+            with open(image_path, mode="rb") as f:
                 try:
                     return self.response_image(f, ext)
                 except Exception as e:
@@ -168,6 +168,7 @@ class DeckOutputWebHandler(http.server.BaseHTTPRequestHandler):
             # /id
             elif (image_info := self.pathKeyMap.get(id)) is not None:
                 res = {
+                    "root_dir": ROOT_DIR,
                     "current_page": self.idCurrentPage.get(id, "@HOME"),
                     "key": image_info,
                     "touch": c.touchscreenImage.get(id),
