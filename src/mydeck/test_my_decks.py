@@ -5,8 +5,6 @@ import logging
 
 
 class MyDecksTest(unittest.TestCase):
-    logging.basicConfig(level=logging.ERROR)
-
     def setUp(self):
         input = DeckInput({})
         output = DeckOutput({})

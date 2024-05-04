@@ -18,7 +18,7 @@ import shutil
 import datetime
 import time
 import queue
-from .my_decks_manager import VirtualDeck
+from .my_decks_manager import VirtualDeck, DeckOutputWebHandler
 
 from cairosvg import svg2png
 from typing import Any, NoReturn, List, TYPE_CHECKING, Optional, Callable, Dict, Union
@@ -92,6 +92,8 @@ class MyDecks:
         log_level: Optional[str] = config.get('log_level')
         if log_level is not None:
             logging.basicConfig(level=log_level)
+        else:
+            logging.basicConfig(level=logging.INFO)
 
     def start_decks(self, no_real_device: bool = False) -> NoReturn:
         """Start and display images to buttons according to configuration."""
@@ -326,12 +328,17 @@ class MyDeck:
         """Return current page name"""
         return self._current_page
 
+    def _set_current_page(self, name: str):
+        """Set current page name"""
+        self._current_page = name
+        DeckOutputWebHandler.idCurrentPage[self.deck.id()] = name
+
     def set_current_page_without_setup(self, name: str, add_previous: bool = False):
         """Set given page name as current_page. but don't setup keys."""
         if add_previous:
             self.set_previous_page(name)
         self.set_alert_off()
-        self._current_page = name
+        self._set_current_page(name)
 
     def set_current_page(self, name: str, add_previous: bool = True):
         """Set given page name as current_page and setup keys."""
@@ -343,7 +350,7 @@ class MyDeck:
                 pass
             if add_previous:
                 self.set_previous_page(self._current_page)
-            self._current_page = name
+            self._set_current_page(name)
             Lock.do_with_lock(self.deck.get_serial_number(),
                               lambda: self.stop_working_apps())
             self.set_game_status_off()

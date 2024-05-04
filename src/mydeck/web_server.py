@@ -26,6 +26,7 @@ class DeckOutputWebHandler(http.server.BaseHTTPRequestHandler):
     pathKeyMap: dict = {}
     touchscreenImage: dict = {}
     idDeckMap: dict = {}
+    idCurrentPage: dict = {}
 
     @staticmethod
     def setKeyImage(id: str, key: str, image: str):
@@ -167,6 +168,7 @@ class DeckOutputWebHandler(http.server.BaseHTTPRequestHandler):
             # /id
             elif (image_info := self.pathKeyMap.get(id)) is not None:
                 res = {
+                    "current_page": self.idCurrentPage.get(id, "@HOME"),
                     "key": image_info,
                     "touch": c.touchscreenImage.get(id),
                     "dial_states": self.idDeckMap[id].dial_states()
