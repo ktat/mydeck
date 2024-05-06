@@ -12,11 +12,14 @@ import qrcode
 
 
 class MyDecksStarter:
+    configPath: str = ""
     config: dict = {}
 
     def __init__(self, config: dict, use_vdeck: bool = False):
         self.config = config
         config_path: str = self.config["config_path"]
+
+        MyDecksStarter.configPath = config_path
 
         if not os.path.exists(config_path):
             os.makedirs(config_path)

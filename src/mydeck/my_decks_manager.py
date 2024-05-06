@@ -9,6 +9,7 @@ import traceback
 import yaml
 import queue
 import threading
+import os
 from .lock import Lock
 from PIL import Image
 from StreamDeck.DeviceManager import DeviceManager

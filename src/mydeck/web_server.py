@@ -345,7 +345,13 @@ class DeckOutputWebHandler(http.server.BaseHTTPRequestHandler):
         self.api_json_response(json_data)
 
     def res_images(self):
+        from mydeck.my_decks_starter import MyDecksStarter
         images: list = glob.glob(ROOT_DIR+"/Assets/*.png", recursive=False)
+        if MyDecksStarter.configPath != "":
+            images2: list = glob.glob(
+                MyDecksStarter.configPath+"/Assets/*.png", recursive=False)
+            images.extend(images2)
+
         images.sort()
         self.api_json_response(images)
 
