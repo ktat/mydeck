@@ -7,6 +7,7 @@ setup(
     install_requires=[
         "pyyaml",
         "streamdeck",
+        "qrcode",
     ],
     package_data = {
       "": [".png", ".js", ".html", ".css"],
