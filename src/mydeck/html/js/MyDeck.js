@@ -56,6 +56,7 @@ const MyDeck = {
       settingDial: null,
       settingType: null,
       settingData: this.config.settingData,
+      target_page: this.current_page,
       checkResult: {},
       deviceInfo: this.config.deviceInfo,
       ok: false,
@@ -78,6 +79,7 @@ const MyDeck = {
         key: null,
         dial: null,
         root_dir: "",
+        target_page: "@HOME",
         for_touchscreen: false,
         for_dial: false,
         chrome: {
@@ -111,14 +113,16 @@ const MyDeck = {
       this.checkResult = {};
       const data = this.settingData[this.settingType];
       let valid = true;
-      const keys = Object.keys(required[this.settingType]);
-      for (let i = 0; i < keys.length; i++) {
-        let v = required[this.settingType][keys[i]];
-        const rule = required[this.settingType][keys[i]];
-        if (rule) {
-          let result = this.checkRule(keys[i], data[keys[i]], rule);
-          if (!result) {
-            valid = result;
+      if (required[this.settingType]) {
+        const keys = Object.keys(required[this.settingType]);
+        for (let i = 0; i < keys.length; i++) {
+          let v = required[this.settingType][keys[i]];
+          const rule = required[this.settingType][keys[i]];
+          if (rule) {
+            let result = this.checkRule(keys[i], data[keys[i]], rule);
+            if (!result) {
+              valid = result;
+            }
           }
         }
       }
@@ -184,7 +188,8 @@ const MyDeck = {
     openSettingModal: function (i) {
       this.initializeModal(true);
       this.settingKey = i - 1;
-      const url = baseURL + 'api/device/' + this.id + '/key_config/current_page/' + this.settingKey + '/';
+      this.target_page = this.current_page;
+      const url = baseURL + 'api/device/' + this.id + '/key_config/' + this.target_page + '/' + this.settingKey + '/';
       axios.get(url).then((response) => {
         const res = response.data;
         if (res.key_config) {
@@ -242,6 +247,7 @@ const MyDeck = {
     },
     settingDone: function () {
       let data = this.settingData[this.settingType]
+      data.target_page = this.target_page;
       if (dataModifier[this.settingType]) {
         dataModifier[this.settingType](data);
       }
@@ -280,6 +286,7 @@ const MyDeck = {
         (response) => {
           if (this.items.data) {
             this.root_dir = this.items.data.root_dir;
+            this.current_page = this.items.data.current_page;
             let currentDialStates = this.items.data.dial_states;
             let nextDialStates = this.config.deviceInfo.dial_states;
           }

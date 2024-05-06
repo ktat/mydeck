@@ -119,10 +119,11 @@ class DeckOutputWebHandler(http.server.BaseHTTPRequestHandler):
         elif (m := re.search("^/api/app/(\w+)/sample_data/$", self.path)) is not None and m.group(1) is not None:
             app_name = m.group(1)
             return self.res_app_sample_data(app_name)
-        elif (m := re.search("^/api/device/(\w+)/key_config/current_page/(\d+)/$", self.path)) is not None:
+        elif (m := re.search("^/api/device/(\w+)/key_config/([^/]+)/(\d+)/$", self.path)) is not None:
             id = m.group(1)
-            key_index = int(m.group(2))
-            return self.res_current_key_config(id, key_index)
+            current_page = m.group(2)
+            key_index = int(m.group(3))
+            return self.res_current_key_config(id, current_page, key_index)
         elif self.path == '/api/status':
             return self.res_status()
         elif self.path == '/api/resource':
@@ -234,7 +235,7 @@ class DeckOutputWebHandler(http.server.BaseHTTPRequestHandler):
         data = getattr(module, camel_case_app_name).sample_data
         self.api_json_response(data)
 
-    def res_current_key_config(self, id: str, key_index: int):
+    def res_current_key_config(self, id: str, current_page: str, key_index: int):
         from .my_decks_manager import VirtualDeck
         from .my_decks import MyDecks
 
@@ -259,12 +260,7 @@ class DeckOutputWebHandler(http.server.BaseHTTPRequestHandler):
                 break
 
         from .my_decks import MyDecks, MyDeck
-        page_name: str = ""
-        for sn_alias in MyDecks.mydecks.keys():
-            device: MyDeck = MyDecks.mydecks[sn_alias]
-            if device.deck.id() == id:
-                page_name = device.current_page()
-                break
+        page_name: str = current_page
 
         if page_name == "":
             return self.response_404()

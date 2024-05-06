@@ -943,25 +943,27 @@ class MyDeck:
                 if data.get('exit'):
                     break
 
+                target_page = data.get("target_page", self.current_page())
+
                 save: bool = False
                 if data.get("delete"):
                     if data.pop("for_touchscreen", False):
                         save = self.config.delete_touchscreen_config(
-                            self.current_page())
+                            target_page)
                     elif data.pop("for_dial", False):
                         save = self.config.delete_dial_app_config(
-                            self.current_page(), data)
+                            target_page, data)
                     else:
                         self.deck.set_key_image(data['key'], None)
                         save = self.config.delete_key_app_config(
-                            self.current_page(), data)
+                            target_page, data)
 
                 elif data.get("app"):
                     save = self.config.update_app_config_content(
-                        self.current_page(), data)
+                        target_page, data)
                 else:
                     save = self.config.update_page_config_content(
-                        self.current_page(), data)
+                        target_page, data)
 
                 if save:
                     self.config.save_config()
