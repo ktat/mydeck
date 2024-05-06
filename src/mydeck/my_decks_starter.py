@@ -7,6 +7,8 @@ import yaml
 import sys
 from typing import Dict, Any
 import argparse
+import netifaces
+import qrcode
 
 
 class MyDecksStarter:
@@ -183,6 +185,32 @@ class MyDecksStarter:
         return True
 
 
+def get_private_ips() -> list[str]:
+    ips: list[str] = ["127.0.0.1"]
+    for interface in netifaces.interfaces():
+        try:
+            for link in netifaces.ifaddresses(interface)[netifaces.AF_INET]:
+                ip_address = link['addr']
+                if ip_address.startswith('192.168') or ip_address.startswith('10.'):
+                    ips.append(ip_address)
+        except KeyError:
+            pass
+
+    return ips
+
+
+def print_qr_code(data: str):
+    qr = qrcode.QRCode(
+        version=1,
+        error_correction=qrcode.constants.ERROR_CORRECT_L,
+        box_size=10,
+        border=4,
+    )
+    qr.add_data(data)
+    qr.make(fit=True)
+    qr.print_ascii()
+
+
 def main():
     log_levels: list[str] = list(logging._levelToName.values(
     )) + [x.lower() for x in logging._levelToName.values()]
@@ -210,6 +238,25 @@ def main():
         sys.exit(1)
 
     logging.basicConfig(level=config.get("log_level", "INFO"))
+
+    ips = get_private_ips()
+    print("MyDeck Server is running. Access to the following URL.\n")
+    index = 0
+    for ip in ips:
+        url = "http://" + ip + ":" + str(config["server_port"])
+        if index > 0:
+            print("%d: %s" % (index, url))
+        else:
+            print("-: %s" % url)
+        index += 1
+
+    strdin = input(
+        "\nSelect the IP address to print as QR code(Enter to skip): ")
+    if strdin.isdigit():
+        url = "http://" + ips[int(strdin)] + ":" + str(config["server_port"])
+        print_qr_code(url)
+    else:
+        print("Skip QR code printing.")
 
     mydecks_starter = MyDecksStarter(config, args.vdeck)
     mydecks_starter.run()
