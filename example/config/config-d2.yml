@@ -25,22 +25,22 @@ apps:
          '@HOME':
             4:
              - "label": "1"
-               "image": "./src/Assets/cat.png"
+               "image": "./src/mydeck/Assets/cat.png"
              - "label": "2"
-               "image": "./src/Assets/world.png"
+               "image": "./src/mydeck/Assets/world.png"
          '@GAME':
             10:
              - "label": "01"
-               "image": "./src/Assets/cat.png"
+               "image": "./src/mydeck/Assets/cat.png"
              - "label": "02"
-               "image": "./src/Assets/world.png"
+               "image": "./src/mydeck/Assets/world.png"
             11:
              - "label": "01"
-               "image": "./src/Assets/sad.png"
+               "image": "./src/mydeck/Assets/sad.png"
              - "label": "02"
-               "image": "./src/Assets/normal.png"
+               "image": "./src/mydeck/Assets/normal.png"
              - "label": "03"
-               "image": "./src/Assets/cat.png"
+               "image": "./src/mydeck/Assets/cat.png"
 "games":
   - game: RandomNumber
 
@@ -50,53 +50,53 @@ page_config:
        0:
          "change_page": "@PRIVATE"
          "label": "Private"
-         "image": "./src/Assets/cat.png"
+         "image": "./src/mydeck/Assets/cat.png"
        1:
          "change_page": "@GAME"
          "label": "Game"
-         "image": "./src/Assets/game.png"
+         "image": "./src/mydeck/Assets/game.png"
        -1:
-         "image": "./src/Assets/exit.png"
+         "image": "./src/mydeck/Assets/exit.png"
          "label": "Exit"
          "exit": 1
   "@PRIVATE":
      keys:
        0:
          "command": ["google-chrome", "--profile-directory=Default"]
-         "image": "./src/Assets/chrome.png"
+         "image": "./src/mydeck/Assets/chrome.png"
          "label": "Chrome"
        -2:
          "label": "Config"
-         "image": "./src/Assets/settings.png"
+         "image": "./src/mydeck/Assets/settings.png"
          "change_page": "@CONFIG"
        -1:
          "change_page": "@HOME"
-         "image": "./src/Assets/home.png"
+         "image": "./src/mydeck/Assets/home.png"
   "@JOB":
      keys:
        -1:
          "change_page": "@HOME"
-         "image": "./src/Assets/home.png"
+         "image": "./src/mydeck/Assets/home.png"
   "@GAME":
      keys:
        -1:
          "change_page": "@HOME"
-         "image": "./src/Assets/home.png"
+         "image": "./src/mydeck/Assets/home.png"
   "@CONFIG":
      keys:
        0:
          "label": "Sound"
          "command": ["gnome-control-center", "sound"]
-         "image": "./src/Assets/sound.png"
+         "image": "./src/mydeck/Assets/sound.png"
        1:
          "label": "Audio"
          "command": ["pavucontrol", "--tab=4"]
-         "image": "./src/Assets/audio.png"
+         "image": "./src/mydeck/Assets/audio.png"
        2:
          "label": "Display"
          "command": ["gnome-control-center", "display"]
-         "image": "./src/Assets/display.png"
+         "image": "./src/mydeck/Assets/display.png"
        -1:
          "change_page": "@previous"
-         "image": "./src/Assets/back.png"
+         "image": "./src/mydeck/Assets/back.png"
          "label": "Back"

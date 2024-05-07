@@ -16,26 +16,26 @@ page_config:
        0:
          "change_page": "@PRIVATE"
          "label": "Private"
-         "image": "./src/Assets/cat.png"
+         "image": "./src/mydeck/Assets/cat.png"
        1:
          "change_page": "@GAME"
          "label": "Game"
-         "image": "./src/Assets/game.png"
+         "image": "./src/mydeck/Assets/game.png"
   "@PRIVATE":
      keys:
        0:
          "command": ["google-chrome", "--profile-directory=Default"]
-         "image": "./src/Assets/chrome.png"
+         "image": "./src/mydeck/Assets/chrome.png"
          "label": "Chrome"
        -1:
          "change_page": "@HOME"
-         "image": "./src/Assets/home.png"
+         "image": "./src/mydeck/Assets/home.png"
   "@GAME":
      keys:
        0:
          "command": ["google-chrome", "--profile-directory=Default"]
-         "image": "./src/Assets/chrome.png"
+         "image": "./src/mydeck/Assets/chrome.png"
          "label": "Chrome"
        -1:
          "change_page": "@HOME"
-         "image": "./src/Assets/home.png"
+         "image": "./src/mydeck/Assets/home.png"
