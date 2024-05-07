@@ -56,7 +56,7 @@ and open the following URL with browser.
 
 http://localhost:3000/
 
-If you want to change default port number 2999, pass port number as 1st argument.
+If you want to change default port number 3000, pass port number as 1st argument.
 
 ```
 PYTHONPATH=src python3 example/main_virtual.py 3001
