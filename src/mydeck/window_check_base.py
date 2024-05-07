@@ -4,6 +4,7 @@ import logging
 from mydeck import BackgroundAppBase, MyDeck
 from typing import Optional
 
+
 class WindowCheckBase(BackgroundAppBase):
     """A base class to check active window. Don't use this class directly."""
     window_title_regexps = [
@@ -12,7 +13,7 @@ class WindowCheckBase(BackgroundAppBase):
         [r'^.+  YouTube.+Google Chrome$', 'YouTube'],
     ]
 
-    def __init__ (self, mydeck: MyDeck, config: dict = {}):
+    def __init__(self, mydeck: MyDeck, config: dict = {}):
         """'window_title_regexps' is a dict whose key is regexp and value is a replacement like the following
         {
           [r'^Meet.+Google Chrome$', 'Meet'],
@@ -57,7 +58,7 @@ class WindowCheckBase(BackgroundAppBase):
                 mydeck.set_current_page(page)
                 # when no configuration for window and current_page is not started with '@', set previous_page
             elif current_page[0:1] != '@':
-                mydeck.set_current_page(mydeck.pop_last_previous_page())
+                mydeck.set_current_page(mydeck.pop_last_previous_page(), False)
 
     def _get_current_window(self) -> Optional[str]:
         """Get curent window name. It should be implmented in subclass."""
@@ -74,4 +75,3 @@ class WindowCheckBase(BackgroundAppBase):
                 result = re.sub(r1, eval('"' + r2 + '"'), str(result))
                 result = re.sub(r"\n", "", str(result))
         return result
-

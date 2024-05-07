@@ -6,43 +6,38 @@ from mydeck import MyDeck, GameAppBase, ROOT_DIR
 
 
 class GameRandomNumber(GameAppBase):
-    require_key_count: int = 0
+    require_key_count: int = 6
+    require_columns: int = 2
 
-    def __init__(self, mydeck: MyDeck, start_key_num: int = 0):
+    def __init__(self, mydeck: MyDeck, conf: dict = {}):
         super().__init__(mydeck)
 
         self.data: dict = {}
 
         if mydeck.key_count == 6:
-            mydeck.add_game_key_conf({
-                0 + start_key_num: {
+            mydeck.add_game_key_conf([
+                {
                     "command": "RandomNumber",
                     "image": ROOT_DIR+"/Assets/3.png",
                     "label": "Random3",
                     "mode": 3,
                 },
-            })
+            ])
         else:
-            mydeck.add_game_key_conf({
-                0 + start_key_num: {
+            modes: list = conf.get("modes", [4, 7, 10])
+            game_keys: list = []
+            for mode in modes:
+                if mode > 10:
+                    continue
+                game_keys.append({
                     "command": "RandomNumber",
-                    "image": ROOT_DIR+"/Assets/5.png",
-                    "label": "Random5",
-                    "mode": 5,
-                },
-                1 + start_key_num: {
-                    "command": "RandomNumber",
-                    "image": ROOT_DIR+"/Assets/7.png",
-                    "label": "Random7",
-                    "mode": 7,
-                },
-                2 + start_key_num: {
-                    "command": "RandomNumber",
-                    "image": ROOT_DIR+"/Assets/10.png",
-                    "label": "Random10",
-                    "mode": 10,
-                }
-            })
+                    "image": "%s/Assets/%d.png" % (ROOT_DIR, mode),
+                    "label": "Random"+str(mode),
+                    "mode": mode,
+                })
+
+            mydeck.add_game_key_conf(game_keys)
+
         mydeck.add_game_command(
             "RandomNumber", lambda conf: self.key_setup(conf.get("mode")))
 
@@ -148,8 +143,6 @@ class GameRandomNumber(GameAppBase):
     def key_change_callback(self, key, state):
         mydeck = self.mydeck
         deck = mydeck.deck
-        # Print new key state
-        logging.debug("Deck {} Key {} = {}".format(deck.id(), key, state))
 
         conf = mydeck._GAME_KEY_CONFIG.get(key)
         if state:

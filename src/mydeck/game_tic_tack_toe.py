@@ -54,8 +54,9 @@ PRE_WIN_CONDITION = {
 
 class GameTicTackToe(GameAppBase):
     require_key_count: int = 15
+    require_columns: int = 3
 
-    def __init__(self, mydeck: MyDeck, start_key_num: int = 0):
+    def __init__(self, mydeck: MyDeck, conf: dict = {}):
         super().__init__(mydeck)
 
         if self.enable == False:
@@ -65,13 +66,13 @@ class GameTicTackToe(GameAppBase):
         if mydeck.key_count == 32:
             self.addional_key_count = 3
 
-        mydeck.add_game_key_conf({
-            0 + start_key_num: {
+        mydeck.add_game_key_conf([
+            {
                 "command": "GameTicTacToe",
                 "image": ROOT_DIR+"/Assets/tictacktoe.png",
                 "label": "TicTacToe",
             },
-        })
+        ])
         mydeck.add_game_command("GameTicTacToe", lambda conf: self.key_setup())
 
     def key_setup(self):

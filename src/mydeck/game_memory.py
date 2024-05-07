@@ -6,39 +6,31 @@ from mydeck import MyDeck, GameAppBase, ExceptionNoDeck, ROOT_DIR
 
 class GameMemory(GameAppBase):
     require_key_count: int = 15
+    require_columns: int = 3
 
-    def __init__(self, mydeck: MyDeck, start_key_num: int = 0):
+    def __init__(self, mydeck: MyDeck, conf: dict = {}):
         super().__init__(mydeck)
 
         if self.enable == False:
             return
 
-        mydeck.add_game_key_conf({
-            0 + start_key_num: {
-                "command": "GameMemory",
-                "image": ROOT_DIR+"/Assets/memory-game.png",
-                "label": "Memory 8",
-                "mode": 8,
-            },
-            1 + start_key_num: {
-                "command": "GameMemory",
-                "image": ROOT_DIR+"/Assets/memory-game.png",
-                "label": "Memory 4",
-                "mode": 4,
-            },
-            2 + start_key_num: {
-                "command": "GameMemory",
-                "image": ROOT_DIR+"/Assets/memory-game.png",
-                "label": "Memory 0",
-                "mode": 0,
-            },
-            3 + start_key_num: {
-                "command": "GameMemory",
-                "image": ROOT_DIR+"/Assets/memory-game.png",
-                "label": "Memory VS",
-                "mode": -1,
-            },
-        })
+        modes: list = conf.get("modes", [8, 4, 0, -1])
+        game_keys: list = []
+
+        for mode in modes:
+            label = "Memory " + str(mode)
+            if mode == -1:
+                label = "Memory VS"
+
+            game_keys.append(
+                {
+                    "command": "GameMemory",
+                    "image": ROOT_DIR+"/Assets/memory-game.png",
+                    "label": label,
+                    "mode": mode,
+                })
+
+        mydeck.add_game_key_conf(game_keys)
         mydeck.add_game_command(
             "GameMemory", lambda conf: self.key_setup(conf["mode"]))
 

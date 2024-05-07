@@ -7,8 +7,9 @@ from mydeck import MyDeck, ImageOrFile, GameAppBase, ExceptionNoDeck, ROOT_DIR
 
 class GameWhacAMole(GameAppBase):
     require_key_count: int = 15
+    require_columns: int = 3
 
-    def __init__(self, mydeck: MyDeck, start_key_num: int = 0):
+    def __init__(self, mydeck: MyDeck, conf: dict = {}):
         self.in_game = False
         self._stop = False
         self.exit = False
@@ -20,14 +21,14 @@ class GameWhacAMole(GameAppBase):
         if self.enable == False:
             return
 
-        mydeck.add_game_key_conf({
-            0 + start_key_num: {
+        mydeck.add_game_key_conf([
+            {
                 "command": "WhacAMole",
                 "image": ROOT_DIR+"/Assets/cat.png",
                 "label": "Whac-A-Mole",
                 "mode": 10,
             },
-        })
+        ])
         mydeck.add_game_command(
             "WhacAMole", lambda conf: self.key_setup(conf.get("mode")))
 

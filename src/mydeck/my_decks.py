@@ -199,6 +199,7 @@ class MyDeck:
         self.server_port: int = server_port
         self.deck: VirtualDeck = deck
         self.key_count: int = self.deck.key_count()
+        self.columns: int = self.deck.columns()
         self.font_path = "/usr/share/fonts/truetype/freefont/FreeSans.ttf"
         self.config: Optional['Config'] = None
         self.is_background_thread_started: bool = False
@@ -216,7 +217,6 @@ class MyDeck:
             'touch': {},
             'dials': {},
         }
-        self._KEY_CONFIG_GAME: dict = {}
         self._KEY_ACTION_APP: dict = {}
         self._GAME_KEY_CONFIG: dict = {}
         self._config_file: str = ''
@@ -235,7 +235,6 @@ class MyDeck:
             self.font_path = opt["font_path"]
         if opt.get("config") is not None:
             self._config_file = opt.get('config') or ''
-            self._KEY_CONFIG_GAME = {}
             self.config = Config(self, self._config_file)
 
     def debug(self, message: str):
@@ -322,6 +321,7 @@ class MyDeck:
         """Set given page name as previous page"""
         if name[0] != '~' and (len(self._previous_pages) == 0 or self._previous_pages[-1] != name):
             self._previous_pages.append(name)
+
         self.debug("previous page %s" % self._previous_pages)
 
     def current_page(self) -> str:
@@ -333,16 +333,15 @@ class MyDeck:
         self._current_page = name
         DeckOutputWebHandler.idCurrentPage[self.deck.id()] = name
 
-    def set_current_page_without_setup(self, name: str, add_previous: bool = False):
+    def set_current_page_without_setup(self, name: str, add_previous: bool = True):
         """Set given page name as current_page. but don't setup keys."""
         if add_previous:
-            self.set_previous_page(name)
+            self.set_previous_page(self.current_page())
         self.set_alert_off()
         self._set_current_page(name)
 
     def set_current_page(self, name: str, add_previous: bool = True):
         """Set given page name as current_page and setup keys."""
-
         if name[0] != "~ALERT":
             self.set_alert_off()
         if self.deck is not None and name != self._current_page:
@@ -819,14 +818,48 @@ class MyDeck:
         self._GAME_KEY_CONFIG[key] = conf
         self.set_key(key, conf, False)
 
-    def add_game_key_conf(self, conf: dict):
+    def add_game_key_conf(self, configs: list):
         """Add game confiruration for keys"""
         key_config = self.key_config()
-        if key_config.get('@GAME') is None:
-            key_config['@GAME'] = {}
-        for key in conf.keys():
-            key_config['@GAME'][key] = conf[key]
-            self._KEY_CONFIG_GAME[key] = conf[key]
+
+        page_index: int = 1
+        page_name_default: str = "@GAME"
+        page_name: str = page_name_default
+        while True:
+            if key_config.get(page_name) is None or len(key_config[page_name].keys()) < self.key_count:
+                break
+
+            page_index += 1
+            page_name = page_name_default + str(page_index)
+
+        prev_conf = {
+            "change_page": "@previous",
+            "image": ROOT_DIR+"/Assets/back.png",
+            "label": "Back",
+        }
+
+        if key_config.get(page_name) is None:
+            key_config[page_name] = {
+                self.key_count - 1: prev_conf
+            }
+
+        for conf in configs:
+            start_index = len(key_config[page_name].keys()) - 1
+            if start_index >= (self.key_count - 2):
+                old_page_name = page_name
+                start_index = 0
+                page_index += 1
+                page_name = page_name_default + str(page_index)
+                key_config[old_page_name][self.key_count - 2] = {
+                    "change_page": page_name,
+                    "image": ROOT_DIR+"/Assets/game.png",
+                    "label": "game" + str(page_index),
+                }
+                key_config[page_name] = {
+                    self.key_count - 1: prev_conf
+                }
+
+            key_config[page_name][start_index] = conf
 
     def add_game_command(self, name: str, command):
         """Add command for a game"""
@@ -840,7 +873,7 @@ class MyDeck:
     def exit_game(self):
         """call it on exiting game"""
         self.set_game_status_off()
-        self.set_current_page("@GAME", False)
+        self.set_current_page(self.pop_last_previous_page(), False)
         self._GAME_KEY_CONFIG = {}
 
     def set_key_conf(self, page: str, key: int, conf: dict):
@@ -1358,15 +1391,19 @@ class Config:
         if games_conf is not None:
             self.parse_games(games_conf)
 
-    def parse_games(self, games_conf: dict):
+    def parse_games(self, games_conf: list):
         """Apply the configuration of games"""
-        for game in games_conf.keys():
-            self.parse_game(game, games_conf[game])
+
+        key_config = self.mydeck.key_config()
+        for page_name in list(key_config.keys()):
+            if page_name.startswith("@GAME"):
+                del key_config[page_name]
+
+        for game_conf in games_conf:
+            self.parse_game(game_conf["game"], game_conf)
 
     def parse_game(self, game: str, game_conf: dict = {}):
         """Apply the configuration of a game"""
-        if game_conf is None:
-            return False
         game = 'Game' + game
         m = self._load_module(game)
         getattr(m, game)(self.mydeck, game_conf)

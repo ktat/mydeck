@@ -8,6 +8,7 @@ setup(
         "pyyaml",
         "streamdeck",
         "qrcode",
+        "netifaces",
     ],
     package_data = {
       "": [".png", ".js", ".html", ".css"],

@@ -123,13 +123,15 @@ class App:
 class GameAppBase(App):
     """Base class of a game application"""
     require_key_count: int
+    require_columns: int
     enable: bool = True
+    keys: int
 
     def __init__(self, mydeck: MyDeck, start_key_num: int = 0):
         """Constructor. pass MyDeck instance and key number of put game."""
         super().__init__(mydeck)
         self.data: dict = {}
-        if self.require_key_count > mydeck.key_count:
+        if self.require_key_count > mydeck.key_count or self.require_columns > mydeck.columns:
             self.enable = False
 
 

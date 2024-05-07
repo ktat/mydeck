@@ -226,6 +226,8 @@ def main():
         '--config-path', default=os.path.expanduser('~/.config/mydeck'), help='Config directory')
     parser.add_argument('--vdeck', action='store_true',
                         default=False, help='Use virutal devices')
+    parser.add_argument('--no-qr', action='store_true',
+                        default=False, help='Do not print QR code')
     args = parser.parse_args()
 
     config: dict = {}
@@ -253,13 +255,15 @@ def main():
             print("-: %s" % url)
         index += 1
 
-    strdin = input(
-        "\nSelect the IP address to print as QR code(Enter to skip): ")
-    if strdin.isdigit():
-        url = "http://" + ips[int(strdin)] + ":" + str(config["server_port"])
-        print_qr_code(url)
-    else:
-        print("Skip QR code printing.")
+    if not args.no_qr:
+        strdin = input(
+            "\nSelect the IP address to print as QR code(Enter to skip): ")
+        if strdin.isdigit():
+            url = "http://" + ips[int(strdin)] + ":" + \
+                str(config["server_port"])
+            print_qr_code(url)
+        else:
+            print("Skip QR code printing.")
 
     mydecks_starter = MyDecksStarter(config, args.vdeck)
     mydecks_starter.run()
