@@ -146,10 +146,10 @@ If you set window title as PAGE\_LABEL, page is changed according to active wind
         image: "./src/Assets/nagios.ico"
         change_page: '@previous'
 "games":
-  RandomNumber: 0
-  Memory: 3
-  TicTackToe: 7
-  WhacAMole: 8
+  - game: RandomNumber
+  - game: Memory
+  - game: TicTackToe
+  - game: WhacAMole
 "page_config":
   "@HOME":
     keys:
