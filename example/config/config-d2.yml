@@ -42,7 +42,7 @@ apps:
              - "label": "03"
                "image": "./src/Assets/cat.png"
 "games":
-  RandomNumber: 0
+  - game: RandomNumber
 
 page_config:
   "@HOME":
