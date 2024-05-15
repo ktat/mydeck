@@ -150,10 +150,11 @@ class MyDecks:
         # Wait until all application threads have terminated (for this example,
         # this is when all deck handles are closed).
         for t in threading.enumerate():
-            try:
-                t.join()
-            except RuntimeError as e:
-                logging.critical("Error in start_decks {}".format(e))
+            if t != threading.current_thread():
+                try:
+                    t.join()
+                except RuntimeError as e:
+                    logging.critical("Error in start_decks {}".format(e))
 
         logging.info("start_decks end!")
         sys.exit()

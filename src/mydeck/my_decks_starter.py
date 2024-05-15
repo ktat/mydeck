@@ -262,8 +262,8 @@ def main():
             url = "http://" + ips[int(strdin)] + ":" + \
                 str(config["server_port"])
             print_qr_code(url)
-        else:
-            print("Skip QR code printing.")
+    else:
+        print("\nSkip QR code printing.\n")
 
     mydecks_starter = MyDecksStarter(config, args.vdeck)
     mydecks_starter.run()
