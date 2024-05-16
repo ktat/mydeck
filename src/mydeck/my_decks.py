@@ -972,7 +972,7 @@ class MyDeck:
                 break
 
             if MyDecksManager.ConfigQueue.get(sn) is not None:
-                data = MyDecksManager.ConfigQueue[sn].get()
+                data: dict = MyDecksManager.ConfigQueue[sn].get()
 
                 if data.get('exit'):
                     break
@@ -995,6 +995,8 @@ class MyDeck:
                 elif data.get("app"):
                     save = self.config.update_app_config_content(
                         target_page, data)
+                elif data.get("games"):
+                    save = self.config.update_game_config(data.get("games"))
                 else:
                     save = self.config.update_page_config_content(
                         target_page, data)
@@ -1070,24 +1072,22 @@ class Config:
         return None
 
     def delete_touchscreen_config(self, page: str) -> bool:
-        app_configs: Optional[list] = self._config_content_origin.get("apps")
-        if app_configs is None:
-            app_configs = []
-        new_app_configs: list = []
+        app_configs: list[dict] = self._config_content_origin.get("apps", [])
+        new_app_configs: list[dict] = []
         modified = False
         for app_config in app_configs:
-            if app_config.get("option") and app_config["option"].get("page"):
-                pages: list = app_config["option"]["page"]
+            if app_config.get("option"):
+                pages: list = app_config["option"].get("page", [])
                 if page in pages:
                     modified = True
                     pages.remove(page)
-                    app_config["page"] = pages
-                    if len(app_config["page"]) != 0:
-                        new_app_configs.append(app_config)
+                if len(pages) > 0:
+                    app_config["option"]["page"] = pages
+                    new_app_configs.append(app_config)
                 else:
                     new_app_configs.append(app_config)
             else:
-                new_app_configs.append(app_config)
+                modified = True
 
         if modified:
             self._config_content_origin["apps"] = new_app_configs
@@ -1189,6 +1189,13 @@ class Config:
                 else:
                     new_app_configs.append(config)
             self._config_content_origin["apps"] = new_app_configs
+
+    def update_game_config(self, data: dict):
+        if not self._config_content_origin.get("games") or self._config_content_origin["games"] != data:
+            self._config_content_origin["games"] = data
+            return True
+
+        return False
 
     def update_app_config_content(self, page: str, data: dict) -> bool:
         app_name: Optional[str] = data.pop('app', None)

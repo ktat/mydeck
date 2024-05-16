@@ -138,7 +138,12 @@ div.app h1 {
     padding-bottom: 5px;
 }
 
-#settingModal {
+.game-draggable {
+    width: 90%;
+}
+
+.settingModal,
+.settingGameModal {
     position: fixed;
     left: 50%;
     top: 40%;

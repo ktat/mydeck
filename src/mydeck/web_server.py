@@ -124,6 +124,18 @@ class DeckOutputWebHandler(http.server.BaseHTTPRequestHandler):
             current_page = m.group(2)
             key_index = int(m.group(3))
             return self.res_current_key_config(id, current_page, key_index)
+        elif (m := re.search("^/api/device/(\w+)/dial_config/([^/]+)/(\d+)/$", self.path)) is not None:
+            id = m.group(1)
+            current_page = m.group(2)
+            key_index = int(m.group(3))
+            return self.res_current_dial_config(id, current_page, key_index)
+        elif (m := re.search("^/api/device/(\w+)/touchscreen_config/([^/]+)/$", self.path)) is not None:
+            id = m.group(1)
+            current_page = m.group(2)
+            return self.res_current_touchscreen_config(id, current_page)
+        elif (m := re.search("^/api/device/(\w+)/game_config/$", self.path)) is not None:
+            id = m.group(1)
+            return self.res_game_config(id)
         elif self.path == '/api/status':
             return self.res_status()
         elif self.path == '/api/resource':
@@ -132,8 +144,18 @@ class DeckOutputWebHandler(http.server.BaseHTTPRequestHandler):
             return self.res_device_info()
         elif self.path == '/api/images':
             return self.res_images()
+        elif self.path == '/favicon.ico':
+            image_path = ROOT_DIR + '/html/favicon.ico'
+            with open(image_path, mode="rb") as f:
+                try:
+                    return self.response_image(f, "ico")
+                except Exception as e:
+                    logging.debug(e)
+                    pass
         elif self.path == '/api/apps':
             return self.res_apps()
+        elif self.path == '/api/games':
+            return self.res_games()
         elif self.path == '/api/device_key_images':
             return self.res_device_key_images()
         elif (m := re.search('^/api/([^/]+)(?:/(\d+|(?:dial|touch)/(\d+)/(\d+)))?$', self.path)) is not None:
@@ -186,6 +208,9 @@ class DeckOutputWebHandler(http.server.BaseHTTPRequestHandler):
         if self.path == '/api/key_setting/':
             return self.res_key_setting()
 
+        if self.path == '/api/game_config/':
+            return self.res_game_setting()
+
         self.response_404()
 
     def text_headers(self, status: int = 200, type: str = "html; charset=utf-8"):
@@ -234,6 +259,29 @@ class DeckOutputWebHandler(http.server.BaseHTTPRequestHandler):
                                       for word in app_name.split('_'))
         data = getattr(module, camel_case_app_name).sample_data
         self.api_json_response(data)
+
+    def res_game_config(self, id: str) -> list:
+        from .my_decks_manager import VirtualDeck
+        from .my_decks import MyDecks
+
+        deck: VirtualDeck = self.idDeckMap[id]
+
+        games_config: list = []
+        for mydeck in MyDecks.mydecks.values():
+            if mydeck.deck.get_serial_number() == deck.get_serial_number():
+                sn_alias = mydeck.myname
+                if MyDecks.mydecks[sn_alias] is None:
+                    continue
+                conf = MyDecks.mydecks[sn_alias].config
+                if conf is None:
+                    continue
+                if conf._config_content_origin is None:
+                    continue
+
+                games_config = conf._config_content_origin.get("games", [])
+                break
+
+        return self.api_json_response(games_config)
 
     def res_current_key_config(self, id: str, current_page: str, key_index: int):
         from .my_decks_manager import VirtualDeck
@@ -285,6 +333,89 @@ class DeckOutputWebHandler(http.server.BaseHTTPRequestHandler):
 
         return self.api_json_response({
             "key_config": target_key_config,
+            "app_config": target_app_config
+        })
+
+    def res_current_dial_config(self, id: str, current_page: str, dial_index: int):
+        from .my_decks_manager import VirtualDeck
+        from .my_decks import MyDecks
+
+        deck: VirtualDeck = self.idDeckMap[id]
+
+        apps_config: Optional[list] = []
+        for mydeck in MyDecks.mydecks.values():
+            if mydeck.deck.get_serial_number() == deck.get_serial_number():
+                sn_alias = mydeck.myname
+                if MyDecks.mydecks[sn_alias] is None:
+                    continue
+                conf = MyDecks.mydecks[sn_alias].config
+                if conf is None:
+                    continue
+                if conf._config_content_origin is None:
+                    continue
+
+                apps_config = conf._config_content_origin.get("apps")
+                break
+
+        from .my_decks import MyDecks, MyDeck
+        page_name: str = current_page
+
+        if page_name == "":
+            return self.response_404()
+
+        target_app_config: Optional[dict] = None
+        if apps_config is not None:
+            for app_config in apps_config:
+                if app_config.get("option") is not None:
+                    if page_key := app_config["option"].get("page_dial"):
+                        for page in page_key.keys():
+                            if page == page_name and page_key[page] == dial_index:
+                                target_app_config = app_config
+                                break
+
+        return self.api_json_response({
+            "app_config": target_app_config
+        })
+
+    def res_current_touchscreen_config(self, id: str, current_page: str):
+        from .my_decks_manager import VirtualDeck
+        from .my_decks import MyDecks
+
+        deck: VirtualDeck = self.idDeckMap[id]
+
+        apps_config: Optional[list] = []
+        for mydeck in MyDecks.mydecks.values():
+            if mydeck.deck.get_serial_number() == deck.get_serial_number():
+                sn_alias = mydeck.myname
+                if MyDecks.mydecks[sn_alias] is None:
+                    continue
+                conf = MyDecks.mydecks[sn_alias].config
+                if conf is None:
+                    continue
+                if conf._config_content_origin is None:
+                    continue
+
+                apps_config = conf._config_content_origin.get("apps")
+                break
+
+        from .my_decks import MyDecks, MyDeck
+        page_name: str = current_page
+
+        if page_name == "":
+            return self.response_404()
+
+        target_app_config: Optional[dict] = None
+        if apps_config is not None:
+            for app_config in apps_config:
+                if app_config.get("option") is not None:
+                    if pages := app_config["option"].get("page"):
+                        for page in pages:
+                            if page == page_name:
+                                target_app_config = app_config
+                                del target_app_config["option"]["page"]
+                                break
+
+        return self.api_json_response({
             "app_config": target_app_config
         })
 
@@ -358,6 +489,12 @@ class DeckOutputWebHandler(http.server.BaseHTTPRequestHandler):
     def res_apps(self):
         from . import my_decks_app_base
         apps: list = list(my_decks_app_base.APP_NAMES.keys())
+        apps.sort()
+        self.api_json_response(apps)
+
+    def res_games(self):
+        from . import my_decks_app_base
+        apps: list = list(my_decks_app_base.GAME_NAMES.keys())
         apps.sort()
         self.api_json_response(apps)
 

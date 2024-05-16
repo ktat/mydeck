@@ -76,6 +76,7 @@ const App = {
                             <a target="_blank" href="/api/status">Status API &#x29c9;</a>
                             <a target="_blank" href="/api/images">Asset Images API &#x29c9;</a>
                             <a target="_blank" href="/api/apps">Apps API &#x29c9;</a>
+                            <a target="_blank" href="/api/games">Games API &#x29c9;</a>
                             <a target="_blank" href="/api/device_key_images">Devices' images API &#x29c9;</a>
                             <a target="_blank" href="/api/resource">Resouse API &#x29c9;</a>
                         </div>
