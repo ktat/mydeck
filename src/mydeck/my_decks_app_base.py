@@ -184,6 +184,8 @@ class AppBase(App):
             self.stop_app()
             return True
 
+        return False
+
     def stop_app(self):
         """Stop application. It must be called within app."""
         self.stop(True)
