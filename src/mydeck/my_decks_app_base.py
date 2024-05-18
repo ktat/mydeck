@@ -134,6 +134,8 @@ class GameAppBase(App):
         if self.require_key_count > mydeck.key_count or self.require_columns > mydeck.columns:
             self.enable = False
 
+        return False
+
 
 class AppBase(App):
     """Base class of a normal application"""
@@ -181,8 +183,6 @@ class AppBase(App):
         if self.mydeck._exit or self._stop or not self.is_in_target_page():
             self.stop_app()
             return True
-
-        return False
 
     def stop_app(self):
         """Stop application. It must be called within app."""

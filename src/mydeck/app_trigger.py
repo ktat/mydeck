@@ -2,6 +2,7 @@ import datetime
 import time
 from mydeck import MyDeck, BackgroundAppBase
 import logging
+import sys
 
 
 class AppTrigger(BackgroundAppBase):
@@ -14,6 +15,10 @@ class AppTrigger(BackgroundAppBase):
 
     def start(self):
         while True:
+            # exit when main process is finished
+            if self.check_to_stop():
+                break
+
             current_time = datetime.datetime.now()
             if current_time.day != self.now.day:
                 for app in self.mydeck.config.apps:
@@ -34,5 +39,14 @@ class AppTrigger(BackgroundAppBase):
                         app.trigger.set()
                         self.now = current_time
 
-            # sleep untile next munite
-            time.sleep(datetime.datetime.now().second % 60)
+            # sleep until next 10 seconds
+            time.sleep(datetime.datetime.now().second % 10)
+
+        self.debug("exit in start")
+        sys.exit()
+
+    def check_to_stop(self) -> bool:
+        """Return true when the deck exists or current page is not in the target of app."""
+
+        if self.mydeck._exit or self._stop:
+            return True

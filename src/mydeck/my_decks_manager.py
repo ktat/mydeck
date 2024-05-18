@@ -4,12 +4,10 @@ import http.server
 import logging
 import random
 import re
-import time
 import traceback
 import yaml
 import queue
 import threading
-import os
 from .lock import Lock
 from PIL import Image
 from StreamDeck.DeviceManager import DeviceManager
@@ -662,12 +660,18 @@ class DeckInputWeb(DeckInput):
 
 class DeckOutputWebServer:
     """virtual deck server"""
+    httpd = None
 
     def __init__(self):
         pass
 
+    @staticmethod
+    def shutdown():
+        DeckOutputWebServer.httpd.shutdown()
+
     def run(self, port: int):
         with http.server.ThreadingHTTPServer(('', port), DeckOutputWebHandler) as httpd:
+            DeckOutputWebServer.httpd = httpd
             logging.info("serving at port %d", port)
             logging.info("server is started")
             httpd.serve_forever()

@@ -17,7 +17,7 @@ import traceback
 import shutil
 import datetime
 import time
-import queue
+import signal
 from .my_decks_manager import VirtualDeck, DeckOutputWebHandler
 
 from cairosvg import svg2png
@@ -146,6 +146,21 @@ class MyDecks:
             else:
                 logging.warning("config or (decks and configs) is required")
                 raise (ExceptionNoConfig)
+
+        def stop_decks(signal, frame):
+            from . import DeckOutputWebServer
+
+            DeckOutputWebServer.shutdown()
+            for deck in self.mydecks.values():
+                deck.stop_working_apps()
+                deck._exit = True
+                deck.deck.close()
+
+            logging.info("mydeck is about to stop. wait a moment.")
+
+            sys.exit()
+
+        signal.signal(signal.SIGINT, stop_decks)
 
         # Wait until all application threads have terminated (for this example,
         # this is when all deck handles are closed).
@@ -973,7 +988,6 @@ class MyDeck:
 
             if MyDecksManager.ConfigQueue.get(sn) is not None:
                 data: dict = MyDecksManager.ConfigQueue[sn].get()
-
                 if data.get('exit'):
                     break
 
