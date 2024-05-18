@@ -154,6 +154,7 @@ class MyDecks:
             for deck in self.mydecks.values():
                 deck.stop_working_apps()
                 deck._exit = True
+                deck.deck.reset()
                 deck.deck.close()
 
             logging.info("mydeck is about to stop. wait a moment.")
