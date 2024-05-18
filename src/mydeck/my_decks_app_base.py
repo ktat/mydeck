@@ -126,6 +126,7 @@ class GameAppBase(App):
     require_columns: int
     enable: bool = True
     keys: int
+    mode_explanation: str = ""
 
     def __init__(self, mydeck: MyDeck, start_key_num: int = 0):
         """Constructor. pass MyDeck instance and key number of put game."""

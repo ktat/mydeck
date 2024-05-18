@@ -8,6 +8,7 @@ from mydeck import MyDeck, GameAppBase, ROOT_DIR
 class GameRandomNumber(GameAppBase):
     require_key_count: int = 6
     require_columns: int = 2
+    mode_explanation = "n <= 10: show n numbers."
 
     def __init__(self, mydeck: MyDeck, conf: dict = {}):
         super().__init__(mydeck)

@@ -18,26 +18,30 @@ const GameModal = {
         axios.get(url).then((response) => {
             havingGame = {};
             const res = response.data;
+            idx = 0;
             for (const game of res) {
-                havingGame[game.game] = true;
+                havingGame[game.game] = idx;
                 game.enabled = true;
                 game.draggable = true;
                 this.games.push(game)
+                idx++;
             }
 
             const url = baseURL + 'api/games';
             axios.get(url).then((response) => {
                 const res = response.data;
-                games = res;
+                const games = res;
                 for (const game of games) {
-                    g = game.replace(/_(.)/g, (match, p1) => p1.toUpperCase()).replace(/^game/, "");
-                    if (havingGame[g]) {
+                    gameName = game.name.replace(/_(.)/g, (match, p1) => p1.toUpperCase()).replace(/^game/, "");
+                    if (havingGame[gameName] !== undefined) {
+                        this.games[havingGame[gameName]].mode_explanation = game.mode_explanation;
                         continue;
                     }
                     this.games.push({
-                        "game": g,
+                        "game": gameName,
                         "enabled": false,
                         "draggable": true,
+                        "mode_explanation": game.mode_explanation,
                     });
                 }
             });
@@ -128,13 +132,20 @@ const GameModal = {
             >
                 <div>
                     <input @click="toggleEnabled(index)" v-model="game.enabled" type="checkbox">
-                    <span @click="toggleAccordion(index)">
-                        {{ game.game }}
+                    {{ game.game }}
+                    <span class="toggle-game-mode-editor" v-if="game.mode_explanation != ''" @click="toggleAccordion(index)">
+                        <span v-if="game.expanded"  >^</span>
+                        <span v-else="game.expanded">v</span>
                     </span>
                 </div>
-                <div v-if="game.expanded">
-                    <textarea v-model="game.modes" rows="1" cols="50"></textarea><br />
-                </div>
+                <template v-if="game.mode_explanation != ''">
+                    <div v-if="game.expanded">
+                        <textarea v-model="game.modes" rows="1" cols="50"></textarea><br />
+                        <div class="game-mode-explanation">
+                        {{ game.mode_explanation }}
+                        </div>
+                    </div>
+                </template>
             </div>
         </template>
         <input type="button" value="SAVE" @click.left="settingDone()" />

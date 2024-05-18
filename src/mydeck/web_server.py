@@ -494,9 +494,13 @@ class DeckOutputWebHandler(http.server.BaseHTTPRequestHandler):
 
     def res_games(self):
         from . import my_decks_app_base
-        apps: list = list(my_decks_app_base.GAME_NAMES.keys())
-        apps.sort()
-        self.api_json_response(apps)
+        games_with_explanation: list = []
+        games: list = list(my_decks_app_base.GAME_NAMES.keys())
+        games.sort()
+        for game in games:
+            games_with_explanation.append(
+                {"name": game, "mode_explanation": my_decks_app_base.GAME_NAMES[game]})
+        self.api_json_response(games_with_explanation)
 
     def res_key_tapped(self, id: str, key: int):
         self.call_key_call_back(id, key)

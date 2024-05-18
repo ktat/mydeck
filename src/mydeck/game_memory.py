@@ -7,6 +7,7 @@ from mydeck import MyDeck, GameAppBase, ExceptionNoDeck, ROOT_DIR
 class GameMemory(GameAppBase):
     require_key_count: int = 15
     require_columns: int = 3
+    mode_explanation = "-1: VS mode, 0: No wait, 4: 4 seconds, 8: 8 seconds n: n seconds"
 
     def __init__(self, mydeck: MyDeck, conf: dict = {}):
         super().__init__(mydeck)

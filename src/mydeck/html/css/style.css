@@ -230,3 +230,11 @@ textarea.setting_json {
     width: 100%;
     height: 200px;
 }
+
+.toggle-game-mode-editor {
+    color: #77f;
+}
+
+.game-mode-explanation {
+    color: #ccc;
+}
