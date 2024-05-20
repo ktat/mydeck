@@ -131,8 +131,8 @@ const GameModal = {
                 @dragend="dragEnd($event)"
             >
                 <div>
-                    <input @click="toggleEnabled(index)" v-model="game.enabled" type="checkbox">
-                    {{ game.game }}
+                    <label><input @click="toggleEnabled(index)" v-model="game.enabled" type="checkbox">
+                    {{ game.game }}</label>
                     <span class="toggle-game-mode-editor" v-if="game.mode_explanation != ''" @click="toggleAccordion(index)">
                         <span v-if="game.expanded"  >^</span>
                         <span v-else="game.expanded">v</span>
