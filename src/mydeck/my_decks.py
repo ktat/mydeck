@@ -162,6 +162,7 @@ class MyDecks:
             sys.exit()
 
         signal.signal(signal.SIGINT, stop_decks)
+        signal.signal(signal.SIGTERM, stop_decks)
 
         # Wait until all application threads have terminated (for this example,
         # this is when all deck handles are closed).

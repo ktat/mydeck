@@ -1,11 +1,15 @@
 import logging
+import lockfile
+import signal
+from daemon import pidfile
+from daemon.daemon import DaemonContext
 from mydeck import MyDecks
 from StreamDeck.DeviceManager import DeviceManager
 from StreamDeck.Devices.StreamDeck import StreamDeck
 import os
 import yaml
 import sys
-from typing import Dict, Any
+from typing import Dict, Any, Optional
 import argparse
 import netifaces
 import qrcode
@@ -219,6 +223,8 @@ def main():
     )) + [x.lower() for x in logging._levelToName.values()]
 
     parser = argparse.ArgumentParser()
+    parser.add_argument("-d", action="store_true", help="run as daemon")
+    parser.add_argument("--stop", action="store_true", help="stop daemon")
     parser.add_argument('--port', type=int, default=3000, help='Server port')
     parser.add_argument(
         '--log-level', default='INFO', choices=log_levels, help='Log level')
@@ -244,28 +250,131 @@ def main():
 
     logging.basicConfig(level=config.get("log_level", "INFO"))
 
-    ips = get_private_ips()
-    print("MyDeck Server is running. Access to the following URL.\n")
-    index = 0
-    for ip in ips:
-        url = "http://" + ip + ":" + str(config["server_port"])
-        if index > 0:
-            print("%d: %s" % (index, url))
+    pid_file = make_pidlockfile(config["config_path"])
+
+    if args.stop and not pid_file.is_locked():
+        logging.error("MyDeck is not running.")
+        sys.exit(1)
+
+    if not args.stop and args.d and pid_file.is_locked():
+        logging.error("MyDeck is already running.")
+        sys.exit(1)
+
+    if not args.stop:
+        ips = get_private_ips()
+        print("MyDeck Web Server is running. Access to the following URL.\n")
+        index = 0
+        for ip in ips:
+            url = "http://" + ip + ":" + str(config["server_port"])
+            if index > 0:
+                print("%d: %s" % (index, url))
+            else:
+                print("-: %s" % url)
+            index += 1
+
+        if not args.no_qr:
+            strdin = input(
+                "\nSelect the IP address to print as QR code(Enter to skip): ")
+            if strdin.isdigit():
+                url = "http://" + ips[int(strdin)] + ":" + \
+                    str(config["server_port"])
+                print_qr_code(url)
         else:
-            print("-: %s" % url)
-        index += 1
+            print("\nSkip QR code printing.\n")
 
-    if not args.no_qr:
-        strdin = input(
-            "\nSelect the IP address to print as QR code(Enter to skip): ")
-        if strdin.isdigit():
-            url = "http://" + ips[int(strdin)] + ":" + \
-                str(config["server_port"])
-            print_qr_code(url)
+    if args.stop:
+        if is_pidfile_stale(pid_file):
+            pid_file.break_lock()
+        else:
+            terminate_daemon_process(pid_file)
+    elif args.d:
+        ctx = DaemonContext()
+        try:
+            ctx.pidfile = pid_file
+            ctx.stdin = sys.stdin
+            ctx.stdout = sys.stdout
+            ctx.stderr = sys.stderr
+            ctx.open()
+            mydecks_starter = MyDecksStarter(config, args.vdeck)
+            mydecks_starter.run()
+        except Exception as e:
+            logging.error(e)
+            sys.exit(1)
     else:
-        print("\nSkip QR code printing.\n")
-
-    mydecks_starter = MyDecksStarter(config, args.vdeck)
-    mydecks_starter.run()
+        mydecks_starter = MyDecksStarter(config, args.vdeck)
+        mydecks_starter.run()
 
     os._exit(0)
+
+
+def terminate_daemon_process(pid_file: pidfile.TimeoutPIDLockFile):
+    """ Terminate the daemon process specified in the current PID file.
+
+        :return: ``None``.
+        :raises MyDeckStarterStopFailureError: If terminating the daemon
+            fails with an OS error.
+        """
+    pid: Optional[int] = pid_file.read_pid()
+    if pid is None:
+        error = MyDeckStarterStopFailureError(ValueError(
+            "pid file is empty. maybe the daemon is not running."))
+        raise error
+    try:
+        os.kill(pid, signal.SIGTERM)
+    except OSError as exc:
+        error = MyDeckStarterStopFailureError(ValueError(
+            "Failed to terminate {pid:d}: {exc}".format(
+                pid=pid, exc=exc)))
+        raise error from exc
+
+    return None
+
+
+def make_pidlockfile(config_path: str) -> pidfile.TimeoutPIDLockFile:
+    """ Make a PIDLockFile instance with the given filesystem path. """
+    path = os.path.join(config_path, '.mydeck.pid')
+    acquire_timeout = 10
+    if not isinstance(path, str):
+        error = ValueError("Not a filesystem path: {path!r}".format(
+            path=path))
+        raise error
+    if not os.path.isabs(path):
+        error = ValueError("Not an absolute path: {path!r}".format(
+            path=path))
+        raise error
+    lockfile = pidfile.TimeoutPIDLockFile(path, acquire_timeout)
+
+    return lockfile
+
+
+def is_pidfile_stale(pid_file) -> bool:
+    """ Determine whether a PID file is stale.
+
+        :return: ``True`` iff the PID file is stale; otherwise ``False``.
+
+        The PID file is “stale” if its contents are valid but do not
+        match the PID of a currently-running process.
+        """
+    result = False
+
+    pidfile_pid = pid_file.read_pid()
+    if pidfile_pid is not None:
+        try:
+            os.kill(pidfile_pid, signal.SIG_DFL)
+        except ProcessLookupError:
+            # The specified PID does not exist.
+            result = True
+
+    return result
+
+
+class MyDeckStarterError(Exception):
+    """ Base class for exceptions raised by MyDeckStarter. """
+
+
+class MyDeckStarterStartFailureError(MyDeckStarterError, RuntimeError):
+    """ Raised when failure starting MyDeck. """
+
+
+class MyDeckStarterStopFailureError(MyDeckStarterError, RuntimeError):
+    """ Raised when failure stopping MyDeck. """

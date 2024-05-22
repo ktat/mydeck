@@ -6,7 +6,7 @@ import psutil
 import os
 import logging
 from StreamDeck.Devices.StreamDeck import TouchscreenEventType, DialEventType
-from typing import Optional
+from typing import Optional, Any
 from typing import Union
 
 ROOT_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -225,7 +225,7 @@ class DeckOutputWebHandler(http.server.BaseHTTPRequestHandler):
                          self.headers.get("Origin"))
         self.end_headers()
 
-    def api_json_response(self, data: dict):
+    def api_json_response(self, data: Any):
         self.api_headers()
         str = json.dumps(data)
         self.wfile.write(str.encode('utf-8'))
@@ -260,7 +260,7 @@ class DeckOutputWebHandler(http.server.BaseHTTPRequestHandler):
         data = getattr(module, camel_case_app_name).sample_data
         self.api_json_response(data)
 
-    def res_game_config(self, id: str) -> list:
+    def res_game_config(self, id: str):
         from .my_decks_manager import VirtualDeck
         from .my_decks import MyDecks
 
@@ -290,7 +290,7 @@ class DeckOutputWebHandler(http.server.BaseHTTPRequestHandler):
         deck: VirtualDeck = self.idDeckMap[id]
 
         page_config_config: Optional[dict] = {}
-        apps_config: Optional[list] = []
+        apps_config: Optional[list[dict]] = []
         for mydeck in MyDecks.mydecks.values():
             if mydeck.deck.get_serial_number() == deck.get_serial_number():
                 sn_alias = mydeck.myname
@@ -342,7 +342,7 @@ class DeckOutputWebHandler(http.server.BaseHTTPRequestHandler):
 
         deck: VirtualDeck = self.idDeckMap[id]
 
-        apps_config: Optional[list] = []
+        apps_config: Optional[list[dict]] = []
         for mydeck in MyDecks.mydecks.values():
             if mydeck.deck.get_serial_number() == deck.get_serial_number():
                 sn_alias = mydeck.myname
@@ -407,13 +407,13 @@ class DeckOutputWebHandler(http.server.BaseHTTPRequestHandler):
         target_app_config: Optional[dict] = None
         if apps_config is not None:
             for app_config in apps_config:
-                if app_config.get("option") is not None:
-                    if pages := app_config["option"].get("page"):
-                        for page in pages:
-                            if page == page_name:
-                                target_app_config = app_config
-                                del target_app_config["option"]["page"]
-                                break
+                pages = app_config.get("option", {}).get("page", [])
+                for page in pages:
+                    if page == page_name:
+                        target_app_config = app_config["option"]
+                        if target_app_config is not None and target_app_config["page"] is not None:
+                            del target_app_config["page"]
+                        break
 
         return self.api_json_response({
             "app_config": target_app_config

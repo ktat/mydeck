@@ -48,5 +48,4 @@ class AppTrigger(BackgroundAppBase):
     def check_to_stop(self) -> bool:
         """Return true when the deck exists or current page is not in the target of app."""
 
-        if self.mydeck._exit or self._stop:
-            return True
+        return self.mydeck._exit or self._stop

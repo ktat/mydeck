@@ -135,8 +135,6 @@ class GameAppBase(App):
         if self.require_key_count > mydeck.key_count or self.require_columns > mydeck.columns:
             self.enable = False
 
-        return False
-
 
 class AppBase(App):
     """Base class of a normal application"""
