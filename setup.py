@@ -9,6 +9,8 @@ setup(
         "streamdeck",
         "qrcode",
         "netifaces",
+        "pidfile",
+        "python-daemon",
     ],
     package_data = {
       "": [".png", ".js", ".html", ".css"],
