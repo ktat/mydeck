@@ -1,5 +1,4 @@
 import logging
-import lockfile
 import signal
 from daemon import pidfile
 from daemon.daemon import DaemonContext
