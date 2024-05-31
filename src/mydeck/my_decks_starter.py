@@ -224,6 +224,8 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("-d", action="store_true", help="run as daemon")
     parser.add_argument("--stop", action="store_true", help="stop daemon")
+    parser.add_argument("--restart", action="store_true",
+                        help="stop & start new daemon")
     parser.add_argument('--port', type=int, default=3000, help='Server port')
     parser.add_argument(
         '--log-level', default='INFO', choices=log_levels, help='Log level')
@@ -255,38 +257,45 @@ def main():
         logging.error("MyDeck is not running.")
         sys.exit(1)
 
-    if not args.stop and args.d and pid_file.is_locked():
+    if not args.restart and not args.stop and args.d and pid_file.is_locked():
         logging.error("MyDeck is already running.")
         sys.exit(1)
 
-    if not args.stop:
-        ips = get_private_ips()
-        print("MyDeck Web Server is running. Access to the following URL.\n")
-        index = 0
-        for ip in ips:
-            url = "http://" + ip + ":" + str(config["server_port"])
-            if index > 0:
-                print("%d: %s" % (index, url))
-            else:
-                print("-: %s" % url)
-            index += 1
-
-        if not args.no_qr:
-            strdin = input(
-                "\nSelect the IP address to print as QR code(Enter to skip): ")
-            if strdin.isdigit():
-                url = "http://" + ips[int(strdin)] + ":" + \
-                    str(config["server_port"])
-                print_qr_code(url)
-        else:
-            print("\nSkip QR code printing.\n")
-
-    if args.stop:
+    if args.stop or args.restart:
         if is_pidfile_stale(pid_file):
             pid_file.break_lock()
         else:
             terminate_daemon_process(pid_file)
-    elif args.d:
+
+        if args.stop:
+            logging.info("MyDeck is stopped.")
+            sys.exit(0)
+        else:
+            logging.info("MyDeck is stopped. wait for restart.")
+            logging.info("MyDeck is starting.")
+
+    ips = get_private_ips()
+    print("MyDeck Web Server is running. Access to the following URL.\n")
+
+    index = 0
+    for ip in ips:
+        url = "http://" + ip + ":" + str(config["server_port"])
+        if index > 0:
+            print("%d: %s" % (index, url))
+        else:
+            print("-: %s" % url)
+        index += 1
+    if not args.no_qr:
+        strdin = input(
+            "\nSelect the IP address to print as QR code(Enter to skip): ")
+        if strdin.isdigit():
+            url = "http://" + ips[int(strdin)] + ":" + \
+                str(config["server_port"])
+            print_qr_code(url)
+    else:
+        print("\nSkip QR code printing.\n")
+
+    if args.d:
         ctx = DaemonContext()
         try:
             ctx.pidfile = pid_file
