@@ -1,5 +1,11 @@
 # MyDeck
 
+MyDeck allows you to configure a real STREAM DECK.
+It also allows you to view and control the status of the actual STREAM DECK in your browser.
+Even if you don't have a real STREAM DECK device, you can use it as a virtual external keyboard in the browser.
+
+[!['MyDeck Demo']('youtube-thumbnail.png')]('https://www.youtube.com/watch?v=PqSREyznhI4')
+
 - To configure [STREAM DECK](https://www.elgato.com/ja/stream-deck) easily
 - To use  virtual devices compatible with STREAM DECK
 - Web Interface for virtual devices and real device
