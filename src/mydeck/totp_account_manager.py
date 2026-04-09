@@ -13,13 +13,20 @@ KEYRING_SERVICE = "mystreamdeck-totp"
 class TotpAccountManager:
     def __init__(self, accounts_file: str = ACCOUNTS_FILE):
         self.accounts_file = accounts_file
-        os.makedirs(os.path.dirname(self.accounts_file), exist_ok=True)
+        dir_name = os.path.dirname(self.accounts_file)
+        if dir_name:
+            os.makedirs(dir_name, exist_ok=True)
 
     def load_accounts(self) -> list[dict]:
         if not os.path.exists(self.accounts_file):
             return []
-        with open(self.accounts_file, "r") as f:
-            return json.load(f)
+        try:
+            with open(self.accounts_file, "r") as f:
+                return json.load(f)
+        except (json.JSONDecodeError, OSError) as e:
+            import logging
+            logging.warning("TotpAccountManager: failed to load %s: %s", self.accounts_file, e)
+            return []
 
     def save_account(self, name: str, issuer: str, secret: str) -> None:
         accounts = self.load_accounts()
@@ -68,5 +75,7 @@ class TotpAccountManager:
             issuer_from_label, account = "", label
         params = parse_qs(parsed.query)
         secret = params.get("secret", [""])[0]
+        if not secret:
+            raise ValueError("Missing 'secret' parameter in otpauth URI")
         issuer = params.get("issuer", [issuer_from_label])[0] or account
         return {"name": account, "issuer": issuer, "secret": secret}

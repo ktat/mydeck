@@ -30,6 +30,10 @@ class TestTotpAccountManager(unittest.TestCase):
         self.manager = TotpAccountManager(accounts_file=self.accounts_file)
         keyring_mock.reset_mock()
 
+    def tearDown(self):
+        import shutil
+        shutil.rmtree(self.tmpdir, ignore_errors=True)
+
     # --- load_accounts ---
 
     def test_load_accounts_returns_empty_list_when_file_missing(self):
@@ -56,9 +60,11 @@ class TestTotpAccountManager(unittest.TestCase):
 
     def test_save_account_updates_existing_without_duplicate(self):
         self.manager.save_account("GitHub", "GitHub", "SECRET1")
+        keyring_mock.reset_mock()
         self.manager.save_account("GitHub", "GitHub", "SECRET2")
         accounts = self.manager.load_accounts()
         self.assertEqual(len(accounts), 1)
+        keyring_mock.set_password.assert_called_with(KEYRING_SERVICE, "GitHub", "SECRET2")
 
     def test_save_account_adds_multiple_accounts(self):
         self.manager.save_account("GitHub", "GitHub", "SECRET1")
@@ -128,6 +134,10 @@ class TestTotpAccountManager(unittest.TestCase):
     def test_parse_uri_raises_for_wrong_type(self):
         with self.assertRaises(ValueError):
             self.manager.parse_otpauth_uri("otpauth://hotp/Service?secret=X")
+
+    def test_parse_uri_raises_for_missing_secret(self):
+        with self.assertRaises(ValueError):
+            self.manager.parse_otpauth_uri("otpauth://totp/MyService")
 
 
 if __name__ == '__main__':
