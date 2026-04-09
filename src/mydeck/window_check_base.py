@@ -9,7 +9,7 @@ class WindowCheckBase(BackgroundAppBase):
     """A base class to check active window. Don't use this class directly."""
     window_title_regexps = [
         [r'^Meet.+Google Chrome$', 'Meet'],
-        [r'^(Slack \|.+?\|.+?\|).+', '\g<1>'],
+        [r'^(Slack \|.+?\|.+?\|).+', r'\g<1>'],
         [r'^.+  YouTube.+Google Chrome$', 'YouTube'],
     ]
 
@@ -17,7 +17,7 @@ class WindowCheckBase(BackgroundAppBase):
         """'window_title_regexps' is a dict whose key is regexp and value is a replacement like the following
         {
           [r'^Meet.+Google Chrome$', 'Meet'],
-          [r'^(Slack \|.+?\|.+?\|).+', '\g<1>'],
+          [r'^(Slack \\|.+?\\|.+?\\|).+', '\\g<1>'],
           [r'^.+  YouTube.+Google Chrome$', 'YouTube'],
         }
         Normaly, they are given from configuration file like the following.
@@ -26,7 +26,7 @@ class WindowCheckBase(BackgroundAppBase):
           option:
             window_title_regexps:
               - ['^Meet.+Google Chrome$', 'Meet - Google Chrome']
-              - ['^(Slack \|.+?\|).+$', '\g<1>']
+              - ['^(Slack \\|.+?\\|).+$', '\\g<1>']
               - ['^.+ YouTube.+Google Chrome$', 'YouTube']
               - ['^Amazon.co.jp:.+ Prime Video.+Google Chrome$', 'Prime Video']
         """
@@ -72,6 +72,6 @@ class WindowCheckBase(BackgroundAppBase):
             for reg in self.window_title_regexps:
                 r1 = reg[0]
                 r2 = reg[1]
-                result = re.sub(r1, eval('"' + r2 + '"'), str(result))
+                result = re.sub(r1, r2, str(result))
                 result = re.sub(r"\n", "", str(result))
         return result

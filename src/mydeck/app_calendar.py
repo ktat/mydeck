@@ -20,17 +20,15 @@ class AppCalendar(TriggerAppBase):
     def set_image_to_key(self, key: int, page: str):
         now = datetime.datetime.now()
         im = Image.new('RGB', (X, Y), (0, 0, 0))
-        font = ImageFont.truetype(self.mydeck.font_path, 29)
+        font_large = ImageFont.truetype(self.mydeck.font_path, 29)
+        font_small = ImageFont.truetype(self.mydeck.font_path, 25)
         draw = ImageDraw.Draw(im)
         wday = now.strftime('%a')
-        date_text = "{0:02d}/{1:02d}".format(now.month, now.day)
-        color = "white"
-        if wday in 'Sun':
-            color = "red"
-        draw.text((12, 5), font=font, text=wday, fill=color)
-        draw.text((5, 33), font=font, text=date_text, fill="white")
-        font = ImageFont.truetype(self.mydeck.font_path, 25)
-        draw.text((10, 67), font=font, text=str(now.year), fill="white")
+        date_text = now.strftime('%m/%d')
+        color = "red" if wday == "Sun" else "white"
+        draw.text((12, 5), font=font_large, text=wday, fill=color)
+        draw.text((5, 33), font=font_large, text=date_text, fill="white")
+        draw.text((10, 67), font=font_small, text=str(now.year), fill="white")
 
         self.update_key_image(
             key,

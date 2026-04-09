@@ -209,6 +209,17 @@ class MyDeck:
     """Class to control a device like STREAM DECK."""
     mydecks: MyDecks
 
+    @staticmethod
+    def _find_font(candidates: list[str]) -> str:
+        """Return the first font path that exists, or the first candidate as fallback."""
+        for path in candidates:
+            if os.path.isfile(path):
+                return path
+        logging.warning(
+            "No font found from candidates: %s. "
+            "Please set 'font_path' in your config, or install a font package.", candidates)
+        return candidates[0]
+
     def __init__(self, opt: dict, server_port: int):
         deck: Optional[VirtualDeck] = opt.get('deck')
         if deck is None:
@@ -218,7 +229,15 @@ class MyDeck:
         self.deck: VirtualDeck = deck
         self.key_count: int = self.deck.key_count()
         self.columns: int = self.deck.columns()
-        self.font_path = "/usr/share/fonts/truetype/freefont/FreeSans.ttf"
+        self.font_path = self._find_font([
+            "/usr/share/fonts/truetype/freefont/FreeSans.ttf",          # Debian/Ubuntu: fonts-freefont-ttf
+            "/usr/share/fonts/truetype/liberation/LiberationSans-Regular.ttf",  # Debian/Ubuntu: fonts-liberation
+            "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",          # Debian/Ubuntu: fonts-dejavu-core
+            "/usr/share/fonts/TTF/DejaVuSans.ttf",                      # Arch Linux
+            "/usr/share/fonts/dejavu-sans-fonts/DejaVuSans.ttf",        # Fedora/RHEL
+            "/System/Library/Fonts/Helvetica.ttc",                      # macOS
+            "/System/Library/Fonts/Arial.ttf",                          # macOS
+        ])
         self.config: Optional['Config'] = None
         self.is_background_thread_started: bool = False
         self._alert_func: Optional[Callable] = None
@@ -508,7 +527,7 @@ class MyDeck:
         """Return url for key image"""
         if image_url is None and url is not None:
             image_url = re.sub(
-                r'^(https?://[^/]+).*$', '\g<1>/favicon.ico', url)
+                r'^(https?://[^/]+).*$', r'\g<1>/favicon.ico', url)
 
         return image_url
 
@@ -516,7 +535,7 @@ class MyDeck:
         """Return file name from url"""
         icon_name = re.sub(r'^https?://', '', image_url)
         icon_name = re.sub(r'[&=?/.]', '-', icon_name)
-        ext = re.sub(r'.+(\.\w+)$', '\g<1>', image_url)
+        ext = re.sub(r'.+(\.\w+)$', r'\g<1>', image_url)
         return '/tmp/' + 'mydeck-' + self.myname + icon_name + ext
 
     def image_url_to_image(self, conf: Optional[dict], url: Optional[str] = None):
@@ -1113,7 +1132,7 @@ class Config:
     def delete_dial_app_config(self, page: str, data: dict) -> bool:
         dial_str: Optional[str] = data.pop('dial', None)
 
-        if dial_str is None or re.match('\D', str(dial_str)) is not None:
+        if dial_str is None or re.match(r'\D', str(dial_str)) is not None:
             return False
         dial: int = int(dial_str)
         return self.delete_key_dial_app_config("page_dial", page, dial)
@@ -1121,7 +1140,7 @@ class Config:
     def delete_key_app_config(self, page: str, data: dict) -> bool:
         key_str: Optional[str] = data.pop('key', None)
 
-        if key_str is None or re.match('\D', str(key_str)) is not None:
+        if key_str is None or re.match(r'\D', str(key_str)) is not None:
             return False
         key: int = int(key_str)
         modified: bool = self.delete_key_dial_app_config("page_key", page, key)
@@ -1171,7 +1190,7 @@ class Config:
 
     def update_page_config_content(self, page: str, data: dict) -> bool:
         key_str: Optional[str] = data.pop('key', None)
-        if key_str is None or re.match('\D', str(key_str)) is not None:
+        if key_str is None or re.match(r'\D', str(key_str)) is not None:
             return False
         key: int = int(key_str)
         page_config: Optional[dict] = self._config_content_origin.get(
@@ -1233,14 +1252,14 @@ class Config:
             return self.unify_touchscreen_app_config(page, app_data)
         elif for_dial:
             dial_str: Optional[str] = data.pop('dial', None)
-            if dial_str is None or re.match('\D', str(dial_str)) is not None:
+            if dial_str is None or re.match(r'\D', str(dial_str)) is not None:
                 return False
 
             dial: int = int(dial_str)
             return self.unify_dial_app_config(page, dial, app_data)
         else:
             key_str: Optional[str] = data.pop('key', None)
-            if key_str is None or re.match('\D', str(key_str)) is not None:
+            if key_str is None or re.match(r'\D', str(key_str)) is not None:
                 return False
 
             key: int = int(key_str)

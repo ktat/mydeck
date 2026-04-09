@@ -99,36 +99,39 @@ class JMASearch:
         self.area: Area = area
 
     def search(self):
-        res = requests.get(self.jma.url)
-        if res.status_code == requests.codes.ok:
-            image_url = ''
-            weather: OptStr = None
-            temp: OptStr = None
-            pop: OptStr = None
-            data: dict = json.loads(res.text)
-            for area in data[0]["timeSeries"][0]["areas"]:
-                if area["area"]["name"] == self.area.area or area["area"]["code"] == self.area.area_code:
-                    weather = area["weatherCodes"][0]
-                    break
-            if weather is None:
-                logging.warning("No maching weather data found. %s" %
-                                data[0]["timeSeries"][0]["areas"])
-            for area in data[0]["timeSeries"][1]["areas"]:
-                if area["area"]["name"] == self.area.area or area["area"]["code"] == self.area.area_code:
-                    pop = area["pops"][0]
-                    break
-            if pop is None:
-                logging.warning("No maching pop data found. %s" %
-                                data[0]["timeSeries"][1]["areas"])
-            for area in data[0]["timeSeries"][2]["areas"]:
-                if area["area"]["name"] == self.area.area_temp or area["area"]["code"] == self.area.area_temp:
-                    temp = area["temps"][0]
-                    break
-            if temp is None:
-                logging.warning("No maching temp data found. %s" %
-                                data[0]["timeSeries"][2]["areas"])
-            return JMAResult(weather, pop, temp)
-        return None
+        try:
+            res = requests.get(self.jma.url, timeout=10)
+            res.raise_for_status()
+        except (requests.RequestException, ValueError) as e:
+            logging.error(f"Failed to fetch weather data: {e}")
+            return None
+        image_url = ''
+        weather: OptStr = None
+        temp: OptStr = None
+        pop: OptStr = None
+        data: dict = res.json()
+        for area in data[0]["timeSeries"][0]["areas"]:
+            if area["area"]["name"] == self.area.area or area["area"]["code"] == self.area.area_code:
+                weather = area["weatherCodes"][0]
+                break
+        if weather is None:
+            logging.warning("No maching weather data found. %s" %
+                            data[0]["timeSeries"][0]["areas"])
+        for area in data[0]["timeSeries"][1]["areas"]:
+            if area["area"]["name"] == self.area.area or area["area"]["code"] == self.area.area_code:
+                pop = area["pops"][0]
+                break
+        if pop is None:
+            logging.warning("No maching pop data found. %s" %
+                            data[0]["timeSeries"][1]["areas"])
+        for area in data[0]["timeSeries"][2]["areas"]:
+            if area["area"]["name"] == self.area.area_temp or area["area"]["code"] == self.area.area_temp:
+                temp = area["temps"][0]
+                break
+        if temp is None:
+            logging.warning("No maching temp data found. %s" %
+                            data[0]["timeSeries"][2]["areas"])
+        return JMAResult(weather, pop, temp)
 
 
 class AppWeatherJp(TriggerAppBase):

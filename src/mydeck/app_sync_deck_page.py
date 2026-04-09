@@ -1,10 +1,10 @@
 from mydeck import HookAppBase
 
 class AppSyncDeckPage(HookAppBase):
-    on = 'page_change_any'
     """Open the same name page of current page of deck on other decks."""
+    on = 'page_change_any'
 
-    def execute_on_hook(self):
+    def execute_on_hook(self) -> None:
         page = self.mydeck.current_page()
-        for mydeck in self.mydeck.mydecks.list_other_mydecks(self.mydeck):
-            mydeck.set_current_page(page)
+        for other_deck in self.mydeck.mydecks.list_other_mydecks(self.mydeck):
+            other_deck.set_current_page(page)

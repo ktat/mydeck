@@ -98,7 +98,7 @@ class DeckOutputWebHandler(http.server.BaseHTTPRequestHandler):
     def do_GET(self):
         if self.path == '/':
             return self.res_file_html(ROOT_DIR+'/html/index.html')
-        elif (m := re.search("(/(?:js|css)/[^/]+\.(?:js|css))", self.path)) is not None:
+        elif (m := re.search(r"(/(?:js|css)/[^/]+\.(?:js|css))", self.path)) is not None:
             js_or_css_path = m.group(1)
             with open(ROOT_DIR+'/html' + js_or_css_path, mode="rb") as f:
                 try:
@@ -107,7 +107,7 @@ class DeckOutputWebHandler(http.server.BaseHTTPRequestHandler):
                     pass
         elif self.path == '/chart/status':
             return self.res_file_html(ROOT_DIR+'/html/chart-status.html')
-        elif (m := re.search("^(.+/Assets/[^/]+\.(\w+))", self.path)) is not None and m.group(2) is not None:
+        elif (m := re.search(r"^(.+/Assets/[^/]+\.(\w+))", self.path)) is not None and m.group(2) is not None:
             image_path = m.group(1)
             ext = m.group(2)
             with open(image_path, mode="rb") as f:
@@ -116,24 +116,24 @@ class DeckOutputWebHandler(http.server.BaseHTTPRequestHandler):
                 except Exception as e:
                     logging.debug(e)
                     pass
-        elif (m := re.search("^/api/app/(\w+)/sample_data/$", self.path)) is not None and m.group(1) is not None:
+        elif (m := re.search(r"^/api/app/(\w+)/sample_data/$", self.path)) is not None and m.group(1) is not None:
             app_name = m.group(1)
             return self.res_app_sample_data(app_name)
-        elif (m := re.search("^/api/device/(\w+)/key_config/([^/]+)/(\d+)/$", self.path)) is not None:
+        elif (m := re.search(r"^/api/device/(\w+)/key_config/([^/]+)/(\d+)/$", self.path)) is not None:
             id = m.group(1)
             current_page = m.group(2)
             key_index = int(m.group(3))
             return self.res_current_key_config(id, current_page, key_index)
-        elif (m := re.search("^/api/device/(\w+)/dial_config/([^/]+)/(\d+)/$", self.path)) is not None:
+        elif (m := re.search(r"^/api/device/(\w+)/dial_config/([^/]+)/(\d+)/$", self.path)) is not None:
             id = m.group(1)
             current_page = m.group(2)
             key_index = int(m.group(3))
             return self.res_current_dial_config(id, current_page, key_index)
-        elif (m := re.search("^/api/device/(\w+)/touchscreen_config/([^/]+)/$", self.path)) is not None:
+        elif (m := re.search(r"^/api/device/(\w+)/touchscreen_config/([^/]+)/$", self.path)) is not None:
             id = m.group(1)
             current_page = m.group(2)
             return self.res_current_touchscreen_config(id, current_page)
-        elif (m := re.search("^/api/device/(\w+)/game_config/$", self.path)) is not None:
+        elif (m := re.search(r"^/api/device/(\w+)/game_config/$", self.path)) is not None:
             id = m.group(1)
             return self.res_game_config(id)
         elif self.path == '/api/status':
@@ -158,7 +158,7 @@ class DeckOutputWebHandler(http.server.BaseHTTPRequestHandler):
             return self.res_games()
         elif self.path == '/api/device_key_images':
             return self.res_device_key_images()
-        elif (m := re.search('^/api/([^/]+)(?:/(\d+|(?:dial|touch)/(\d+)/(\d+)))?$', self.path)) is not None:
+        elif (m := re.search(r'^/api/([^/]+)(?:/(\d+|(?:dial|touch)/(\d+)/(\d+)))?$', self.path)) is not None:
             all_zero = True
             c = DeckOutputWebHandler
             for k in c.pathKeyMap.keys():
@@ -173,7 +173,7 @@ class DeckOutputWebHandler(http.server.BaseHTTPRequestHandler):
             id: str = m.group(1)
             # /id/key_num
             if m.group(2) is not None:
-                if re.search("dial/(\d+)", m.group(2)):
+                if re.search(r"dial/(\d+)", m.group(2)):
                     from .my_decks_manager import VirtualDeck
                     dial_num: int = int(m.group(3))
                     value: int = int(m.group(4))

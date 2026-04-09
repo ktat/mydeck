@@ -1,7 +1,7 @@
 from mydeck import MyDeck, TriggerAppBase, ImageOrFile, ROOT_DIR
 import requests
 import json
-import subprocess
+import webbrowser
 import datetime
 import re
 import os
@@ -51,29 +51,29 @@ class AppBingPhoto(TriggerAppBase):
                 icon_files, key=lambda item: os.stat(item).st_mtime)
             icon_file = icon_files[0]
         if os.path.isfile(icon_file) is False or time.time() - os.stat(icon_file).st_mtime >= 3600:
-            res = requests.get(BING_URL + self.lang)
-            if res.status_code == requests.codes.ok:
+            try:
+                res = requests.get(BING_URL + self.lang, timeout=10)
+                res.raise_for_status()
                 data: dict = json.loads(res.text)
                 if data.get('images') is not None and len(data['images']) > 0 and (url := data['images'][0].get('url')):
                     image_url: str = 'https://bing.com' + url
                     ext: str = "jpg"
-                    m = re.search('\.(jpg|png|gif)', image_url)
+                    m = re.search(r'\.(jpg|png|gif)', image_url)
                     if m is not None and m.group(1) is not None:
                         ext = m.group(1)
-                    image_res = requests.get(image_url)
-                    if image_res.status_code == requests.codes.ok:
-                        icon_file = image_prefix + ext
+                    image_res = requests.get(image_url, timeout=10)
+                    image_res.raise_for_status()
+                    icon_file = image_prefix + ext
 
-                        try:
-                            with open(icon_file, mode="wb") as f:
-                                f.write(image_res.content)
-                            im = Image.open(icon_file)
-                            percent = 100 / im.width
-                            im_resized = im.resize(
-                                (int(im.width * percent), int(im.height * percent)))
-                            im_resized.save(icon_file, format=ext, quality=95)
-                        except Exception as e:
-                            self.debug("error: %s" % e)
+                    with open(icon_file, mode="wb") as f:
+                        f.write(image_res.content)
+                    im = Image.open(icon_file)
+                    percent = 100 / im.width
+                    im_resized = im.resize(
+                        (int(im.width * percent), int(im.height * percent)))
+                    im_resized.save(icon_file, format=ext, quality=95)
+            except Exception as e:
+                self.debug("error: %s" % e)
 
         self.update_key_image(
             key,
@@ -86,6 +86,4 @@ class AppBingPhoto(TriggerAppBase):
         )
 
     def open_browser(self):
-        command = ['google-chrome', '--profile-directory=Default',
-                   'https://www.bing.com/']
-        subprocess.Popen(command)
+        webbrowser.open('https://www.bing.com/')

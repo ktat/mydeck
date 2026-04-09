@@ -11,6 +11,11 @@ setup(
         "netifaces",
         "pidfile",
         "python-daemon",
+        "psutil",
+        "Pillow",
+        "requests",
+        "wand",
+        "cairosvg",
     ],
     package_data = {
       "": [".png", ".js", ".html", ".css"],

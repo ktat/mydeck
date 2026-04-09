@@ -102,11 +102,11 @@ class VirtualDeckConfig:
             self._serial_number = real_deck.get_serial_number()
         else:
             key_count = opt.get('key_count')
-            if key_count is None or re.match('\D', str(key_count)) is not None:
+            if key_count is None or re.match(r'\D', str(key_count)) is not None:
                 raise (ExceptionInvalidVirtualDeckConfig)
             self._key_count = key_count
             columns = opt.get('columns')
-            if columns is None or re.match('\D', str(columns)) is not None:
+            if columns is None or re.match(r'\D', str(columns)) is not None:
                 raise (ExceptionInvalidVirtualDeckConfig)
             self._columns = columns
             serial_number = opt.get('serial_number')

@@ -1,6 +1,5 @@
 import time
 import threading
-import sys
 
 from PIL import Image, ImageDraw, ImageFont
 from mydeck import AppBase, ImageOrFile, MyDeck, ROOT_DIR
@@ -40,7 +39,7 @@ class AppStopWatch(AppBase):
             t.start()
 
     def count_up(self, key: int) -> None:
-        t = time.time()
+        start_time = time.time()
         font = ImageFont.truetype(self.mydeck.font_path, 35)
         while True:
             self.in_working = True
@@ -56,13 +55,12 @@ class AppStopWatch(AppBase):
             if self.mydeck.current_page() in self.page_key.keys():
                 im = Image.new('RGB', (X, Y), (0, 0, 0))
                 draw = ImageDraw.Draw(im)
-                n = "{0:02.2f}".format(int((time.time() - t) * 100) / 100)
-                draw.text((0, 45), text=n, font=font,
-                          andhor="ms", fill="white")
+                elapsed = int((time.time() - start_time) * 100) / 100
+                n = f"{elapsed:05.2f}"
+                draw.text((0, 45), text=n, font=font, fill="white")
                 self.mydeck.update_key_image(key, self.mydeck.render_key_image(
                     ImageOrFile(im), "STOP/START", "black"), False)
         self.init_app_flag()
-        sys.exit()
 
     def toggle_count(self):
         if self.in_working:
