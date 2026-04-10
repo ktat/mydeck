@@ -31,7 +31,7 @@
   <button onclick="uploadQR()">QRコードを登録</button>
 
   <h2>URI / シークレットを直接入力</h2>
-  <label>otpauth URI（例: otpauth://totp/GitHub:user@example.com?secret=XXX&issuer=GitHub）</label>
+  <label>otpauth URI（例: otpauth://totp/GitHub:user@example.com?secret=XXX&amp;issuer=GitHub）</label>
   <input type="text" id="uri-input" placeholder="otpauth://totp/...">
   <p style="text-align:center;color:#666">— または —</p>
   <label>アカウント名</label>
@@ -64,16 +64,21 @@
       if (!file) { showStatus('画像を選択してください', false); return; }
       const reader = new FileReader();
       reader.onload = async (e) => {
-        const b64 = e.target.result.split(',')[1];
-        const name = document.getElementById('upload-name').value.trim();
-        const res = await fetch('/api/totp/upload', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ image_b64: b64, name: name || undefined })
-        });
-        const data = await res.json();
-        if (data.ok) { showStatus(`登録成功: ${data.name}`, true); loadAccounts(); }
-        else { showStatus(`エラー: ${data.error}`, false); }
+        try {
+          const b64 = e.target.result.split(',')[1];
+          const name = document.getElementById('upload-name').value.trim();
+          const res = await fetch('/api/totp/upload', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ image_b64: b64, name: name || undefined })
+          });
+          if (!res.ok) throw new Error(`HTTP ${res.status}`);
+          const data = await res.json();
+          if (data.ok) { showStatus(`登録成功: ${data.name}`, true); loadAccounts(); document.getElementById('qr-file').value = ''; }
+          else { showStatus(`エラー: ${data.error}`, false); }
+        } catch (err) {
+          showStatus(`エラー: ${err.message}`, false);
+        }
       };
       reader.readAsDataURL(file);
     }
@@ -87,43 +92,75 @@
       if (!uri && (!name || !secret)) {
         showStatus('アカウント名とシークレットは必須です', false); return;
       }
-      const res = await fetch('/api/totp/register', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(body)
-      });
-      const data = await res.json();
-      if (data.ok) { showStatus(`登録成功: ${data.name}`, true); loadAccounts(); }
-      else { showStatus(`エラー: ${data.error}`, false); }
+      try {
+        const res = await fetch('/api/totp/register', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(body)
+        });
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const data = await res.json();
+        if (data.ok) { showStatus(`登録成功: ${data.name}`, true); loadAccounts(); }
+        else { showStatus(`エラー: ${data.error}`, false); }
+      } catch (err) {
+        showStatus(`エラー: ${err.message}`, false);
+      }
     }
 
     async function deleteAccount(name) {
       if (!confirm(`"${name}" を削除しますか？`)) return;
-      const res = await fetch('/api/totp/delete', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name })
-      });
-      const data = await res.json();
-      if (data.ok) { showStatus(`削除しました: ${name}`, true); loadAccounts(); }
-      else { showStatus(`エラー: ${data.error}`, false); }
+      try {
+        const res = await fetch('/api/totp/delete', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ name })
+        });
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const data = await res.json();
+        if (data.ok) { showStatus(`削除しました: ${name}`, true); loadAccounts(); }
+        else { showStatus(`エラー: ${data.error}`, false); }
+      } catch (err) {
+        showStatus(`エラー: ${err.message}`, false);
+      }
     }
 
     async function loadAccounts() {
-      const res = await fetch('/api/totp/accounts');
-      const accounts = await res.json();
-      const tbody = document.getElementById('accounts-body');
-      tbody.innerHTML = '';
-      if (accounts.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="3" style="color:#666">登録済みアカウントはありません</td></tr>';
-        return;
+      try {
+        const res = await fetch('/api/totp/accounts');
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const accounts = await res.json();
+        const tbody = document.getElementById('accounts-body');
+        tbody.innerHTML = '';
+        if (accounts.length === 0) {
+          const tr = document.createElement('tr');
+          const td = document.createElement('td');
+          td.colSpan = 3;
+          td.style.color = '#666';
+          td.textContent = '登録済みアカウントはありません';
+          tr.appendChild(td);
+          tbody.appendChild(tr);
+          return;
+        }
+        accounts.forEach(acc => {
+          const tr = document.createElement('tr');
+          const tdName = document.createElement('td');
+          tdName.textContent = acc.name;
+          const tdIssuer = document.createElement('td');
+          tdIssuer.textContent = acc.issuer || '';
+          const tdAction = document.createElement('td');
+          const btn = document.createElement('button');
+          btn.className = 'del';
+          btn.textContent = '削除';
+          btn.addEventListener('click', () => deleteAccount(acc.name));
+          tdAction.appendChild(btn);
+          tr.appendChild(tdName);
+          tr.appendChild(tdIssuer);
+          tr.appendChild(tdAction);
+          tbody.appendChild(tr);
+        });
+      } catch (err) {
+        showStatus(`アカウント一覧の取得に失敗: ${err.message}`, false);
       }
-      accounts.forEach(acc => {
-        const tr = document.createElement('tr');
-        tr.innerHTML = `<td>${acc.name}</td><td>${acc.issuer || ''}</td>
-          <td><button class="del" onclick="deleteAccount('${acc.name.replace(/'/g, "\\'")}')">削除</button></td>`;
-        tbody.appendChild(tr);
-      });
     }
 
     loadAccounts();
