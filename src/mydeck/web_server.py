@@ -572,9 +572,11 @@ class DeckOutputWebHandler(http.server.BaseHTTPRequestHandler):
         from pyzbar.pyzbar import decode as pyzbar_decode
         from .totp_account_manager import TotpAccountManager
 
-        content_length = int(self.headers['Content-Length'])
-        body = json.loads(self.rfile.read(content_length).decode('utf-8'))
         try:
+            content_length = int(self.headers['content-length'])
+            if content_length > 10 * 1024 * 1024:
+                return self.api_json_response({"error": "image too large (max 10 MB)"})
+            body = json.loads(self.rfile.read(content_length).decode('utf-8'))
             image_data = base64.b64decode(body['image_b64'])
             im = PILImage.open(BytesIO(image_data))
             decoded = pyzbar_decode(im)
@@ -591,11 +593,12 @@ class DeckOutputWebHandler(http.server.BaseHTTPRequestHandler):
             return self.api_json_response({"error": str(e)})
 
     def res_totp_register(self):
+        import base64 as _base64
         from .totp_account_manager import TotpAccountManager
 
-        content_length = int(self.headers['Content-Length'])
-        body = json.loads(self.rfile.read(content_length).decode('utf-8'))
         try:
+            content_length = int(self.headers['content-length'])
+            body = json.loads(self.rfile.read(content_length).decode('utf-8'))
             manager = TotpAccountManager()
             if 'uri' in body:
                 parsed = manager.parse_otpauth_uri(body['uri'])
@@ -605,6 +608,10 @@ class DeckOutputWebHandler(http.server.BaseHTTPRequestHandler):
                 name = body['name']
                 issuer = body.get('issuer', name)
                 secret = body['secret'].upper().replace(' ', '')
+                try:
+                    _base64.b32decode(secret, casefold=True)
+                except Exception:
+                    return self.api_json_response({"error": "invalid Base32 secret"})
                 manager.save_account(name, issuer, secret)
             return self.api_json_response({"ok": True, "name": name})
         except Exception as e:
@@ -614,9 +621,9 @@ class DeckOutputWebHandler(http.server.BaseHTTPRequestHandler):
     def res_totp_delete(self):
         from .totp_account_manager import TotpAccountManager
 
-        content_length = int(self.headers['Content-Length'])
-        body = json.loads(self.rfile.read(content_length).decode('utf-8'))
         try:
+            content_length = int(self.headers['content-length'])
+            body = json.loads(self.rfile.read(content_length).decode('utf-8'))
             name = body['name']
             manager = TotpAccountManager()
             ok = manager.delete_account(name)
