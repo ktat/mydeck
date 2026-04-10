@@ -39,7 +39,7 @@ apps:
 #           command: ["google-chrome", '--profile-directory=Profile 1', 'https://example.com/nagios/cgi-bin/status.cgi?host=all&servicestatustypes=16&hoststatustypes=15']
 #           image: "./src/mydeck/Assets/cat.png"
 #           change_page: '@previous'
-   - app: TOTP
+   - app: Totp
      option:
        page_key:
          '@TOTP_ACCOUNTS': 0

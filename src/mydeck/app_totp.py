@@ -12,7 +12,7 @@ ACCOUNTS_PAGE = "@TOTP_ACCOUNTS"
 DETAIL_PREFIX = "@TOTP_DETAIL_"
 
 
-class AppTOTP(ThreadAppBase):
+class AppTotp(ThreadAppBase):
     use_thread = True
 
     def __init__(self, mydeck: MyDeck, option: dict = {}):
@@ -60,6 +60,9 @@ class AppTOTP(ThreadAppBase):
         if ACCOUNTS_PAGE not in self.page_key:
             self.page_key[ACCOUNTS_PAGE] = 0
 
+    def is_in_target_page(self) -> bool:
+        return self.mydeck.current_page() in self._managed_pages
+
     def start(self) -> None:
         last_page: str = ""
         while True:
@@ -79,7 +82,7 @@ class AppTOTP(ThreadAppBase):
                     name = current[len(DETAIL_PREFIX):]
                     self._render_detail_page(name)
             except Exception as e:
-                logging.error("AppTOTP render error: %s", e)
+                logging.error("AppTotp render error: %s", e)
 
             last_page = current
             time.sleep(self.time_to_sleep)
