@@ -39,6 +39,10 @@ apps:
 #           command: ["google-chrome", '--profile-directory=Profile 1', 'https://example.com/nagios/cgi-bin/status.cgi?host=all&servicestatustypes=16&hoststatustypes=15']
 #           image: "./src/mydeck/Assets/cat.png"
 #           change_page: '@previous'
+   - app: TOTP
+     option:
+       page_key:
+         '@TOTP_ACCOUNTS': 0
 games:
   - game: RandomNumber
   - game: Memory
@@ -55,6 +59,10 @@ page_config:
         "change_page": "@GAME"
         "label": "Game"
         "image": "./src/mydeck/Assets/game.png"
+      2:
+        "change_page": "@TOTP_ACCOUNTS"
+        "label": "2FA"
+        "image": "./src/mydeck/Assets/check.png"
       13:
         "label": "Config"
         "image": "./src/mydeck/Assets/settings.png"
