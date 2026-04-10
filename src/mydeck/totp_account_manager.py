@@ -1,4 +1,5 @@
 import json
+import logging
 import os
 import time
 from urllib.parse import urlparse, parse_qs, unquote
@@ -24,7 +25,6 @@ class TotpAccountManager:
             with open(self.accounts_file, "r") as f:
                 return json.load(f)
         except (json.JSONDecodeError, OSError) as e:
-            import logging
             logging.warning("TotpAccountManager: failed to load %s: %s", self.accounts_file, e)
             return []
 
