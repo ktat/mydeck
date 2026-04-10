@@ -20,10 +20,14 @@ class AppTOTP(ThreadAppBase):
         self.manager = TotpAccountManager()
         self.time_to_sleep = 1
         self._managed_pages: list[str] = []
+        self._last_code: str = ""
         self._setup_pages()
 
     def _setup_pages(self) -> None:
         """Register @TOTP_ACCOUNTS and per-account detail pages in key_config."""
+        # NOTE: These pages are registered into the live key_config dict.
+        # If the config file is hot-reloaded (reflect_config), these entries will be lost.
+        # Workaround: restart the daemon after config changes.
         accounts = self.manager.load_accounts()
         key_count = self.mydeck.key_count
         back_key = key_count - 1
@@ -52,6 +56,10 @@ class AppTOTP(ThreadAppBase):
             f"{DETAIL_PREFIX}{a['name']}" for a in accounts
         ]
 
+        # Ensure the framework can start our thread when @TOTP_ACCOUNTS is entered
+        if ACCOUNTS_PAGE not in self.page_key:
+            self.page_key[ACCOUNTS_PAGE] = 0
+
     def start(self) -> None:
         last_page: str = ""
         while True:
@@ -76,6 +84,7 @@ class AppTOTP(ThreadAppBase):
             last_page = current
             time.sleep(self.time_to_sleep)
 
+        self.stop_app()
         self.init_app_flag()
         sys.exit()
 
@@ -83,11 +92,18 @@ class AppTOTP(ThreadAppBase):
         accounts = self.manager.load_accounts()
         key_count = self.mydeck.key_count
         back_key = key_count - 1
+        self._last_code = ""  # reset so detail page re-renders fully on next entry
 
         for i, acc in enumerate(accounts[:back_key]):
             im = self._make_label_image(acc["name"])
             self.mydeck.update_key_image(
                 i, self.mydeck.render_key_image(ImageOrFile(im), acc["name"], "black")
+            )
+
+        # Clear unused keys between accounts and back button
+        for i in range(len(accounts), back_key):
+            self.mydeck.update_key_image(
+                i, self.mydeck.render_key_image(ImageOrFile(Image.new("RGB", (X, Y), (0, 0, 0))), "", "black")
             )
 
         back_im = self._make_label_image("←")
@@ -106,12 +122,25 @@ class AppTOTP(ThreadAppBase):
         num_digit_keys = math.ceil(6 / digits_per_key)
         countdown_key = num_digit_keys
 
-        for i in range(num_digit_keys):
-            start = i * digits_per_key
-            chunk = code[start: start + digits_per_key]
-            im = self._make_digit_image(chunk)
+        code_changed = code != self._last_code
+        if code_changed:
+            self._last_code = code
+            for i in range(num_digit_keys):
+                start = i * digits_per_key
+                chunk = code[start: start + digits_per_key]
+                im = self._make_digit_image(chunk)
+                self.mydeck.update_key_image(
+                    i, self.mydeck.render_key_image(ImageOrFile(im), chunk, "black")
+                )
+            # Clear unused keys between digits and countdown
+            for i in range(num_digit_keys, countdown_key):
+                self.mydeck.update_key_image(
+                    i, self.mydeck.render_key_image(ImageOrFile(Image.new("RGB", (X, Y), (0, 0, 0))), "", "black")
+                )
+            back_im = self._make_label_image("←")
             self.mydeck.update_key_image(
-                i, self.mydeck.render_key_image(ImageOrFile(im), chunk, "black")
+                back_key,
+                self.mydeck.render_key_image(ImageOrFile(back_im), "Back", "black"),
             )
 
         countdown_im = self._make_countdown_image(remaining)
@@ -120,12 +149,6 @@ class AppTOTP(ThreadAppBase):
             self.mydeck.render_key_image(
                 ImageOrFile(countdown_im), f"{remaining}s", "black"
             ),
-        )
-
-        back_im = self._make_label_image("←")
-        self.mydeck.update_key_image(
-            back_key,
-            self.mydeck.render_key_image(ImageOrFile(back_im), "Back", "black"),
         )
 
     def _make_label_image(self, text: str) -> Image.Image:
