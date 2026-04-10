@@ -107,10 +107,24 @@ class DeckOutputWebHandler(http.server.BaseHTTPRequestHandler):
                     pass
         elif self.path == '/chart/status':
             return self.res_file_html(ROOT_DIR+'/html/chart-status.html')
+        elif self.path == '/totp':
+            return self.res_file_html(ROOT_DIR + '/html/totp.html')
+        elif self.path == '/api/totp/accounts':
+            return self.res_totp_accounts()
         elif (m := re.search(r"^(.+/Assets/[^/]+\.(\w+))", self.path)) is not None and m.group(2) is not None:
             image_path = m.group(1)
             ext = m.group(2)
-            with open(image_path, mode="rb") as f:
+            abs_image_path = os.path.realpath(image_path)
+            allowed_roots = [os.path.realpath(ROOT_DIR + '/Assets')]
+            try:
+                from .my_decks_starter import MyDecksStarter
+                if MyDecksStarter.configPath:
+                    allowed_roots.append(os.path.realpath(MyDecksStarter.configPath + '/Assets'))
+            except Exception:
+                pass
+            if not any(os.path.commonpath([abs_image_path, root]) == root for root in allowed_roots):
+                return self.response_404()
+            with open(abs_image_path, mode="rb") as f:
                 try:
                     return self.response_image(f, ext)
                 except Exception as e:
@@ -210,6 +224,15 @@ class DeckOutputWebHandler(http.server.BaseHTTPRequestHandler):
 
         if self.path == '/api/game_config/':
             return self.res_game_setting()
+
+        if self.path == '/api/totp/upload':
+            return self.res_totp_upload()
+
+        if self.path == '/api/totp/register':
+            return self.res_totp_register()
+
+        if self.path == '/api/totp/delete':
+            return self.res_totp_delete()
 
         self.response_404()
 
@@ -536,6 +559,71 @@ class DeckOutputWebHandler(http.server.BaseHTTPRequestHandler):
             deck = self.idDeckMap[deck_id]
             sn: str = deck.get_serial_number()
             MyDecksManager.ConfigQueue[sn].put(data)
+
+    def res_totp_accounts(self):
+        from .totp_account_manager import TotpAccountManager
+        manager = TotpAccountManager()
+        return self.api_json_response(manager.load_accounts())
+
+    def res_totp_upload(self):
+        import base64
+        from io import BytesIO
+        from PIL import Image as PILImage
+        from pyzbar.pyzbar import decode as pyzbar_decode
+        from .totp_account_manager import TotpAccountManager
+
+        content_length = int(self.headers['Content-Length'])
+        body = json.loads(self.rfile.read(content_length).decode('utf-8'))
+        try:
+            image_data = base64.b64decode(body['image_b64'])
+            im = PILImage.open(BytesIO(image_data))
+            decoded = pyzbar_decode(im)
+            if not decoded:
+                return self.api_json_response({"error": "QR code not found in image"})
+            uri = decoded[0].data.decode('utf-8')
+            manager = TotpAccountManager()
+            parsed = manager.parse_otpauth_uri(uri)
+            name = body.get('name') or parsed['name']
+            manager.save_account(name, parsed['issuer'], parsed['secret'])
+            return self.api_json_response({"ok": True, "name": name})
+        except Exception as e:
+            logging.error("TOTP upload error: %s", e)
+            return self.api_json_response({"error": str(e)})
+
+    def res_totp_register(self):
+        from .totp_account_manager import TotpAccountManager
+
+        content_length = int(self.headers['Content-Length'])
+        body = json.loads(self.rfile.read(content_length).decode('utf-8'))
+        try:
+            manager = TotpAccountManager()
+            if 'uri' in body:
+                parsed = manager.parse_otpauth_uri(body['uri'])
+                name = body.get('name') or parsed['name']
+                manager.save_account(name, parsed['issuer'], parsed['secret'])
+            else:
+                name = body['name']
+                issuer = body.get('issuer', name)
+                secret = body['secret'].upper().replace(' ', '')
+                manager.save_account(name, issuer, secret)
+            return self.api_json_response({"ok": True, "name": name})
+        except Exception as e:
+            logging.error("TOTP register error: %s", e)
+            return self.api_json_response({"error": str(e)})
+
+    def res_totp_delete(self):
+        from .totp_account_manager import TotpAccountManager
+
+        content_length = int(self.headers['Content-Length'])
+        body = json.loads(self.rfile.read(content_length).decode('utf-8'))
+        try:
+            name = body['name']
+            manager = TotpAccountManager()
+            ok = manager.delete_account(name)
+            return self.api_json_response({"ok": ok})
+        except Exception as e:
+            logging.error("TOTP delete error: %s", e)
+            return self.api_json_response({"error": str(e)})
 
     def log_message(self, format, *args):
         message = format % args
