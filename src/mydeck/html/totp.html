@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>TOTP 2FA 登録</title>
+  <style>
+    body { font-family: sans-serif; max-width: 600px; margin: 40px auto; padding: 0 20px; background: #1a1a2e; color: #eee; }
+    h1 { color: #0f9; }
+    h2 { color: #adf; border-bottom: 1px solid #444; padding-bottom: 8px; }
+    label { display: block; margin-top: 12px; font-size: 0.9em; color: #aaa; }
+    input[type=text], input[type=file] { width: 100%; padding: 8px; background: #222; color: #eee; border: 1px solid #555; border-radius: 4px; box-sizing: border-box; margin-top: 4px; }
+    button { margin-top: 14px; padding: 8px 18px; background: #0f9; color: #000; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; }
+    button.del { background: #f44; color: #fff; }
+    #status { margin-top: 10px; padding: 8px; border-radius: 4px; display: none; }
+    .ok { background: #1a4; }
+    .err { background: #a22; }
+    table { width: 100%; border-collapse: collapse; margin-top: 16px; }
+    td, th { padding: 8px; border: 1px solid #444; text-align: left; }
+    th { background: #222; }
+  </style>
+</head>
+<body>
+  <h1>TOTP 2FA 登録</h1>
+
+  <h2>QRコード画像からインポート</h2>
+  <label>アカウント名（省略可: URIから自動取得）</label>
+  <input type="text" id="upload-name" placeholder="例: GitHub">
+  <label>QRコード画像</label>
+  <input type="file" id="qr-file" accept="image/*">
+  <button onclick="uploadQR()">QRコードを登録</button>
+
+  <h2>URI / シークレットを直接入力</h2>
+  <label>otpauth URI（例: otpauth://totp/GitHub:user@example.com?secret=XXX&issuer=GitHub）</label>
+  <input type="text" id="uri-input" placeholder="otpauth://totp/...">
+  <p style="text-align:center;color:#666">— または —</p>
+  <label>アカウント名</label>
+  <input type="text" id="manual-name" placeholder="例: GitHub">
+  <label>発行者（省略可）</label>
+  <input type="text" id="manual-issuer" placeholder="例: GitHub">
+  <label>シークレットキー（Base32）</label>
+  <input type="text" id="manual-secret" placeholder="例: JBSWY3DPEHPK3PXP">
+  <button onclick="registerManual()">登録</button>
+
+  <div id="status"></div>
+
+  <h2>登録済みアカウント</h2>
+  <table id="accounts-table">
+    <thead><tr><th>アカウント名</th><th>発行者</th><th>操作</th></tr></thead>
+    <tbody id="accounts-body"></tbody>
+  </table>
+
+  <script>
+    function showStatus(msg, ok) {
+      const el = document.getElementById('status');
+      el.textContent = msg;
+      el.className = ok ? 'ok' : 'err';
+      el.style.display = 'block';
+      setTimeout(() => { el.style.display = 'none'; }, 4000);
+    }
+
+    async function uploadQR() {
+      const file = document.getElementById('qr-file').files[0];
+      if (!file) { showStatus('画像を選択してください', false); return; }
+      const reader = new FileReader();
+      reader.onload = async (e) => {
+        const b64 = e.target.result.split(',')[1];
+        const name = document.getElementById('upload-name').value.trim();
+        const res = await fetch('/api/totp/upload', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ image_b64: b64, name: name || undefined })
+        });
+        const data = await res.json();
+        if (data.ok) { showStatus(`登録成功: ${data.name}`, true); loadAccounts(); }
+        else { showStatus(`エラー: ${data.error}`, false); }
+      };
+      reader.readAsDataURL(file);
+    }
+
+    async function registerManual() {
+      const uri = document.getElementById('uri-input').value.trim();
+      const name = document.getElementById('manual-name').value.trim();
+      const issuer = document.getElementById('manual-issuer').value.trim();
+      const secret = document.getElementById('manual-secret').value.trim();
+      const body = uri ? { uri } : { name, issuer, secret };
+      if (!uri && (!name || !secret)) {
+        showStatus('アカウント名とシークレットは必須です', false); return;
+      }
+      const res = await fetch('/api/totp/register', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body)
+      });
+      const data = await res.json();
+      if (data.ok) { showStatus(`登録成功: ${data.name}`, true); loadAccounts(); }
+      else { showStatus(`エラー: ${data.error}`, false); }
+    }
+
+    async function deleteAccount(name) {
+      if (!confirm(`"${name}" を削除しますか？`)) return;
+      const res = await fetch('/api/totp/delete', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name })
+      });
+      const data = await res.json();
+      if (data.ok) { showStatus(`削除しました: ${name}`, true); loadAccounts(); }
+      else { showStatus(`エラー: ${data.error}`, false); }
+    }
+
+    async function loadAccounts() {
+      const res = await fetch('/api/totp/accounts');
+      const accounts = await res.json();
+      const tbody = document.getElementById('accounts-body');
+      tbody.innerHTML = '';
+      if (accounts.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="3" style="color:#666">登録済みアカウントはありません</td></tr>';
+        return;
+      }
+      accounts.forEach(acc => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `<td>${acc.name}</td><td>${acc.issuer || ''}</td>
+          <td><button class="del" onclick="deleteAccount('${acc.name.replace(/'/g, "\\'")}')">削除</button></td>`;
+        tbody.appendChild(tr);
+      });
+    }
+
+    loadAccounts();
+  </script>
+</body>
+</html>
