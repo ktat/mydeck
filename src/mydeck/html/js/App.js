@@ -7,9 +7,14 @@ const App = {
             page: page || "home",
             items: [],
             images: [],
+            showTotpModal: false,
         }
     },
     mounted() {
+        // Auto-open TOTP modal if ?totp=1 in URL
+        if (new URLSearchParams(window.location.search).get('totp') === '1') {
+            this.showTotpModal = true;
+        }
         axios.get(baseURL + "api/images").then((res) => {
             const images = res.data;
 
@@ -81,9 +86,10 @@ const App = {
                             <a target="_blank" href="/api/resource">Resouse API &#x29c9;</a>
                         </div>
                     </div>
+                    <a class="dropbtn" href="#" @click.prevent="showTotpModal=true" style="cursor:pointer;">TOTP 2FA</a>
                     <div class="dropdown">
                         <a class="dropbtn">?</a>
-                        <div class="dropdown-content">    
+                        <div class="dropdown-content">
                         <a @click="page='help'" href="/#help">Help</a>
                         <a target="_blank" href="/chart/status">Status Chart &#x29c9;</a>
                         <a target="_blank" href="https://github.com/ktat/mydeck/">GitHub &#x29c9;</a>
@@ -109,7 +115,13 @@ const App = {
                             <mydeck :config="config" />
                         </div>
                     </div>
-                </div>                        
+                </div>
+                <div v-if="showTotpModal" class="totp-modal-overlay" @click.self="showTotpModal=false">
+                    <div class="totp-modal">
+                        <button class="totp-modal-close" @click="showTotpModal=false">&times;</button>
+                        <iframe src="/totp" class="totp-modal-iframe" allow="camera"></iframe>
+                    </div>
+                </div>
             </div>
         `
 };
