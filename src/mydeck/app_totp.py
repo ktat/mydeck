@@ -241,7 +241,7 @@ class AppTotp(ThreadAppBase):
                 chunk = code[start: start + digits_per_key]
                 im = self._make_digit_image(chunk)
                 self.mydeck.update_key_image(
-                    i, self.mydeck.render_key_image(ImageOrFile(im), chunk, "black")
+                    i, self.mydeck.render_key_image(ImageOrFile(im), "", "black")
                 )
 
         countdown_im = self._make_countdown_image(remaining)
