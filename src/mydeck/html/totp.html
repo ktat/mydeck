@@ -197,11 +197,24 @@
             tdImage.appendChild(badge);
           }
           tdImage.appendChild(imgInput);
+          const urlRow = document.createElement('div');
+          urlRow.style.cssText = 'display:flex; gap:2px; margin-top:2px;';
+          const urlInput = document.createElement('input');
+          urlInput.type = 'text';
+          urlInput.placeholder = 'URL';
+          urlInput.style.cssText = 'width:100px; font-size:0.7em; padding:2px 4px;';
+          const btnUrl = document.createElement('button');
+          btnUrl.style.cssText = 'background:#47a; font-size:0.7em; padding:2px 6px; margin:0;';
+          btnUrl.textContent = 'URL';
+          btnUrl.addEventListener('click', () => setImageFromUrl(acc.name, urlInput.value.trim()));
+          urlRow.appendChild(urlInput);
+          urlRow.appendChild(btnUrl);
           const btnIcon = document.createElement('button');
-          btnIcon.style.cssText = 'background:#36a; font-size:0.75em; padding:3px 8px; margin-top:2px;';
-          btnIcon.textContent = '\uD83D\uDD04 auto';
+          btnIcon.style.cssText = 'background:#36a; font-size:0.7em; padding:2px 6px; margin:0;';
+          btnIcon.textContent = 'auto';
           btnIcon.addEventListener('click', () => fetchIcon(acc.name));
-          tdImage.appendChild(btnIcon);
+          urlRow.appendChild(btnIcon);
+          tdImage.appendChild(urlRow);
           // Delete
           const tdAction = document.createElement('td');
           const btn = document.createElement('button');
@@ -218,6 +231,23 @@
         });
       } catch (err) {
         showStatus(`アカウント一覧の取得に失敗: ${err.message}`, false);
+      }
+    }
+
+    async function setImageFromUrl(name, url) {
+      if (!url) { showStatus('URLを入力してください', false); return; }
+      try {
+        const res = await fetch('/api/totp/set_image', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ name, image_url: url })
+        });
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const data = await res.json();
+        if (data.ok) { showStatus(`画像を設定しました: ${name}`, true); loadAccounts(); }
+        else { showStatus(`エラー: ${data.error}`, false); }
+      } catch (err) {
+        showStatus(`エラー: ${err.message}`, false);
       }
     }
 

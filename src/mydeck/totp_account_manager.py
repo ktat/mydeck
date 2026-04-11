@@ -10,7 +10,7 @@ import keyring
 import pyotp
 import requests
 
-ACCOUNTS_FILE = os.path.expanduser("~/.config/mystreamdeck/totp_accounts.json")
+ACCOUNTS_FILE = os.path.expanduser("~/.config/mydeck/totp_accounts.json")
 KEYRING_SERVICE = "mystreamdeck-totp"
 
 

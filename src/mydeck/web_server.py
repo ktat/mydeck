@@ -671,6 +671,7 @@ class DeckOutputWebHandler(http.server.BaseHTTPRequestHandler):
 
     def res_totp_set_image(self):
         import base64
+        import requests as req
         from .totp_account_manager import TotpAccountManager
 
         try:
@@ -679,8 +680,14 @@ class DeckOutputWebHandler(http.server.BaseHTTPRequestHandler):
                 return self.api_json_response({"error": "image too large (max 10 MB)"})
             body = json.loads(self.rfile.read(content_length).decode('utf-8'))
             name = body['name']
-            image_data = base64.b64decode(body['image_b64'])
             manager = TotpAccountManager()
+            if 'image_url' in body:
+                resp = req.get(body['image_url'], timeout=10)
+                if resp.status_code != 200:
+                    return self.api_json_response({"error": f"画像の取得に失敗: HTTP {resp.status_code}"})
+                image_data = resp.content
+            else:
+                image_data = base64.b64decode(body['image_b64'])
             path = manager.set_account_image(name, image_data)
             return self.api_json_response({"ok": True, "path": path})
         except Exception as e:
