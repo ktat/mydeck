@@ -82,6 +82,23 @@ class TotpAccountManager:
                 return acc.get("image")
         return None
 
+    def reorder_accounts(self, names: list[str]) -> bool:
+        """Reorder accounts to match the given name list."""
+        accounts = self.load_accounts()
+        by_name = {a["name"]: a for a in accounts}
+        reordered = []
+        for name in names:
+            if name in by_name:
+                reordered.append(by_name.pop(name))
+        # Append any remaining accounts not in the list
+        for acc in accounts:
+            if acc["name"] in by_name:
+                reordered.append(acc)
+                del by_name[acc["name"]]
+        with open(self.accounts_file, "w") as f:
+            json.dump(reordered, f, indent=2)
+        return True
+
     def get_secret(self, name: str) -> str | None:
         return keyring.get_password(KEYRING_SERVICE, name)
 

@@ -240,6 +240,9 @@ class DeckOutputWebHandler(http.server.BaseHTTPRequestHandler):
         if self.path == '/api/totp/set_image':
             return self.res_totp_set_image()
 
+        if self.path == '/api/totp/reorder':
+            return self.res_totp_reorder()
+
         self.response_404()
 
     def text_headers(self, status: int = 200, type: str = "html; charset=utf-8"):
@@ -690,6 +693,20 @@ class DeckOutputWebHandler(http.server.BaseHTTPRequestHandler):
             return self.api_json_response({"ok": ok})
         except Exception as e:
             logging.error("TOTP delete error: %s", e)
+            return self.api_json_response({"error": str(e)})
+
+    def res_totp_reorder(self):
+        from .totp_account_manager import TotpAccountManager
+
+        try:
+            content_length = int(self.headers['content-length'])
+            body = json.loads(self.rfile.read(content_length).decode('utf-8'))
+            names = body['names']
+            manager = TotpAccountManager()
+            ok = manager.reorder_accounts(names)
+            return self.api_json_response({"ok": ok})
+        except Exception as e:
+            logging.error("TOTP reorder error: %s", e)
             return self.api_json_response({"error": str(e)})
 
     def log_message(self, format, *args):

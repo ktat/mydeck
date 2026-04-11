@@ -12,6 +12,7 @@
     input[type=text], input[type=file] { width: 100%; padding: 8px; background: #222; color: #eee; border: 1px solid #555; border-radius: 4px; box-sizing: border-box; margin-top: 4px; }
     button { margin-top: 14px; padding: 8px 18px; background: #0f9; color: #000; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; }
     button.del { background: #f44; color: #fff; }
+    button.move { background: #555; color: #fff; padding: 4px 8px; margin: 1px; font-size: 0.9em; min-width: 28px; }
     #status { margin-top: 10px; padding: 8px; border-radius: 4px; display: none; }
     .ok { background: #1a4; }
     .err { background: #a22; }
@@ -56,7 +57,7 @@
 
   <h2>登録済みアカウント</h2>
   <table id="accounts-table">
-    <thead><tr><th>アカウント名</th><th>発行者</th><th>画像</th><th>操作</th></tr></thead>
+    <thead><tr><th>順番</th><th>アカウント名</th><th>発行者</th><th>画像</th><th>操作</th></tr></thead>
     <tbody id="accounts-body"></tbody>
   </table>
 
@@ -144,19 +145,37 @@
         if (accounts.length === 0) {
           const tr = document.createElement('tr');
           const td = document.createElement('td');
-          td.colSpan = 4;
+          td.colSpan = 5;
           td.style.color = '#666';
           td.textContent = '登録済みアカウントはありません';
           tr.appendChild(td);
           tbody.appendChild(tr);
           return;
         }
-        accounts.forEach(acc => {
+        accounts.forEach((acc, idx) => {
           const tr = document.createElement('tr');
+          // Order buttons
+          const tdOrder = document.createElement('td');
+          tdOrder.style.whiteSpace = 'nowrap';
+          const btnUp = document.createElement('button');
+          btnUp.className = 'move';
+          btnUp.textContent = '\u25B2';
+          btnUp.disabled = idx === 0;
+          btnUp.addEventListener('click', () => moveAccount(accounts, idx, -1));
+          const btnDown = document.createElement('button');
+          btnDown.className = 'move';
+          btnDown.textContent = '\u25BC';
+          btnDown.disabled = idx === accounts.length - 1;
+          btnDown.addEventListener('click', () => moveAccount(accounts, idx, 1));
+          tdOrder.appendChild(btnUp);
+          tdOrder.appendChild(btnDown);
+          // Name
           const tdName = document.createElement('td');
           tdName.textContent = acc.name;
+          // Issuer
           const tdIssuer = document.createElement('td');
           tdIssuer.textContent = acc.issuer || '';
+          // Image
           const tdImage = document.createElement('td');
           const imgInput = document.createElement('input');
           imgInput.type = 'file';
@@ -170,12 +189,14 @@
             tdImage.appendChild(badge);
           }
           tdImage.appendChild(imgInput);
+          // Delete
           const tdAction = document.createElement('td');
           const btn = document.createElement('button');
           btn.className = 'del';
           btn.textContent = '削除';
           btn.addEventListener('click', () => deleteAccount(acc.name));
           tdAction.appendChild(btn);
+          tr.appendChild(tdOrder);
           tr.appendChild(tdName);
           tr.appendChild(tdIssuer);
           tr.appendChild(tdImage);
@@ -184,6 +205,24 @@
         });
       } catch (err) {
         showStatus(`アカウント一覧の取得に失敗: ${err.message}`, false);
+      }
+    }
+
+    async function moveAccount(accounts, idx, direction) {
+      const newIdx = idx + direction;
+      if (newIdx < 0 || newIdx >= accounts.length) return;
+      const names = accounts.map(a => a.name);
+      [names[idx], names[newIdx]] = [names[newIdx], names[idx]];
+      try {
+        const res = await fetch('/api/totp/reorder', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ names })
+        });
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        loadAccounts();
+      } catch (err) {
+        showStatus(`エラー: ${err.message}`, false);
       }
     }
 
