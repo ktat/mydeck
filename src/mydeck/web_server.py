@@ -243,6 +243,9 @@ class DeckOutputWebHandler(http.server.BaseHTTPRequestHandler):
         if self.path == '/api/totp/reorder':
             return self.res_totp_reorder()
 
+        if self.path == '/api/totp/fetch_icon':
+            return self.res_totp_fetch_icon()
+
         self.response_404()
 
     def text_headers(self, status: int = 200, type: str = "html; charset=utf-8"):
@@ -707,6 +710,36 @@ class DeckOutputWebHandler(http.server.BaseHTTPRequestHandler):
             return self.api_json_response({"ok": ok})
         except Exception as e:
             logging.error("TOTP reorder error: %s", e)
+            return self.api_json_response({"error": str(e)})
+
+    def res_totp_fetch_icon(self):
+        from .totp_account_manager import TotpAccountManager
+
+        try:
+            content_length = int(self.headers['content-length'])
+            body = json.loads(self.rfile.read(content_length).decode('utf-8'))
+            name = body['name']
+            manager = TotpAccountManager()
+            accounts = manager.load_accounts()
+            issuer = name
+            for acc in accounts:
+                if acc["name"] == name:
+                    issuer = acc.get("issuer", name)
+                    # Clear existing image so _auto_fetch_icon will run
+                    if acc.get("image"):
+                        acc.pop("image")
+                        with open(manager.accounts_file, "w") as f:
+                            json.dump(accounts, f, indent=2)
+                    break
+            manager._auto_fetch_icon(name, issuer)
+            # Check if it worked
+            path = manager._image_path(name)
+            if path:
+                return self.api_json_response({"ok": True, "path": path})
+            else:
+                return self.api_json_response({"error": "アイコンが見つかりませんでした"})
+        except Exception as e:
+            logging.error("TOTP fetch_icon error: %s", e)
             return self.api_json_response({"error": str(e)})
 
     def log_message(self, format, *args):

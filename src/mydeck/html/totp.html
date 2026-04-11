@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>TOTP 2FA 登録</title>
   <style>
-    body { font-family: sans-serif; max-width: 600px; margin: 40px auto; padding: 0 20px; background: #1a1a2e; color: #eee; }
+    body { font-family: sans-serif; max-width: 800px; margin: 40px auto; padding: 0 20px; background: #1a1a2e; color: #eee; }
     h1 { color: #0f9; }
     h2 { color: #adf; border-bottom: 1px solid #444; padding-bottom: 8px; }
     label { display: block; margin-top: 12px; font-size: 0.9em; color: #aaa; }
@@ -189,6 +189,11 @@
             tdImage.appendChild(badge);
           }
           tdImage.appendChild(imgInput);
+          const btnIcon = document.createElement('button');
+          btnIcon.style.cssText = 'background:#36a; font-size:0.75em; padding:3px 8px; margin-top:2px;';
+          btnIcon.textContent = '\uD83D\uDD04 auto';
+          btnIcon.addEventListener('click', () => fetchIcon(acc.name));
+          tdImage.appendChild(btnIcon);
           // Delete
           const tdAction = document.createElement('td');
           const btn = document.createElement('button');
@@ -205,6 +210,22 @@
         });
       } catch (err) {
         showStatus(`アカウント一覧の取得に失敗: ${err.message}`, false);
+      }
+    }
+
+    async function fetchIcon(name) {
+      try {
+        const res = await fetch('/api/totp/fetch_icon', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ name })
+        });
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const data = await res.json();
+        if (data.ok) { showStatus(`アイコンを取得しました: ${name}`, true); loadAccounts(); }
+        else { showStatus(`${data.error}`, false); }
+      } catch (err) {
+        showStatus(`エラー: ${err.message}`, false);
       }
     }
 
