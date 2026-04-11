@@ -581,7 +581,7 @@ class DeckOutputWebHandler(http.server.BaseHTTPRequestHandler):
                 return self.api_json_response({"error": "image too large"})
             body = json.loads(self.rfile.read(content_length).decode('utf-8'))
             image_data = base64.b64decode(body['image_b64'])
-            im = PILImage.open(BytesIO(image_data))
+            im = PILImage.open(BytesIO(image_data)).convert('L')  # grayscale for better detection
             logging.debug("TOTP scan: image size=%s, mode=%s", im.size, im.mode)
             decoded = pyzbar_decode(im)
             logging.debug("TOTP scan: pyzbar found %d codes", len(decoded))

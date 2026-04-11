@@ -190,7 +190,7 @@
 
       try {
         const stream = await navigator.mediaDevices.getUserMedia({
-          video: { facingMode: 'user', width: { ideal: 640 }, height: { ideal: 480 } }
+          video: { facingMode: 'user', width: { ideal: 1280 }, height: { ideal: 720 } }
         });
         cameraStream = stream;
         const video = document.getElementById('camera-video');
@@ -231,7 +231,7 @@
             canvas.width = video.videoWidth;
             canvas.height = video.videoHeight;
             canvas.getContext('2d').drawImage(video, 0, 0);
-            const b64 = canvas.toDataURL('image/png').split(',')[1];
+            const b64 = canvas.toDataURL('image/jpeg', 0.9).split(',')[1];
             try {
               const res = await fetch('/api/totp/scan', {
                 method: 'POST',
