@@ -221,11 +221,13 @@
             } catch (e) { /* ignore */ }
           }, 300);
         } else {
+          let scanCount = 0;
           statusEl.textContent = 'スキャン中（サーバー解析）... QRコードをカメラに映してください';
           const canvas = document.createElement('canvas');
           scanInterval = setInterval(async () => {
             if (video.readyState < 2 || scanning) return;
             scanning = true;
+            scanCount++;
             canvas.width = video.videoWidth;
             canvas.height = video.videoHeight;
             canvas.getContext('2d').drawImage(video, 0, 0);
@@ -237,10 +239,13 @@
                 body: JSON.stringify({ image_b64: b64 })
               });
               const data = await res.json();
+              statusEl.textContent = `スキャン中（サーバー解析）... 試行: ${scanCount}回` + (data.error ? ` エラー: ${data.error}` : '');
               if (data.uri) {
                 await handleScannedQR(data.uri);
               }
-            } catch (e) { /* ignore */ }
+            } catch (e) {
+              statusEl.textContent = `スキャン中... 試行: ${scanCount}回 通信エラー: ${e.message}`;
+            }
             scanning = false;
           }, 1500);
         }

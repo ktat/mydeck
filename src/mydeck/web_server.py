@@ -582,10 +582,13 @@ class DeckOutputWebHandler(http.server.BaseHTTPRequestHandler):
             body = json.loads(self.rfile.read(content_length).decode('utf-8'))
             image_data = base64.b64decode(body['image_b64'])
             im = PILImage.open(BytesIO(image_data))
+            logging.debug("TOTP scan: image size=%s, mode=%s", im.size, im.mode)
             decoded = pyzbar_decode(im)
+            logging.debug("TOTP scan: pyzbar found %d codes", len(decoded))
             if not decoded:
                 return self.api_json_response({})
             uri = decoded[0].data.decode('utf-8')
+            logging.debug("TOTP scan: decoded URI=%s", uri[:50])
             return self.api_json_response({"uri": uri})
         except Exception as e:
             logging.error("TOTP scan error: %s", e)
