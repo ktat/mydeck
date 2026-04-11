@@ -439,6 +439,10 @@ class VirtualDeck:
         # for web server
         DeckOutputWebHandler.remove_device(self.id())
 
+        # If all devices are removed, shut down the web server so the main thread can exit
+        if not DeckOutputWebHandler.pathKeyMap:
+            DeckOutputWebServer.shutdown()
+
     def is_touch(self) -> bool:
         return self.is_touch_interface
 
@@ -667,7 +671,8 @@ class DeckOutputWebServer:
 
     @staticmethod
     def shutdown():
-        DeckOutputWebServer.httpd.shutdown()
+        if DeckOutputWebServer.httpd is not None:
+            DeckOutputWebServer.httpd.shutdown()
 
     def run(self, port: int):
         with http.server.ThreadingHTTPServer(('', port), DeckOutputWebHandler) as httpd:

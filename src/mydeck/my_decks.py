@@ -166,15 +166,17 @@ class MyDecks:
 
         # Wait until all application threads have terminated (for this example,
         # this is when all deck handles are closed).
+        # Skip daemon threads: they should not be joined (they never terminate on their own)
+        # and will be killed automatically when the process exits.
         for t in threading.enumerate():
-            if t != threading.current_thread():
+            if t != threading.current_thread() and not t.daemon:
                 try:
                     t.join()
                 except RuntimeError as e:
                     logging.critical("Error in start_decks {}".format(e))
 
         logging.info("start_decks end!")
-        sys.exit()
+        os._exit(0)
 
     def list_mydecks(self) -> List['MyDeck']:
         """return list of MyDeck instances"""
@@ -752,7 +754,10 @@ class MyDeck:
                         if self.config is not None:
                             for app in self.config.apps:
                                 self.debug("stop app: %s" % app.name())
-                                app._stop = True
+                                app.stop_app()
+                            for app in self.config.background_apps:
+                                self.debug("stop background app: %s" % app.name())
+                                app.stop(True)
 
                         time.sleep(2)
 
