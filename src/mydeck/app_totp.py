@@ -255,27 +255,37 @@ class AppTotp(ThreadAppBase):
     def _make_account_image(self, acc: dict) -> Image.Image:
         """Render account button: background image (if set) + name + issuer at bottom."""
         image_path = acc.get("image")
-        if image_path and os.path.exists(image_path):
-            im = Image.open(image_path).convert("RGB").resize((X, Y))
-            overlay = Image.new("RGB", (X, Y), (0, 0, 0))
-            im = Image.blend(im, overlay, 0.4)
+        has_image = image_path and os.path.exists(image_path)
+        if has_image:
+            im = Image.open(image_path).convert("RGBA").resize((X, Y))
         else:
-            im = Image.new("RGB", (X, Y), (0, 0, 0))
-        draw = ImageDraw.Draw(im)
+            im = Image.new("RGBA", (X, Y), (0, 0, 0, 255))
+        overlay = Image.new("RGBA", (X, Y), (0, 0, 0, 0))
+        draw = ImageDraw.Draw(overlay)
         name = acc.get("name", "")[:12]
         issuer = acc.get("issuer", "")[:12]
         font = ImageFont.truetype(self.mydeck.font_path, 16)
-        # Draw name centered
+        # Draw name with background band
         bbox_n = draw.textbbox((0, 0), name, font=font)
-        x_n = (X - (bbox_n[2] - bbox_n[0])) // 2
-        y_n = (Y - (bbox_n[3] - bbox_n[1])) // 2 - 8
+        text_w = bbox_n[2] - bbox_n[0]
+        text_h = bbox_n[3] - bbox_n[1]
+        x_n = (X - text_w) // 2
+        y_n = (Y - text_h) // 2 - 8
+        if has_image:
+            draw.rectangle([0, y_n - 2, X, y_n + text_h + 4], fill=(0, 0, 0, 160))
         draw.text((x_n, y_n), text=name, font=font, fill="white")
-        # Draw issuer at bottom
+        # Draw issuer at bottom with background band
         if issuer and issuer != name:
             bbox_i = draw.textbbox((0, 0), issuer, font=font)
-            x_i = (X - (bbox_i[2] - bbox_i[0])) // 2
-            draw.text((x_i, Y - 22), text=issuer, font=font, fill=(180, 180, 180))
-        return im
+            i_w = bbox_i[2] - bbox_i[0]
+            i_h = bbox_i[3] - bbox_i[1]
+            x_i = (X - i_w) // 2
+            y_i = Y - 22
+            if has_image:
+                draw.rectangle([0, y_i - 2, X, y_i + i_h + 4], fill=(0, 0, 0, 160))
+            draw.text((x_i, y_i), text=issuer, font=font, fill=(200, 200, 200))
+        im = Image.alpha_composite(im, overlay)
+        return im.convert("RGB")
 
     def _make_centered_text_image(self, text: str, font_size: int) -> Image.Image:
         im = Image.new("RGB", (X, Y), (0, 0, 0))

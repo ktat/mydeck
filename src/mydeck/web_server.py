@@ -246,6 +246,9 @@ class DeckOutputWebHandler(http.server.BaseHTTPRequestHandler):
         if self.path == '/api/totp/fetch_icon':
             return self.res_totp_fetch_icon()
 
+        if self.path == '/api/totp/update':
+            return self.res_totp_update()
+
         self.response_404()
 
     def text_headers(self, status: int = 200, type: str = "html; charset=utf-8"):
@@ -740,6 +743,22 @@ class DeckOutputWebHandler(http.server.BaseHTTPRequestHandler):
                 return self.api_json_response({"error": "アイコンが見つかりませんでした"})
         except Exception as e:
             logging.error("TOTP fetch_icon error: %s", e)
+            return self.api_json_response({"error": str(e)})
+
+    def res_totp_update(self):
+        from .totp_account_manager import TotpAccountManager
+
+        try:
+            content_length = int(self.headers['content-length'])
+            body = json.loads(self.rfile.read(content_length).decode('utf-8'))
+            name = body['name']
+            new_name = body.get('new_name')
+            new_issuer = body.get('new_issuer')
+            manager = TotpAccountManager()
+            ok = manager.update_account(name, new_name=new_name, new_issuer=new_issuer)
+            return self.api_json_response({"ok": ok})
+        except Exception as e:
+            logging.error("TOTP update error: %s", e)
             return self.api_json_response({"error": str(e)})
 
     def log_message(self, format, *args):

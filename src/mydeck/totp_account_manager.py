@@ -49,6 +49,32 @@ class TotpAccountManager:
         if is_new:
             self._auto_fetch_icon(name, issuer)
 
+    def update_account(self, name: str, new_name: str | None = None, new_issuer: str | None = None) -> bool:
+        """Update account name and/or issuer."""
+        accounts = self.load_accounts()
+        for acc in accounts:
+            if acc["name"] == name:
+                if new_issuer is not None:
+                    acc["issuer"] = new_issuer
+                if new_name is not None and new_name != name:
+                    # Migrate keyring secret
+                    secret = keyring.get_password(KEYRING_SERVICE, name)
+                    if secret:
+                        keyring.set_password(KEYRING_SERVICE, new_name, secret)
+                        keyring.delete_password(KEYRING_SERVICE, name)
+                    # Migrate image
+                    if acc.get("image"):
+                        old_path = acc["image"]
+                        new_path = self.set_account_image(new_name, open(old_path, "rb").read()) if os.path.exists(old_path) else None
+                        if new_path:
+                            acc["image"] = new_path
+                            os.remove(old_path)
+                    acc["name"] = new_name
+                with open(self.accounts_file, "w") as f:
+                    json.dump(accounts, f, indent=2)
+                return True
+        return False
+
     def delete_account(self, name: str) -> bool:
         accounts = self.load_accounts()
         new_accounts = [a for a in accounts if a["name"] != name]

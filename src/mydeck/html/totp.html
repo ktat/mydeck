@@ -13,6 +13,8 @@
     button { margin-top: 14px; padding: 8px 18px; background: #0f9; color: #000; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; }
     button.del { background: #f44; color: #fff; }
     button.move { background: #555; color: #fff; padding: 4px 8px; margin: 1px; font-size: 0.9em; min-width: 28px; }
+    button.edit { background: #47a; color: #fff; padding: 3px 8px; font-size: 0.8em; }
+    .editable { cursor: pointer; border-bottom: 1px dashed #666; }
     #status { margin-top: 10px; padding: 8px; border-radius: 4px; display: none; }
     .ok { background: #1a4; }
     .err { background: #a22; }
@@ -169,12 +171,18 @@
           btnDown.addEventListener('click', () => moveAccount(accounts, idx, 1));
           tdOrder.appendChild(btnUp);
           tdOrder.appendChild(btnDown);
-          // Name
+          // Name (click to edit)
           const tdName = document.createElement('td');
           tdName.textContent = acc.name;
-          // Issuer
+          tdName.className = 'editable';
+          tdName.title = 'クリックで編集';
+          tdName.addEventListener('click', () => editField(acc.name, 'name', acc.name));
+          // Issuer (click to edit)
           const tdIssuer = document.createElement('td');
           tdIssuer.textContent = acc.issuer || '';
+          tdIssuer.className = 'editable';
+          tdIssuer.title = 'クリックで編集';
+          tdIssuer.addEventListener('click', () => editField(acc.name, 'issuer', acc.issuer || ''));
           // Image
           const tdImage = document.createElement('td');
           const imgInput = document.createElement('input');
@@ -210,6 +218,28 @@
         });
       } catch (err) {
         showStatus(`アカウント一覧の取得に失敗: ${err.message}`, false);
+      }
+    }
+
+    async function editField(name, field, currentValue) {
+      const label = field === 'name' ? 'アカウント名' : '発行者';
+      const newValue = prompt(`${label}を入力:`, currentValue);
+      if (newValue === null || newValue === currentValue) return;
+      const body = { name };
+      if (field === 'name') body.new_name = newValue;
+      else body.new_issuer = newValue;
+      try {
+        const res = await fetch('/api/totp/update', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(body)
+        });
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const data = await res.json();
+        if (data.ok) { showStatus(`更新しました`, true); loadAccounts(); }
+        else { showStatus(`エラー: ${data.error}`, false); }
+      } catch (err) {
+        showStatus(`エラー: ${err.message}`, false);
       }
     }
 
