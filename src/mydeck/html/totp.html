@@ -158,7 +158,7 @@
           const tr = document.createElement('tr');
           // Order buttons
           const tdOrder = document.createElement('td');
-          tdOrder.style.whiteSpace = 'nowrap';
+          tdOrder.style.cssText = 'white-space:nowrap; vertical-align:middle;';
           const btnUp = document.createElement('button');
           btnUp.className = 'move';
           btnUp.textContent = '\u25B2';
@@ -175,12 +175,14 @@
           const tdName = document.createElement('td');
           tdName.textContent = acc.name;
           tdName.className = 'editable';
+          tdName.style.verticalAlign = 'middle';
           tdName.title = 'クリックで編集';
           tdName.addEventListener('click', () => editField(acc.name, 'name', acc.name));
           // Issuer (click to edit)
           const tdIssuer = document.createElement('td');
           tdIssuer.textContent = acc.issuer || '';
           tdIssuer.className = 'editable';
+          tdIssuer.style.verticalAlign = 'middle';
           tdIssuer.title = 'クリックで編集';
           tdIssuer.addEventListener('click', () => editField(acc.name, 'issuer', acc.issuer || ''));
           // Image
@@ -217,7 +219,7 @@
           tdImage.appendChild(urlRow);
           // Delete
           const tdAction = document.createElement('td');
-          tdAction.style.cssText = 'text-align:center;';
+          tdAction.style.cssText = 'text-align:center; vertical-align:middle;';
           const btn = document.createElement('button');
           btn.className = 'del';
           btn.textContent = '削除';
