@@ -24,6 +24,7 @@ class AppTotp(ThreadAppBase):
         self.time_to_sleep = 1
         self._managed_pages: list[str] = []
         self._last_code: str = ""
+        self._last_account_names: list[str] = []
         self._setup_pages()
 
     def _setup_pages(self) -> None:
@@ -104,8 +105,7 @@ class AppTotp(ThreadAppBase):
 
             try:
                 if current == ACCOUNTS_PAGE:
-                    if current != last_page:
-                        self._render_accounts_page()
+                    self._render_accounts_page()
                 elif current.startswith(DETAIL_PREFIX):
                     name = current[len(DETAIL_PREFIX):]
                     self._render_detail_page(name)
@@ -121,9 +121,19 @@ class AppTotp(ThreadAppBase):
 
     def _render_accounts_page(self) -> None:
         accounts = self.manager.load_accounts()
+        account_names = [a["name"] for a in accounts]
+
+        # Skip if nothing changed
+        if account_names == self._last_account_names:
+            return
+        self._last_account_names = account_names
+
         key_count = self.mydeck.key_count
         back_key = key_count - 1
         self._last_code = ""  # reset so detail page re-renders fully on next entry
+
+        # Refresh key_config and managed pages when accounts change
+        self._setup_pages()
 
         for i, acc in enumerate(accounts[:back_key]):
             im = self._make_label_image(acc["name"])
