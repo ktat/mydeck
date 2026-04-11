@@ -190,15 +190,9 @@
           imgInput.accept = 'image/*';
           imgInput.style.cssText = 'width:200px; font-size:0.75em;';
           imgInput.addEventListener('change', () => uploadAccountImage(acc.name, imgInput));
-          if (acc.image) {
-            const badge = document.createElement('span');
-            badge.textContent = ' \u2713';
-            badge.style.color = '#0f9';
-            tdImage.appendChild(badge);
-          }
           tdImage.appendChild(imgInput);
           const urlRow = document.createElement('div');
-          urlRow.style.cssText = 'display:flex; gap:2px; margin-top:2px;';
+          urlRow.style.cssText = 'display:flex; gap:2px; margin-top:2px; align-items:center;';
           const urlInput = document.createElement('input');
           urlInput.type = 'text';
           urlInput.placeholder = 'URL';
@@ -214,6 +208,12 @@
           btnIcon.textContent = 'auto';
           btnIcon.addEventListener('click', () => fetchIcon(acc.name));
           urlRow.appendChild(btnIcon);
+          if (acc.image) {
+            const badge = document.createElement('span');
+            badge.textContent = ' \u2713';
+            badge.style.cssText = 'color:#0f9; font-weight:bold; margin-left:4px;';
+            urlRow.appendChild(badge);
+          }
           tdImage.appendChild(urlRow);
           // Delete
           const tdAction = document.createElement('td');
