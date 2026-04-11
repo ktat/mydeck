@@ -2,11 +2,13 @@ import base64
 import json
 import logging
 import os
+import re
 import time
 from urllib.parse import urlparse, parse_qs, unquote
 
 import keyring
 import pyotp
+import requests
 
 ACCOUNTS_FILE = os.path.expanduser("~/.config/mystreamdeck/totp_accounts.json")
 KEYRING_SERVICE = "mystreamdeck-totp"
@@ -31,9 +33,11 @@ class TotpAccountManager:
 
     def save_account(self, name: str, issuer: str, secret: str) -> None:
         accounts = self.load_accounts()
+        is_new = True
         for acc in accounts:
             if acc["name"] == name:
                 acc["issuer"] = issuer
+                is_new = False
                 break
         else:
             accounts.append({"name": name, "issuer": issuer})
@@ -41,6 +45,9 @@ class TotpAccountManager:
             json.dump(accounts, f, indent=2)
         os.chmod(self.accounts_file, 0o600)
         keyring.set_password(KEYRING_SERVICE, name, secret)
+        # Auto-fetch icon for new accounts
+        if is_new:
+            self._auto_fetch_icon(name, issuer)
 
     def delete_account(self, name: str) -> bool:
         accounts = self.load_accounts()
@@ -74,6 +81,44 @@ class TotpAccountManager:
         with open(self.accounts_file, "w") as f:
             json.dump(accounts, f, indent=2)
         return path
+
+    def _auto_fetch_icon(self, name: str, issuer: str) -> None:
+        """Try to fetch an icon from Simple Icons (CC0 license) based on issuer/name."""
+        if self._image_path(name):
+            return
+        for term in [issuer, name]:
+            slug = self._to_simple_icons_slug(term)
+            if not slug:
+                continue
+            try:
+                url = f"https://cdn.jsdelivr.net/npm/simple-icons@latest/icons/{slug}.svg"
+                resp = requests.get(url, timeout=5)
+                if resp.status_code == 200:
+                    # Make the SVG white for dark StreamDeck background
+                    svg_content = resp.content.decode("utf-8")
+                    svg_white = re.sub(
+                        r'<svg([^>]*)>',
+                        r'<svg\1 fill="white">',
+                        svg_content,
+                        count=1,
+                    )
+                    from cairosvg import svg2png
+                    png_data = svg2png(bytestring=svg_white.encode("utf-8"),
+                                       output_width=80, output_height=80)
+                    self.set_account_image(name, png_data)
+                    logging.info("Auto-fetched icon for %s from Simple Icons (%s)", name, slug)
+                    return
+            except Exception as e:
+                logging.debug("Failed to fetch icon for %s (%s): %s", name, slug, e)
+
+    @staticmethod
+    def _to_simple_icons_slug(term: str) -> str:
+        """Convert a service name to a Simple Icons slug."""
+        if not term:
+            return ""
+        slug = term.lower().strip()
+        slug = re.sub(r'[^a-z0-9]', '', slug)
+        return slug
 
     def _image_path(self, name: str) -> str | None:
         accounts = self.load_accounts()
