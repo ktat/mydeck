@@ -176,6 +176,7 @@
     // --- Camera QR scanning ---
     let cameraStream = null;
     let scanInterval = null;
+    let scanning = false;  // prevent overlapping scan requests
 
     async function toggleCamera() {
       const container = document.getElementById('camera-container');
@@ -196,42 +197,52 @@
         video.srcObject = stream;
         container.style.display = 'block';
         btn.textContent = 'カメラを停止';
-        statusEl.textContent = 'QRコードをカメラに映してください...';
 
-        // Use BarcodeDetector if available, otherwise canvas + server-side decode
+        // Try BarcodeDetector first (requires secure context: HTTPS or localhost)
+        let useBarcodeDetector = false;
         if ('BarcodeDetector' in window) {
+          try {
+            const detector = new BarcodeDetector({ formats: ['qr_code'] });
+            await detector.detect(new ImageData(1, 1));  // quick test
+            useBarcodeDetector = true;
+          } catch (e) { /* not available */ }
+        }
+
+        if (useBarcodeDetector) {
+          statusEl.textContent = 'スキャン中（ブラウザ検出）... QRコードをカメラに映してください';
           const detector = new BarcodeDetector({ formats: ['qr_code'] });
           scanInterval = setInterval(async () => {
-            if (video.readyState < 2) return;
+            if (video.readyState < 2 || scanning) return;
             try {
               const codes = await detector.detect(video);
               if (codes.length > 0) {
-                const qrData = codes[0].rawValue;
-                await handleScannedQR(qrData);
+                await handleScannedQR(codes[0].rawValue);
               }
-            } catch (e) { /* ignore detect errors */ }
+            } catch (e) { /* ignore */ }
           }, 300);
         } else {
-          // Fallback: capture frame to canvas, send to server for pyzbar decode
+          statusEl.textContent = 'スキャン中（サーバー解析）... QRコードをカメラに映してください';
           const canvas = document.createElement('canvas');
           scanInterval = setInterval(async () => {
-            if (video.readyState < 2) return;
+            if (video.readyState < 2 || scanning) return;
+            scanning = true;
             canvas.width = video.videoWidth;
             canvas.height = video.videoHeight;
             canvas.getContext('2d').drawImage(video, 0, 0);
             const b64 = canvas.toDataURL('image/png').split(',')[1];
             try {
-              const res = await fetch('/api/totp/upload', {
+              const res = await fetch('/api/totp/scan', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ image_b64: b64, scan_only: true })
+                body: JSON.stringify({ image_b64: b64 })
               });
               const data = await res.json();
               if (data.uri) {
                 await handleScannedQR(data.uri);
               }
             } catch (e) { /* ignore */ }
-          }, 1000);
+            scanning = false;
+          }, 1500);
         }
       } catch (err) {
         statusEl.textContent = `カメラにアクセスできません: ${err.message}`;
@@ -244,6 +255,7 @@
         cameraStream.getTracks().forEach(t => t.stop());
         cameraStream = null;
       }
+      scanning = false;
       document.getElementById('camera-container').style.display = 'none';
       document.getElementById('camera-btn').textContent = 'カメラを起動';
       document.getElementById('camera-status').textContent = '';

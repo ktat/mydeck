@@ -228,6 +228,9 @@ class DeckOutputWebHandler(http.server.BaseHTTPRequestHandler):
         if self.path == '/api/totp/upload':
             return self.res_totp_upload()
 
+        if self.path == '/api/totp/scan':
+            return self.res_totp_scan()
+
         if self.path == '/api/totp/register':
             return self.res_totp_register()
 
@@ -564,6 +567,29 @@ class DeckOutputWebHandler(http.server.BaseHTTPRequestHandler):
         from .totp_account_manager import TotpAccountManager
         manager = TotpAccountManager()
         return self.api_json_response(manager.load_accounts())
+
+    def res_totp_scan(self):
+        """Decode QR code from base64 image and return the raw URI (no registration)."""
+        import base64
+        from io import BytesIO
+        from PIL import Image as PILImage
+        from pyzbar.pyzbar import decode as pyzbar_decode
+
+        try:
+            content_length = int(self.headers['content-length'])
+            if content_length > 10 * 1024 * 1024:
+                return self.api_json_response({"error": "image too large"})
+            body = json.loads(self.rfile.read(content_length).decode('utf-8'))
+            image_data = base64.b64decode(body['image_b64'])
+            im = PILImage.open(BytesIO(image_data))
+            decoded = pyzbar_decode(im)
+            if not decoded:
+                return self.api_json_response({})
+            uri = decoded[0].data.decode('utf-8')
+            return self.api_json_response({"uri": uri})
+        except Exception as e:
+            logging.error("TOTP scan error: %s", e)
+            return self.api_json_response({"error": str(e)})
 
     def res_totp_upload(self):
         import base64
