@@ -219,12 +219,15 @@
           tdImage.appendChild(urlRow);
           // Delete
           const tdAction = document.createElement('td');
-          tdAction.style.cssText = 'text-align:center; vertical-align:middle;';
+          tdAction.style.cssText = 'text-align:center; height:100%;';
+          const actionWrap = document.createElement('div');
+          actionWrap.style.cssText = 'display:flex; align-items:center; justify-content:center; height:100%; min-height:80px;';
           const btn = document.createElement('button');
           btn.className = 'del';
           btn.textContent = '削除';
           btn.addEventListener('click', () => deleteAccount(acc.name));
-          tdAction.appendChild(btn);
+          actionWrap.appendChild(btn);
+          tdAction.appendChild(actionWrap);
           tr.appendChild(tdOrder);
           tr.appendChild(tdName);
           tr.appendChild(tdIssuer);
