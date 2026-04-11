@@ -105,6 +105,8 @@ class AppTotp(ThreadAppBase):
 
             try:
                 if current == ACCOUNTS_PAGE:
+                    if last_page != ACCOUNTS_PAGE:
+                        self._last_account_names = []  # force re-render on page entry
                     self._render_accounts_page()
                 elif current.startswith(DETAIL_PREFIX):
                     name = current[len(DETAIL_PREFIX):]
@@ -198,8 +200,10 @@ class AppTotp(ThreadAppBase):
     def _make_countdown_image(self, remaining: int) -> Image.Image:
         im = Image.new("RGB", (X, Y), (0, 0, 0))
         draw = ImageDraw.Draw(im)
-        angle = int(360 * remaining / 30)
+        elapsed_angle = int(360 * (30 - remaining) / 30)
         color = (255, 60, 60) if remaining <= 5 else (0, 200, 100)
-        if angle > 0:
-            draw.pieslice([10, 10, 90, 90], start=-90, end=-90 + angle, fill=color)
+        # Full circle, then carve out elapsed portion clockwise from top
+        draw.ellipse([10, 10, 90, 90], fill=color)
+        if elapsed_angle > 0:
+            draw.pieslice([10, 10, 90, 90], start=-90, end=-90 + elapsed_angle, fill=(0, 0, 0))
         return im
