@@ -49,7 +49,7 @@ class AppTotp(ThreadAppBase):
         next_key = back_key - 1
         per_page = self._accounts_per_page()
         key_config = self.mydeck.key_config()
-        register_url = f"http://127.0.0.1:{self.mydeck.server_port}/?totp=1"
+        register_url = f"http://127.0.0.1:{self.mydeck.server_port}/totp"
 
         # Set up change_page for keys on non-TOTP pages (Web UI config)
         for page, key in list(self.page_key.items()):
