@@ -562,8 +562,6 @@ class DeckOutputWebHandler(http.server.BaseHTTPRequestHandler):
     def res_key_setting(self):
         from .my_decks_manager import MyDecksManager
 
-        self.api_json_response({})
-
         content_length = int(self.headers['content-length'])
         json_str = self.rfile.read(content_length).decode('utf-8')
 
@@ -574,6 +572,8 @@ class DeckOutputWebHandler(http.server.BaseHTTPRequestHandler):
             deck = self.idDeckMap[deck_id]
             sn: str = deck.get_serial_number()
             MyDecksManager.ConfigQueue[sn].put(data)
+
+        self.api_json_response({})
 
     def res_totp_accounts(self):
         from .totp_account_manager import TotpAccountManager

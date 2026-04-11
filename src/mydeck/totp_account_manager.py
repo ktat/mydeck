@@ -65,7 +65,11 @@ class TotpAccountManager:
                     # Migrate image
                     if acc.get("image"):
                         old_path = acc["image"]
-                        new_path = self.set_account_image(new_name, open(old_path, "rb").read()) if os.path.exists(old_path) else None
+                        if os.path.exists(old_path):
+                            with open(old_path, "rb") as f:
+                                new_path = self.set_account_image(new_name, f.read())
+                        else:
+                            new_path = None
                         if new_path:
                             acc["image"] = new_path
                             os.remove(old_path)

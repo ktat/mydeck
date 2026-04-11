@@ -115,7 +115,7 @@ const MyDeck = {
         <img
           :src="'data:image/png;base64,' + items.data.key[i - 1]"
           class="key_image"
-          :onclick="'tap(this, &quot;' + id + '&quot;, ' + (i - 1) + ')'"
+          @click.left="tap($event.target, id, i - 1)"
           @click.right.prevent="openSettingModal(i)"
         />
         <span :class="'mod' + (i % columns)"></span>
@@ -130,11 +130,7 @@ const MyDeck = {
               height: (touchscreen_size[1] * 74.375) / 100 + 'px',
             }"
             @click.right.prevent="openSettingModalTouchscreen()"
-            :onclick="
-              'tapScreen(this, &quot;' +
-              id +
-              '&quot;, event.offsetX, event.offsetY)'
-            "
+            @click.left="tapScreen($event.target, id, $event.offsetX, $event.offsetY)"
           />
         </div>
       </div>
@@ -150,9 +146,7 @@ const MyDeck = {
             v-on:mousedown="dialChanged = 1"
             v-on:mouseup="dialChanged = 0"
             @click.right.prevent="openSettingModalDial(i)"
-            :onchange="
-              'changeDial(this, &quot;' + id + '&quot;, ' + (i-1) + ',this.value);'
-            "
+            @change="changeDial($event.target, id, i - 1, $event.target.value)"
           />
         </span>
       </span>

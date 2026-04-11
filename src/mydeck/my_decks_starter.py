@@ -27,7 +27,7 @@ class MyDecksStarter:
         if not os.path.exists(config_path):
             os.makedirs(config_path)
         if not self.check_configs(use_vdeck):
-            logging.warn("config check failed. exit.")
+            logging.warning("config check failed. exit.")
             sys.exit(1)
 
     def run(self):
@@ -39,7 +39,7 @@ class MyDecksStarter:
             return False
 
         with open(vdeck_config_path, 'r') as file:
-            data = yaml.load(file, Loader=yaml.FullLoader)
+            data = yaml.safe_load(file)
             for index in data.keys():
                 self.check_deck_config_and_create_if_required(
                     data[index]["serial_number"])
@@ -184,7 +184,7 @@ class MyDecksStarter:
 
                     logging.info("vdeck.yml created. Please edit it.")
             elif len(real_decks) == 0:
-                logging.warn(
+                logging.warning(
                     "This program requires, at least, one of StreamDeck device or virtual devcie.")
                 return False
 
