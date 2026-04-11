@@ -272,8 +272,8 @@ class AppTotp(ThreadAppBase):
         x_n = (X - text_w) // 2
         y_n = (Y - text_h) // 2 - 8
         if has_image:
-            draw.rectangle([0, y_n - 2, X, y_n + text_h + 4], fill=(0, 0, 0, 160))
-        draw.text((x_n, y_n), text=name, font=font, fill="white")
+            draw.rectangle([0, y_n - 2, X, y_n + text_h + 4], fill=(0, 0, 0, 210))
+        draw.text((x_n, y_n), text=name, font=font, fill=(255, 255, 255, 255))
         # Draw issuer at bottom with background band
         if issuer and issuer != name:
             bbox_i = draw.textbbox((0, 0), issuer, font=font)
@@ -282,8 +282,8 @@ class AppTotp(ThreadAppBase):
             x_i = (X - i_w) // 2
             y_i = Y - 22
             if has_image:
-                draw.rectangle([0, y_i - 2, X, y_i + i_h + 4], fill=(0, 0, 0, 160))
-            draw.text((x_i, y_i), text=issuer, font=font, fill=(200, 200, 200))
+                draw.rectangle([0, y_i - 2, X, y_i + i_h + 4], fill=(0, 0, 0, 210))
+            draw.text((x_i, y_i), text=issuer, font=font, fill=(255, 255, 255, 255))
         im = Image.alpha_composite(im, overlay)
         return im.convert("RGB")
 
