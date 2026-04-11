@@ -96,6 +96,15 @@ const MyDeck = {
     closeSettingModal: function () {
       this.initializeModal(false);
     },
+    tap: function (e, id, key) {
+      tap(e, id, key);
+    },
+    tapScreen: function (e, id, x, y) {
+      tapScreen(e, id, x, y);
+    },
+    changeDial: function (e, id, key, value) {
+      changeDial(e, id, key, value);
+    },
   },
   mounted() {
     this.loadData();
