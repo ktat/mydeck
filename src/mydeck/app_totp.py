@@ -3,13 +3,16 @@ import sys
 import time
 import logging
 
+import os
+
 from PIL import Image, ImageDraw, ImageFont
-from mydeck import MyDeck, ThreadAppBase, ImageOrFile
+from mydeck import MyDeck, ThreadAppBase, ImageOrFile, ROOT_DIR
 from .totp_account_manager import TotpAccountManager
 
 X = Y = 100
 ACCOUNTS_PAGE = "@TOTP_ACCOUNTS"
 DETAIL_PREFIX = "@TOTP_DETAIL_"
+BACK_IMAGE = os.path.join(ROOT_DIR, "Assets", "back.png")
 
 
 class AppTotp(ThreadAppBase):
@@ -33,6 +36,19 @@ class AppTotp(ThreadAppBase):
         back_key = key_count - 1
         key_config = self.mydeck.key_config()
 
+        # If the app was configured via Web UI on a non-TOTP page (e.g. @HOME: 4),
+        # set up that key as a change_page button to @TOTP_ACCOUNTS.
+        for page, key in list(self.page_key.items()):
+            if page != ACCOUNTS_PAGE:
+                if key_config.get(page) is None:
+                    key_config[page] = {}
+                key_config[page][key] = {
+                    "change_page": ACCOUNTS_PAGE,
+                    "image": BACK_IMAGE.replace("back", "check"),
+                    "label": "2FA",
+                    "no_image": True,
+                }
+
         # Accounts list page
         key_config[ACCOUNTS_PAGE] = {}
         for i, acc in enumerate(accounts[:back_key]):
@@ -40,16 +56,28 @@ class AppTotp(ThreadAppBase):
                 "change_page": f"{DETAIL_PREFIX}{acc['name']}",
                 "no_image": True,
             }
+        # Empty keys: open TOTP registration page in browser
+        register_url = f"http://127.0.0.1:{self.mydeck.server_port}/totp"
+        for i in range(len(accounts), back_key):
+            key_config[ACCOUNTS_PAGE][i] = {
+                "command": ["xdg-open", register_url],
+                "no_image": True,
+            }
         key_config[ACCOUNTS_PAGE][back_key] = {
             "change_page": "@previous",
-            "no_image": True,
+            "image": BACK_IMAGE,
+            "label": "Back",
         }
 
         # Per-account detail pages (back button only; digits drawn by thread)
         for acc in accounts:
             page_name = f"{DETAIL_PREFIX}{acc['name']}"
             key_config[page_name] = {
-                back_key: {"change_page": "@previous", "no_image": True}
+                back_key: {
+                    "change_page": "@previous",
+                    "image": BACK_IMAGE,
+                    "label": "Back",
+                }
             }
 
         self._managed_pages = [ACCOUNTS_PAGE] + [
@@ -103,17 +131,12 @@ class AppTotp(ThreadAppBase):
                 i, self.mydeck.render_key_image(ImageOrFile(im), acc["name"], "black")
             )
 
-        # Clear unused keys between accounts and back button
+        # Empty keys: show "+" label to indicate registration
         for i in range(len(accounts), back_key):
+            im = self._make_label_image("+")
             self.mydeck.update_key_image(
-                i, self.mydeck.render_key_image(ImageOrFile(Image.new("RGB", (X, Y), (0, 0, 0))), "", "black")
+                i, self.mydeck.render_key_image(ImageOrFile(im), "Register", "black")
             )
-
-        back_im = self._make_label_image("←")
-        self.mydeck.update_key_image(
-            back_key,
-            self.mydeck.render_key_image(ImageOrFile(back_im), "Back", "black"),
-        )
 
     def _render_detail_page(self, name: str) -> None:
         code = self.manager.generate_code(name)
@@ -135,16 +158,6 @@ class AppTotp(ThreadAppBase):
                 self.mydeck.update_key_image(
                     i, self.mydeck.render_key_image(ImageOrFile(im), chunk, "black")
                 )
-            # Clear unused keys between digits and countdown
-            for i in range(num_digit_keys, countdown_key):
-                self.mydeck.update_key_image(
-                    i, self.mydeck.render_key_image(ImageOrFile(Image.new("RGB", (X, Y), (0, 0, 0))), "", "black")
-                )
-            back_im = self._make_label_image("←")
-            self.mydeck.update_key_image(
-                back_key,
-                self.mydeck.render_key_image(ImageOrFile(back_im), "Back", "black"),
-            )
 
         countdown_im = self._make_countdown_image(remaining)
         self.mydeck.update_key_image(

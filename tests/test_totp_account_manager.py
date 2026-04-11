@@ -139,6 +139,49 @@ class TestTotpAccountManager(unittest.TestCase):
         with self.assertRaises(ValueError):
             self.manager.parse_otpauth_uri("otpauth://totp/MyService")
 
+    # --- parse_migration_uri ---
+
+    def test_parse_migration_uri_decodes_totp_accounts(self):
+        # Build a minimal protobuf payload:
+        # MigrationPayload { otp_parameters: [OtpParameters{secret, name, issuer, type=TOTP}] }
+        import base64 as _b64
+        secret_bytes = b'Hello!'  # raw secret
+        # OtpParameters: field1=secret(bytes), field2=name(str), field3=issuer(str), field6=type(varint 2=TOTP)
+        otp_param = b''
+        otp_param += b'\x0a' + bytes([len(secret_bytes)]) + secret_bytes  # field 1
+        otp_param += b'\x12' + bytes([len(b'user@example.com')]) + b'user@example.com'  # field 2
+        otp_param += b'\x1a' + bytes([len(b'TestIssuer')]) + b'TestIssuer'  # field 3
+        otp_param += b'\x30\x02'  # field 6, varint 2 (TOTP)
+        # MigrationPayload: field 1 = otp_parameters
+        payload = b'\x0a' + bytes([len(otp_param)]) + otp_param
+        data_b64 = _b64.b64encode(payload).decode()
+        uri = f"otpauth-migration://offline?data={data_b64}"
+
+        results = self.manager.parse_migration_uri(uri)
+        self.assertEqual(len(results), 1)
+        self.assertEqual(results[0]['name'], 'user@example.com')
+        self.assertEqual(results[0]['issuer'], 'TestIssuer')
+        # secret should be base32 encoded
+        self.assertTrue(len(results[0]['secret']) > 0)
+
+    def test_parse_migration_uri_skips_hotp(self):
+        import base64 as _b64
+        secret_bytes = b'Hello!'
+        # type=1 (HOTP) should be skipped
+        otp_param = b'\x0a' + bytes([len(secret_bytes)]) + secret_bytes
+        otp_param += b'\x12\x04test'
+        otp_param += b'\x30\x01'  # HOTP
+        payload = b'\x0a' + bytes([len(otp_param)]) + otp_param
+        data_b64 = _b64.b64encode(payload).decode()
+        uri = f"otpauth-migration://offline?data={data_b64}"
+
+        results = self.manager.parse_migration_uri(uri)
+        self.assertEqual(len(results), 0)
+
+    def test_parse_migration_uri_raises_for_wrong_scheme(self):
+        with self.assertRaises(ValueError):
+            self.manager.parse_migration_uri("https://example.com")
+
 
 if __name__ == '__main__':
     unittest.main()

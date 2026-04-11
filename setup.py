@@ -16,6 +16,9 @@ setup(
         "requests",
         "wand",
         "cairosvg",
+        "pyotp",
+        "pyzbar",
+        "keyring",
     ],
     package_data = {
       "": [".png", ".js", ".html", ".css"],

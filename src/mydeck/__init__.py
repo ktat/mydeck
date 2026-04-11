@@ -54,6 +54,7 @@ from .app_doodle import *
 from .app_bing_photo import *
 from .app_trigger import *
 from .app_web_server import *
+from .app_totp import *
 from .game_memory import *
 from .game_random_number import *
 from .game_tic_tack_toe import *

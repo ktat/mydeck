@@ -1,3 +1,4 @@
+import base64
 import json
 import logging
 import os
@@ -79,3 +80,93 @@ class TotpAccountManager:
             raise ValueError("Missing 'secret' parameter in otpauth URI")
         issuer = params.get("issuer", [issuer_from_label])[0] or account
         return {"name": account, "issuer": issuer, "secret": secret}
+
+    def parse_migration_uri(self, uri: str) -> list[dict]:
+        """Parse otpauth-migration://offline?data=... URI from Google Authenticator export.
+
+        Returns a list of {name, issuer, secret} dicts (TOTP accounts only).
+        """
+        parsed = urlparse(uri)
+        if parsed.scheme != "otpauth-migration":
+            raise ValueError(f"Not an otpauth-migration URI: {uri}")
+        params = parse_qs(parsed.query)
+        data_b64 = params.get("data", [""])[0]
+        if not data_b64:
+            raise ValueError("Missing 'data' parameter in migration URI")
+        payload = base64.b64decode(data_b64)
+        return self._decode_migration_payload(payload)
+
+    def _decode_migration_payload(self, data: bytes) -> list[dict]:
+        """Decode the protobuf MigrationPayload and extract TOTP accounts."""
+        results = []
+        pos = 0
+        while pos < len(data):
+            field_num, wire_type, pos = self._read_protobuf_tag(data, pos)
+            if wire_type == 2:  # length-delimited
+                length, pos = self._read_varint(data, pos)
+                field_data = data[pos:pos + length]
+                pos += length
+                if field_num == 1:  # otp_parameters
+                    entry = self._decode_otp_parameters(field_data)
+                    if entry is not None:
+                        results.append(entry)
+            elif wire_type == 0:  # varint
+                _, pos = self._read_varint(data, pos)
+            else:
+                break
+        return results
+
+    def _decode_otp_parameters(self, data: bytes) -> dict | None:
+        """Decode a single OtpParameters protobuf message."""
+        secret_bytes = b""
+        name = ""
+        issuer = ""
+        otp_type = 0
+        pos = 0
+        while pos < len(data):
+            field_num, wire_type, pos = self._read_protobuf_tag(data, pos)
+            if wire_type == 2:
+                length, pos = self._read_varint(data, pos)
+                field_data = data[pos:pos + length]
+                pos += length
+                if field_num == 1:
+                    secret_bytes = field_data
+                elif field_num == 2:
+                    name = field_data.decode("utf-8")
+                elif field_num == 3:
+                    issuer = field_data.decode("utf-8")
+            elif wire_type == 0:
+                value, pos = self._read_varint(data, pos)
+                if field_num == 6:
+                    otp_type = value
+            else:
+                break
+        # otp_type 2 = TOTP, skip HOTP (1) and unspecified (0)
+        if otp_type != 2 or not secret_bytes:
+            return None
+        secret_b32 = base64.b32encode(secret_bytes).decode("ascii").rstrip("=")
+        if ":" in name:
+            name = name.split(":", 1)[1]
+        if not issuer:
+            issuer = name
+        return {"name": name, "issuer": issuer, "secret": secret_b32}
+
+    @staticmethod
+    def _read_varint(data: bytes, pos: int) -> tuple[int, int]:
+        result = 0
+        shift = 0
+        while pos < len(data):
+            b = data[pos]
+            pos += 1
+            result |= (b & 0x7F) << shift
+            if (b & 0x80) == 0:
+                break
+            shift += 7
+        return result, pos
+
+    @staticmethod
+    def _read_protobuf_tag(data: bytes, pos: int) -> tuple[int, int, int]:
+        tag, pos = TotpAccountManager._read_varint(data, pos)
+        field_num = tag >> 3
+        wire_type = tag & 0x07
+        return field_num, wire_type, pos

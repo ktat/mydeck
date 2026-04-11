@@ -23,6 +23,16 @@
 <body>
   <h1>TOTP 2FA 登録</h1>
 
+  <h2>カメラでQRコードをスキャン</h2>
+  <div id="camera-section">
+    <button id="camera-btn" onclick="toggleCamera()">カメラを起動</button>
+    <div id="camera-container" style="display:none; margin-top:10px; position:relative;">
+      <video id="camera-video" style="width:100%; border-radius:4px; background:#000;" autoplay playsinline></video>
+      <div id="scan-overlay" style="position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); border:2px solid #0f9; width:200px; height:200px; border-radius:8px; pointer-events:none;"></div>
+    </div>
+    <p id="camera-status" style="color:#666; font-size:0.85em;"></p>
+  </div>
+
   <h2>QRコード画像からインポート</h2>
   <label>アカウント名（省略可: URIから自動取得）</label>
   <input type="text" id="upload-name" placeholder="例: GitHub">
@@ -31,8 +41,8 @@
   <button onclick="uploadQR()">QRコードを登録</button>
 
   <h2>URI / シークレットを直接入力</h2>
-  <label>otpauth URI（例: otpauth://totp/GitHub:user@example.com?secret=XXX&amp;issuer=GitHub）</label>
-  <input type="text" id="uri-input" placeholder="otpauth://totp/...">
+  <label>otpauth URI または Google Authenticator エクスポート URI</label>
+  <input type="text" id="uri-input" placeholder="otpauth://totp/... または otpauth-migration://...">
   <p style="text-align:center;color:#666">— または —</p>
   <label>アカウント名</label>
   <input type="text" id="manual-name" placeholder="例: GitHub">
@@ -160,6 +170,111 @@
         });
       } catch (err) {
         showStatus(`アカウント一覧の取得に失敗: ${err.message}`, false);
+      }
+    }
+
+    // --- Camera QR scanning ---
+    let cameraStream = null;
+    let scanInterval = null;
+
+    async function toggleCamera() {
+      const container = document.getElementById('camera-container');
+      const btn = document.getElementById('camera-btn');
+      const statusEl = document.getElementById('camera-status');
+
+      if (cameraStream) {
+        stopCamera();
+        return;
+      }
+
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({
+          video: { facingMode: 'user', width: { ideal: 640 }, height: { ideal: 480 } }
+        });
+        cameraStream = stream;
+        const video = document.getElementById('camera-video');
+        video.srcObject = stream;
+        container.style.display = 'block';
+        btn.textContent = 'カメラを停止';
+        statusEl.textContent = 'QRコードをカメラに映してください...';
+
+        // Use BarcodeDetector if available, otherwise canvas + server-side decode
+        if ('BarcodeDetector' in window) {
+          const detector = new BarcodeDetector({ formats: ['qr_code'] });
+          scanInterval = setInterval(async () => {
+            if (video.readyState < 2) return;
+            try {
+              const codes = await detector.detect(video);
+              if (codes.length > 0) {
+                const qrData = codes[0].rawValue;
+                await handleScannedQR(qrData);
+              }
+            } catch (e) { /* ignore detect errors */ }
+          }, 300);
+        } else {
+          // Fallback: capture frame to canvas, send to server for pyzbar decode
+          const canvas = document.createElement('canvas');
+          scanInterval = setInterval(async () => {
+            if (video.readyState < 2) return;
+            canvas.width = video.videoWidth;
+            canvas.height = video.videoHeight;
+            canvas.getContext('2d').drawImage(video, 0, 0);
+            const b64 = canvas.toDataURL('image/png').split(',')[1];
+            try {
+              const res = await fetch('/api/totp/upload', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ image_b64: b64, scan_only: true })
+              });
+              const data = await res.json();
+              if (data.uri) {
+                await handleScannedQR(data.uri);
+              }
+            } catch (e) { /* ignore */ }
+          }, 1000);
+        }
+      } catch (err) {
+        statusEl.textContent = `カメラにアクセスできません: ${err.message}`;
+      }
+    }
+
+    function stopCamera() {
+      if (scanInterval) { clearInterval(scanInterval); scanInterval = null; }
+      if (cameraStream) {
+        cameraStream.getTracks().forEach(t => t.stop());
+        cameraStream = null;
+      }
+      document.getElementById('camera-container').style.display = 'none';
+      document.getElementById('camera-btn').textContent = 'カメラを起動';
+      document.getElementById('camera-status').textContent = '';
+    }
+
+    async function handleScannedQR(qrData) {
+      stopCamera();
+
+      if (qrData.startsWith('otpauth-migration://') || qrData.startsWith('otpauth://')) {
+        try {
+          const res = await fetch('/api/totp/register', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ uri: qrData })
+          });
+          if (!res.ok) throw new Error(`HTTP ${res.status}`);
+          const data = await res.json();
+          if (data.ok) {
+            const msg = data.count
+              ? `${data.count}件のアカウントを登録しました: ${data.name}`
+              : `登録成功: ${data.name}`;
+            showStatus(msg, true);
+            loadAccounts();
+          } else {
+            showStatus(`エラー: ${data.error}`, false);
+          }
+        } catch (err) {
+          showStatus(`エラー: ${err.message}`, false);
+        }
+      } else {
+        showStatus(`認識できないQRコードです`, false);
       }
     }
 

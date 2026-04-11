@@ -600,8 +600,18 @@ class DeckOutputWebHandler(http.server.BaseHTTPRequestHandler):
             content_length = int(self.headers['content-length'])
             body = json.loads(self.rfile.read(content_length).decode('utf-8'))
             manager = TotpAccountManager()
-            if 'uri' in body:
-                parsed = manager.parse_otpauth_uri(body['uri'])
+            uri = body.get('uri', '')
+            if uri.startswith('otpauth-migration://'):
+                entries = manager.parse_migration_uri(uri)
+                if not entries:
+                    return self.api_json_response({"error": "No TOTP accounts found in migration data"})
+                names = []
+                for entry in entries:
+                    manager.save_account(entry['name'], entry['issuer'], entry['secret'])
+                    names.append(entry['name'])
+                return self.api_json_response({"ok": True, "name": ", ".join(names), "count": len(names)})
+            elif uri:
+                parsed = manager.parse_otpauth_uri(uri)
                 name = body.get('name') or parsed['name']
                 manager.save_account(name, parsed['issuer'], parsed['secret'])
             else:
