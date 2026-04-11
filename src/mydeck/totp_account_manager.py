@@ -50,7 +50,37 @@ class TotpAccountManager:
         with open(self.accounts_file, "w") as f:
             json.dump(new_accounts, f, indent=2)
         keyring.delete_password(KEYRING_SERVICE, name)
+        # Remove image if exists
+        img_path = self._image_path(name)
+        if img_path and os.path.exists(img_path):
+            os.remove(img_path)
         return True
+
+    def set_account_image(self, name: str, image_data: bytes) -> str:
+        """Save an image for an account. Returns the saved file path."""
+        images_dir = os.path.join(os.path.dirname(self.accounts_file), "totp_images")
+        os.makedirs(images_dir, exist_ok=True)
+        # Sanitize name for filename
+        safe_name = "".join(c if c.isalnum() or c in "-_." else "_" for c in name)
+        path = os.path.join(images_dir, f"{safe_name}.png")
+        with open(path, "wb") as f:
+            f.write(image_data)
+        # Store path in account data
+        accounts = self.load_accounts()
+        for acc in accounts:
+            if acc["name"] == name:
+                acc["image"] = path
+                break
+        with open(self.accounts_file, "w") as f:
+            json.dump(accounts, f, indent=2)
+        return path
+
+    def _image_path(self, name: str) -> str | None:
+        accounts = self.load_accounts()
+        for acc in accounts:
+            if acc["name"] == name:
+                return acc.get("image")
+        return None
 
     def get_secret(self, name: str) -> str | None:
         return keyring.get_password(KEYRING_SERVICE, name)

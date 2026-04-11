@@ -237,6 +237,9 @@ class DeckOutputWebHandler(http.server.BaseHTTPRequestHandler):
         if self.path == '/api/totp/delete':
             return self.res_totp_delete()
 
+        if self.path == '/api/totp/set_image':
+            return self.res_totp_set_image()
+
         self.response_404()
 
     def text_headers(self, status: int = 200, type: str = "html; charset=utf-8"):
@@ -655,6 +658,24 @@ class DeckOutputWebHandler(http.server.BaseHTTPRequestHandler):
             return self.api_json_response({"ok": True, "name": name})
         except Exception as e:
             logging.error("TOTP register error: %s", e)
+            return self.api_json_response({"error": str(e)})
+
+    def res_totp_set_image(self):
+        import base64
+        from .totp_account_manager import TotpAccountManager
+
+        try:
+            content_length = int(self.headers['content-length'])
+            if content_length > 10 * 1024 * 1024:
+                return self.api_json_response({"error": "image too large (max 10 MB)"})
+            body = json.loads(self.rfile.read(content_length).decode('utf-8'))
+            name = body['name']
+            image_data = base64.b64decode(body['image_b64'])
+            manager = TotpAccountManager()
+            path = manager.set_account_image(name, image_data)
+            return self.api_json_response({"ok": True, "path": path})
+        except Exception as e:
+            logging.error("TOTP set_image error: %s", e)
             return self.api_json_response({"error": str(e)})
 
     def res_totp_delete(self):

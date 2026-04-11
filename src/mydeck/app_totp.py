@@ -138,14 +138,14 @@ class AppTotp(ThreadAppBase):
         self._setup_pages()
 
         for i, acc in enumerate(accounts[:back_key]):
-            im = self._make_label_image(acc["name"])
+            im = self._make_account_image(acc)
             self.mydeck.update_key_image(
-                i, self.mydeck.render_key_image(ImageOrFile(im), acc["name"], "black")
+                i, self.mydeck.render_key_image(ImageOrFile(im), "", "black")
             )
 
-        # Empty keys: show "+" label to indicate registration
+        # Empty keys: show centered "+" to indicate registration
         for i in range(len(accounts), back_key):
-            im = self._make_label_image("+")
+            im = self._make_centered_text_image("+", 50)
             self.mydeck.update_key_image(
                 i, self.mydeck.render_key_image(ImageOrFile(im), "Register", "black")
             )
@@ -179,11 +179,41 @@ class AppTotp(ThreadAppBase):
             ),
         )
 
-    def _make_label_image(self, text: str) -> Image.Image:
+    def _make_account_image(self, acc: dict) -> Image.Image:
+        """Render account button: background image (if set) + name + issuer."""
+        image_path = acc.get("image")
+        if image_path and os.path.exists(image_path):
+            im = Image.open(image_path).convert("RGB").resize((X, Y))
+            # Darken the image so text is readable
+            overlay = Image.new("RGB", (X, Y), (0, 0, 0))
+            im = Image.blend(im, overlay, 0.4)
+        else:
+            im = Image.new("RGB", (X, Y), (0, 0, 0))
+        draw = ImageDraw.Draw(im)
+        name = acc.get("name", "")[:12]
+        issuer = acc.get("issuer", "")[:12]
+        font_name = ImageFont.truetype(self.mydeck.font_path, 16)
+        font_issuer = ImageFont.truetype(self.mydeck.font_path, 12)
+        # Draw issuer at top
+        if issuer and issuer != name:
+            bbox_i = draw.textbbox((0, 0), issuer, font=font_issuer)
+            x_i = (X - (bbox_i[2] - bbox_i[0])) // 2
+            draw.text((x_i, 5), text=issuer, font=font_issuer, fill=(180, 180, 180))
+        # Draw name centered
+        bbox_n = draw.textbbox((0, 0), name, font=font_name)
+        x_n = (X - (bbox_n[2] - bbox_n[0])) // 2
+        y_n = (Y - (bbox_n[3] - bbox_n[1])) // 2
+        draw.text((x_n, y_n), text=name, font=font_name, fill="white")
+        return im
+
+    def _make_centered_text_image(self, text: str, font_size: int) -> Image.Image:
         im = Image.new("RGB", (X, Y), (0, 0, 0))
         draw = ImageDraw.Draw(im)
-        font = ImageFont.truetype(self.mydeck.font_path, 20)
-        draw.text((5, 35), text=text[:10], font=font, fill="white")
+        font = ImageFont.truetype(self.mydeck.font_path, font_size)
+        bbox = draw.textbbox((0, 0), text, font=font)
+        x = (X - (bbox[2] - bbox[0])) // 2
+        y = (Y - (bbox[3] - bbox[1])) // 2
+        draw.text((x, y), text=text, font=font, fill="white")
         return im
 
     def _make_digit_image(self, digits: str) -> Image.Image:
