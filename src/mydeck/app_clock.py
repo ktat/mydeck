@@ -35,7 +35,7 @@ class AppClock(ThreadAppBase):
         if h == 12:
             h = 0
         h *= 5
-        h += (m / 12 + s / 60) / 60
+        h += m / 12 + s / 720
         return self._hand_end_point(self.hand_length * 0.7, h)
 
     def min_pos(self, m: float, s: int) -> XY:

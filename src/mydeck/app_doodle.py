@@ -1,6 +1,5 @@
 from mydeck import TriggerAppBase, ImageOrFile, ROOT_DIR
 import requests
-import json
 import webbrowser
 import datetime
 import re
@@ -44,16 +43,23 @@ class AppDoodle(TriggerAppBase):
             icon_file = icon_files[0]
         if os.path.isfile(icon_file) is False or time.time() - os.stat(icon_file).st_mtime >= 3600:
             try:
-                doodles_api_url = f'https://www.google.com/doodles/json/{d.year:04d}/{d.month:02d}'
-                res = requests.get(doodles_api_url, timeout=10)
+                doodles_url = 'https://doodles.google/'
+                res = requests.get(doodles_url, timeout=10)
                 res.raise_for_status()
-                data: list = res.json()
+                html: str = res.text
                 image_url: str = GOOGLE_LOGO_URL
                 self.doodle_name: str = "Google"
                 ext: str = "ico"
-                if len(data) > 0:
-                    image_url = 'https:' + data[0]["high_res_url"]
-                    self.doodle_name = data[0]['name']
+                # Parse first doodle card from homepage HTML
+                card_match = re.search(
+                    r'class="doodle-card-cta"[^>]*href="/doodle/([^"]+)/"[^>]*>.*?'
+                    r'<img[^>]*src="([^"]+)"',
+                    html, re.DOTALL)
+                if card_match:
+                    self.doodle_name = card_match.group(1)
+                    image_url = card_match.group(2)
+                    if image_url.startswith('//'):
+                        image_url = 'https:' + image_url
 
                 m = re.search(r'\.(\w+)$', image_url)
                 if m is not None and m.group(1) is not None:
@@ -87,4 +93,4 @@ class AppDoodle(TriggerAppBase):
             )
 
     def open_browser(self):
-        webbrowser.open('https://www.google.com/doodles/' + self.doodle_name)
+        webbrowser.open('https://doodles.google/doodle/' + self.doodle_name)
