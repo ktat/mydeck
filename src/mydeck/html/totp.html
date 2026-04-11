@@ -19,8 +19,8 @@
     .ok { background: #1a4; }
     .err { background: #a22; }
     table { width: 100%; border-collapse: collapse; margin-top: 16px; }
-    td, th { padding: 8px; border: 1px solid #444; text-align: left; }
-    th { background: #222; }
+    td, th { padding: 8px; border: 1px solid #444; text-align: left; vertical-align: middle; }
+    th { background: #222; text-align: center; }
   </style>
 </head>
 <body>
@@ -217,6 +217,7 @@
           tdImage.appendChild(urlRow);
           // Delete
           const tdAction = document.createElement('td');
+          tdAction.style.cssText = 'text-align:center;';
           const btn = document.createElement('button');
           btn.className = 'del';
           btn.textContent = '削除';
