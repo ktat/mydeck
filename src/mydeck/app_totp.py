@@ -85,12 +85,13 @@ class AppTotp(ThreadAppBase):
                     "no_image": True,
                 }
 
-            # "+" button: one, right after last account on this page
-            plus_idx = len(page_accounts)
-            if plus_idx < per_page and start_idx + plus_idx >= len(accounts):
-                key_config[page_name][plus_idx] = {
+            # Settings button: one, right after last account on this page
+            settings_idx = len(page_accounts)
+            if settings_idx < per_page and start_idx + settings_idx >= len(accounts):
+                key_config[page_name][settings_idx] = {
                     "command": ["xdg-open", register_url],
-                    "no_image": True,
+                    "image": os.path.join(ROOT_DIR, "Assets", "settings.png"),
+                    "label": "Settings",
                 }
 
             # "→" next page button
@@ -194,17 +195,13 @@ class AppTotp(ThreadAppBase):
                 i, self.mydeck.render_key_image(ImageOrFile(im), "", "black")
             )
 
-        # "+" button right after accounts
-        plus_idx = len(page_accounts)
-        if plus_idx < per_page and start_idx + plus_idx >= len(accounts):
-            im = self._make_centered_text_image("+", 50)
-            self.mydeck.update_key_image(
-                plus_idx, self.mydeck.render_key_image(ImageOrFile(im), "", "black")
-            )
-            plus_idx += 1
+        # Settings button is rendered by framework via key_config image
+        settings_idx = len(page_accounts)
+        if settings_idx < per_page and start_idx + settings_idx >= len(accounts):
+            settings_idx += 1  # skip the settings key (framework renders it)
 
         # Clear remaining keys between content and nav buttons
-        for i in range(plus_idx, next_key):
+        for i in range(settings_idx, next_key):
             self.mydeck.update_key_image(
                 i, self.mydeck.render_key_image(
                     ImageOrFile(Image.new("RGB", (X, Y), (0, 0, 0))), "", "black")
