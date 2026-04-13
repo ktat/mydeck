@@ -86,7 +86,7 @@ class AppDoodle(TriggerAppBase):
                 key,
                 self.mydeck.render_key_image(
                     ImageOrFile(icon_file),
-                    f"{d.year:04d}/{d.month:02d}",
+                    f"{d.month:02d}/{d.day:02d}",
                     'black',
                     False,
                 )
