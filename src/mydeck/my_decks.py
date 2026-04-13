@@ -1484,6 +1484,14 @@ class Config:
 
         self.parse_app({"app": "Trigger"})
 
+        # Auto-register AppTotp so @TOTP_ACCOUNTS page always has a key_config,
+        # even when the user hasn't explicitly added a Totp entry to apps:.
+        # Without this, assigning change_page: @TOTP_ACCOUNTS from the Web UI
+        # would lead to an empty page when the button is pressed.
+        has_totp = any(c.get("app") == "Totp" for c in apps_conf)
+        if not has_totp:
+            self.parse_app({"app": "Totp", "option": {}})
+
     def append_hook_app(self, app: 'HookAppBase'):
         """Append hook apps"""
         on = app.on

@@ -220,25 +220,43 @@ class AppTotp(ThreadAppBase):
                     ImageOrFile(Image.new("RGB", (X, Y), (0, 0, 0))), "", "black")
             )
 
+    def _detail_layout(self) -> tuple[list[int], int, int]:
+        """Return (digit_keys, countdown_key, digits_per_key).
+
+        On decks with >=3 columns and >=3 rows, place each digit in its own
+        key laid out as 3 columns x 2 rows in the top-left, with the countdown
+        at the bottom-left. Otherwise fall back to a compact layout that
+        packs the 6-digit code into as few keys as possible.
+        """
+        key_count = self.mydeck.key_count
+        columns = self.mydeck.columns
+        rows = key_count // columns if columns > 0 else 0
+
+        if columns >= 3 and rows >= 3:
+            digit_keys = [r * columns + c for r in range(2) for c in range(3)]
+            countdown_key = (rows - 1) * columns  # bottom-left
+            return digit_keys, countdown_key, 1
+
+        available = max(1, key_count - 2)
+        digits_per_key = max(1, math.ceil(6 / available))
+        num_digit_keys = math.ceil(6 / digits_per_key)
+        digit_keys = list(range(num_digit_keys))
+        return digit_keys, num_digit_keys, digits_per_key
+
     def _render_detail_page(self, name: str) -> None:
         code = self.manager.generate_code(name)
         remaining = self.manager.remaining_seconds()
-        key_count = self.mydeck.key_count
-        back_key = key_count - 1
-        available = key_count - 2
-        digits_per_key = max(1, math.ceil(6 / available))
-        num_digit_keys = math.ceil(6 / digits_per_key)
-        countdown_key = num_digit_keys
+        digit_keys, countdown_key, digits_per_key = self._detail_layout()
 
         code_changed = code != self._last_code
         if code_changed:
             self._last_code = code
-            for i in range(num_digit_keys):
+            for i, key in enumerate(digit_keys):
                 start = i * digits_per_key
                 chunk = code[start: start + digits_per_key]
                 im = self._make_digit_image(chunk)
                 self.mydeck.update_key_image(
-                    i, self.mydeck.render_key_image(ImageOrFile(im), "", "black")
+                    key, self.mydeck.render_key_image(ImageOrFile(im), "", "black")
                 )
 
         countdown_im = self._make_countdown_image(remaining)

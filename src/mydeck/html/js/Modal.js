@@ -286,6 +286,13 @@ const Modal = {
               iconImage = settingData.deck_command.image = root_dir + '/Assets/game.png';
               settingData.deck_command.label = 'Game';
               ok = true;
+            } else if (settingType == 'TOTP') {
+              settingType='deck_command';
+              settingData.deck_command.deck_command = 'change_page';
+              settingData.deck_command.arg = '@TOTP_ACCOUNTS';
+              iconImage = settingData.deck_command.image = root_dir + '/Assets/key.png';
+              settingData.deck_command.label = '2FA';
+              ok = true;
             } else if (settingType == 'delete') {
               settingData = defaultData();
               ok = false;
@@ -298,6 +305,7 @@ const Modal = {
           <option value="Back">Deck Command(Back)</option>
           <option value="Home">Deck Command(Home)</option>
           <option value="Game">Deck Command(Game)</option>
+          <option value="TOTP">Deck Command(2FA)</option>
           <option value="chrome">Chrome</option>
           <option value="command">Command</option>
         </template>

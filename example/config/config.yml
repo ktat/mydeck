@@ -62,7 +62,7 @@ page_config:
       2:
         "change_page": "@TOTP_ACCOUNTS"
         "label": "2FA"
-        "image": "./src/mydeck/Assets/check.png"
+        "image": "./src/mydeck/Assets/key.png"
       13:
         "label": "Config"
         "image": "./src/mydeck/Assets/settings.png"
