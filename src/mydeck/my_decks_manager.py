@@ -1,4 +1,5 @@
 from .web_server import DeckOutputWebHandler
+from .device_resilience import DeckGuard
 import base64
 import http.server
 import logging
@@ -24,17 +25,41 @@ class MyDecksManager:
     real_decks: list[StreamDeck] = []
     # mydeck_configs = {}
 
-    def __init__(self, config_file: str, no_real_device: bool = False):
-        """Pass configration file for veirtual decks, and flag as 2nd argument if you have no real STREAM DECK device."""
+    def __init__(self, config_file: str, no_real_device: bool = False,
+                 known_serials: Optional[dict] = None):
+        """Pass configration file for veirtual decks, and flag as 2nd argument if you have no real STREAM DECK device.
+
+        known_serials: optional dict mapping serial -> {key_count, columns,
+        has_touchscreen, dial_count}. For each serial not currently enumerated,
+        a VirtualDeck is created in connected=False state so DeviceSupervisor
+        can later reattach the real device.
+        """
         real_decks: list[StreamDeck] = []
         self.devices: list = []
         if config_file is not None:
             self.devices = self.devices_from_config(config_file)
+        # Track serials already seeded from vdeck_config to avoid duplicates
+        # when a vdeck serial also appears in known_serials.
+        existing_serials: set = set()
+        for d in self.devices:
+            try:
+                existing_serials.add(d.get_serial_number())
+            except Exception:
+                pass
+        enumerated_serials: set = set()
         if no_real_device is False:
             real_decks = DeviceManager().enumerate()
             if len(real_decks) > 0:
                 self.devices[len(self.devices):] = self.devices_from_real_decks(
                     real_decks)
+                for rd in real_decks:
+                    try:
+                        enumerated_serials.add(rd.get_serial_number())
+                    except Exception:
+                        pass
+        if known_serials:
+            self.devices[len(self.devices):] = self.devices_from_known_serials(
+                known_serials, exclude=enumerated_serials | existing_serials)
 
     def devices_from_config(self, config_file) -> list['VirtualDeck']:
         """Return virtual decks from virtual deck configuration file"""
@@ -66,12 +91,40 @@ class MyDecksManager:
             input = DeckInput.FromOption({})
             output = DeckOutputWeb({})
             deck: VirtualDeck = VirtualDeck(config.config(), input, output)
-            deck.real_deck = real_deck
+            deck.attach_real_deck(real_deck)
             decks.append(deck)
             MyDecksManager.ConfigQueue[real_deck.get_serial_number(
             )] = queue.Queue()
             i += 1
 
+        return decks
+
+    def devices_from_known_serials(self, known_serials: dict,
+                                   exclude: set) -> list['VirtualDeck']:
+        """Create disconnected VirtualDecks for serials not currently
+        enumerated, so supervisor can reattach once they appear."""
+        decks: list[VirtualDeck] = []
+        i: int = len(self.devices)
+        for sn, spec in known_serials.items():
+            if sn in exclude:
+                continue
+            opt = {
+                'key_count': spec.get('key_count', 15),
+                'columns': spec.get('columns', 5),
+                'serial_number': sn,
+                'has_touchscreen': spec.get('has_touchscreen', False),
+                'dial_count': spec.get('dial_count', 0),
+            }
+            config = VirtualDeckConfig('k' + str(i), opt)
+            input = DeckInput.FromOption({})
+            output = DeckOutputWeb({})
+            deck: VirtualDeck = VirtualDeck(config.config(), input, output)
+            # Mark as physical-backed but not currently connected.
+            deck._has_real_deck = True
+            deck.connected = False
+            decks.append(deck)
+            MyDecksManager.ConfigQueue[sn] = queue.Queue()
+            i += 1
         return decks
 
 
@@ -233,7 +286,22 @@ class VirtualDeck:
 
     def __init__(self, opt: dict, input: 'DeckInput', output: 'DeckOutput'):
         """Pass Virutal Deck option, DeckInput instance and DeckOutput instance."""
-        self.real_deck: StreamDeck = None
+        # connection state for physical devices; virtual-only decks stay True forever
+        self.connected: bool = True
+        # Callbacks set by the user are cached here so we can re-bind them to a
+        # freshly-opened real_deck on reconnect.
+        self._cached_key_callback = None
+        self._cached_dial_callback = None
+        self._cached_touchscreen_callback = None
+        self._cached_brightness: int = 30
+        self._cached_poll_frequency = None
+        # disconnect/reconnect listener set by MyDecksManager
+        self._lifecycle_listener = None
+        # DeckGuard wraps the real device once one is attached.
+        self._guard: DeckGuard = DeckGuard(self)
+        # self.real_deck exposes the guard so existing call sites keep working.
+        self.real_deck = self._guard
+        self._has_real_deck: bool = False
         self.is_touch_interface: bool = False
         plus = StreamDeckPlus
         self.touchscreen_size: tuple[int, int] = (0, 0)
@@ -301,7 +369,106 @@ class VirtualDeck:
             self.update_lock.release()
 
     def has_real_deck(self) -> bool:
-        return self.real_deck is not None
+        return self._has_real_deck
+
+    def attach_real_deck(self, real_deck: StreamDeck) -> None:
+        """Initial attach of a real_deck (called at startup for already-connected devices)."""
+        self._guard._set_real_deck(real_deck)
+        self._has_real_deck = True
+        self.connected = True
+
+    def set_lifecycle_listener(self, listener) -> None:
+        """Register a callable invoked with (self, event) where event is
+        'disconnected' or 'reconnected'."""
+        self._lifecycle_listener = listener
+
+    def mark_disconnected(self) -> None:
+        """Called by DeckGuard when a TransportError/OSError is caught.
+
+        Idempotent: multiple calls in quick succession from different threads
+        result in a single listener notification.
+        """
+        with self.update_lock:
+            if not self.connected:
+                return
+            self.connected = False
+            listener = self._lifecycle_listener
+        if listener is not None:
+            try:
+                listener(self, 'disconnected')
+            except Exception as e:
+                logging.error("lifecycle listener error on disconnect: %s", e)
+
+    def reattach(self, real_deck: StreamDeck) -> None:
+        """Swap in a freshly-opened real_deck (supervisor calls this on reconnect).
+
+        Re-binds cached callbacks and restores brightness/poll frequency so the
+        new physical device matches pre-disconnect state.
+        """
+        with self.update_lock:
+            # Release the stale HID handle, if any, before attaching the new
+            # real_deck. The old handle is almost certainly broken after a
+            # disconnect but may still hold a hidapi resource slot.
+            old = self._guard._get_real_deck()
+            if old is not None and old is not real_deck:
+                try:
+                    old.close()
+                except Exception as e:
+                    logging.debug("old real_deck close failed: %s", e)
+            self._guard._set_real_deck(real_deck)
+            try:
+                self._key_count = int(getattr(real_deck, 'KEY_COUNT',
+                                               self._key_count))
+                self._columns = int(getattr(real_deck, 'KEY_COLS',
+                                             self._columns))
+            except Exception as e:
+                logging.error("reattach spec update failed: %s", e)
+            self._has_real_deck = True
+            self.connected = True
+
+            # Settle time: hidapi open returned, but the device firmware may
+            # need a moment before accepting writes reliably after a USB
+            # re-enumeration. Empirically 200ms is plenty.
+            import time as _time
+            _time.sleep(0.2)
+
+            try:
+                real_deck.reset()
+            except Exception as e:
+                logging.error("reattach reset failed: %s", e)
+
+            if self._cached_key_callback is not None:
+                try:
+                    real_deck.set_key_callback(self._cached_key_callback)
+                except Exception as e:
+                    logging.error("reattach set_key_callback failed: %s", e)
+            if self._cached_dial_callback is not None:
+                try:
+                    real_deck.set_dial_callback(self._cached_dial_callback)
+                except Exception as e:
+                    logging.error("reattach set_dial_callback failed: %s", e)
+            if self._cached_touchscreen_callback is not None:
+                try:
+                    real_deck.set_touchscreen_callback(
+                        self._cached_touchscreen_callback)
+                except Exception as e:
+                    logging.error(
+                        "reattach set_touchscreen_callback failed: %s", e)
+            try:
+                real_deck.set_brightness(self._cached_brightness)
+            except Exception as e:
+                logging.error("reattach set_brightness failed: %s", e)
+            if self._cached_poll_frequency is not None:
+                try:
+                    real_deck.set_poll_frequency(self._cached_poll_frequency)
+                except Exception as e:
+                    logging.error("reattach set_poll_frequency failed: %s", e)
+            listener = self._lifecycle_listener
+        if listener is not None:
+            try:
+                listener(self, 'reconnected')
+            except Exception as e:
+                logging.error("lifecycle listener error on reconnect: %s", e)
 
     def is_virtual(self) -> bool:
         """Always returns true."""
@@ -374,12 +541,14 @@ class VirtualDeck:
 
     def set_brightness(self, d1):
         """Do nothing."""
+        self._cached_brightness = d1
         if self.has_real_deck():
             return self.real_deck.set_brightness(d1)
 
     def set_key_callback(self, func):
         """Set key callback"""
         self.key_callback = func
+        self._cached_key_callback = func
         if self.has_real_deck():
             self.real_deck.set_key_callback(func)
 
@@ -468,6 +637,7 @@ class VirtualDeck:
         }
 
     def set_poll_frequency(self, freq: int) -> None:
+        self._cached_poll_frequency = freq
         if self.has_real_deck():
             self.real_deck.set_poll_frequency(freq)
 
@@ -476,11 +646,13 @@ class VirtualDeck:
 
     def set_dial_callback(self, func) -> None:
         self.dial_callback = func
+        self._cached_dial_callback = func
         if self.has_real_deck():
             self.real_deck.set_dial_callback(func)
 
     def set_touchscreen_callback(self, func) -> None:
         self.touchscreen_callback = func
+        self._cached_touchscreen_callback = func
         if self.has_real_deck():
             self.real_deck.set_touchscreen_callback(func)
 

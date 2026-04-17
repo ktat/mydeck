@@ -98,7 +98,14 @@ class MyDecks:
     def start_decks(self, no_real_device: bool = False) -> NoReturn:
         """Start and display images to buttons according to configuration."""
         from .my_decks_manager import MyDecksManager
-        streamdecks = MyDecksManager(self.vdeck_config, no_real_device).devices
+        known_serials: dict = {}
+        if self.decks is not None:
+            for sn in self.decks.keys():
+                known_serials[sn] = {'key_count': 15, 'columns': 5}
+        manager = MyDecksManager(
+            self.vdeck_config, no_real_device,
+            known_serials=known_serials)
+        streamdecks = manager.devices
         logging.info("Found {} Stream Deck(s).\n".format(len(streamdecks)))
 
         for index, deck in enumerate(streamdecks):
@@ -147,8 +154,36 @@ class MyDecks:
                 logging.warning("config or (decks and configs) is required")
                 raise (ExceptionNoConfig)
 
+        # Wire device resilience: each VirtualDeck gets a lifecycle listener
+        # that dispatches to the owning MyDeck. A single DeviceSupervisor
+        # thread re-enumerates every 3s to detect reconnects.
+        from .device_resilience import DeviceSupervisor
+
+        def _dispatch(vdeck, event):
+            mydeck = None
+            for md in self.mydecks.values():
+                if md.deck is vdeck:
+                    mydeck = md
+                    break
+            if mydeck is None:
+                return
+            if event == 'disconnected':
+                mydeck.on_disconnect()
+            elif event == 'reconnected':
+                mydeck.on_reconnect()
+
+        for md in self.mydecks.values():
+            md.deck.set_lifecycle_listener(_dispatch)
+
+        self._device_supervisor = DeviceSupervisor(
+            [md.deck for md in self.mydecks.values()])
+        self._device_supervisor.start()
+
         def stop_decks(signal, frame):
             from . import DeckOutputWebServer
+
+            if getattr(self, '_device_supervisor', None) is not None:
+                self._device_supervisor.stop()
 
             DeckOutputWebServer.shutdown()
             for deck in self.mydecks.values():
@@ -246,6 +281,7 @@ class MyDeck:
         self._exit: bool = False
         self._current_page: str = '@HOME'
         self._previous_pages: list[str] = ['@HOME']
+        self._pre_disconnect_page: Optional[str] = None
         self._previous_window: str = ''
         self._in_alert: bool = False
         self._game_status: bool = False
@@ -403,6 +439,64 @@ class MyDeck:
         # run hook page_change_any whenever set_current_page is called.
         self.run_hook_apps('page_change_any')
 
+    def on_disconnect(self) -> None:
+        """Called when the physical device is detected as disconnected.
+
+        Saves the current page and switches to the reserved ``~DISCONNECTED``
+        page, which has no keys/apps; existing app threads observe this via
+        ``check_to_stop`` and exit cleanly.
+        """
+        if self._current_page == '~DISCONNECTED':
+            return
+        self._pre_disconnect_page = self._current_page
+        logging.info("[%s] device disconnected; saving page %s",
+                     self.deck.id(), self._current_page)
+        self.set_current_page('~DISCONNECTED', add_previous=False)
+
+    def on_reconnect(self) -> None:
+        """Called when the physical device is re-attached via supervisor.
+
+        reattach() has already re-opened the device, issued reset()+
+        set_brightness(), and re-registered callbacks. Here we restore the
+        application-level page state directly: reset key images, redraw for
+        the pre-disconnect page, and restart the per-page apps. Bypasses
+        set_current_page so we can log each step and avoid the full
+        page-change machinery that may hang on stale state.
+        """
+        target: str = self._pre_disconnect_page or '@HOME'
+        self._pre_disconnect_page = None
+        logging.info("[%s] device reconnected; restoring page %s",
+                     self.deck.id(), target)
+
+        # Restore the logical current_page without running the full
+        # set_current_page side effects.
+        self._set_current_page(target)
+        self.set_alert_off()
+        self.set_game_status_off()
+
+        logging.info("[%s] reconnect: resetting keys", self.deck.id())
+        try:
+            self.deck.reset_keys()
+        except Exception as e:
+            logging.error("reconnect reset_keys failed: %s", e)
+
+        logging.info("[%s] reconnect: drawing keys for %s",
+                     self.deck.id(), target)
+        try:
+            self.key_touchscreen_setup()
+        except Exception as e:
+            logging.error("reconnect key_touchscreen_setup failed: %s", e)
+
+        logging.info("[%s] reconnect: restarting page apps", self.deck.id())
+        if self.config is not None:
+            try:
+                self.threading_apps(
+                    self.config.apps, self.config.background_apps)
+            except Exception as e:
+                logging.error("reconnect threading_apps failed: %s", e)
+
+        logging.info("[%s] reconnect: complete", self.deck.id())
+
     def set_previouse_page_if_current_page_is_empty(self):
         """Set previous page if current page is empty."""
         current_page: str = self.current_page()
@@ -456,6 +550,9 @@ class MyDeck:
             page_configuration = self.key_config().get(self.current_page())
             if page_configuration is not None:
                 if page_configuration.get(key) is not None:
+                    logging.debug(
+                        "[%s] draw key %d on page %s",
+                        deck.id(), key, self.current_page())
                     self.set_key(key, page_configuration.get(key), True)
 
                     # Register callback function for the time when a key state changes.
