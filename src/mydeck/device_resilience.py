@@ -161,19 +161,58 @@ class DeviceSupervisor:
     def tick_once(self) -> None:
         """Run one enumerate+reattach pass. Exposed for unit tests.
 
-        Strategy: python-elgato-streamdeck's get_serial_number() requires the
-        device to be open, so we open each enumerated candidate, read its
-        serial, match against pending targets, reattach on match, otherwise
-        close the candidate and move on.
+        Two phases:
+          1. Proactive disconnect: any connected VDeck whose path isn't in
+             the enumerate() result is marked disconnected. This catches
+             USB removals that happened while no app was writing.
+          2. Reattach: for each disconnected VDeck, try to match an
+             enumerated candidate by opening it, reading its serial, and
+             calling reattach() on a match.
         """
-        targets = [vd for vd in self._vdecks
-                   if vd.has_real_deck() and not vd.connected]
-        if not targets:
+        physical_vdecks = [vd for vd in self._vdecks if vd.has_real_deck()]
+        if not physical_vdecks:
             return
 
+        try:
+            enumerated = list(self._enumerator())
+        except Exception as e:
+            logging.error("enumerate failed: %s", e)
+            return
+
+        # Paths returned by enumerate (bytes on Linux).
+        enumerated_paths: set = set()
+        for rd in enumerated:
+            try:
+                p = rd.device.device_info.get('path')
+                if p:
+                    enumerated_paths.add(p)
+            except Exception:
+                pass
+
+        # Phase 1: proactive disconnect detection.
+        for vd in physical_vdecks:
+            if not vd.connected:
+                continue
+            try:
+                rd_inner = vd._guard._get_real_deck()
+                if rd_inner is None:
+                    continue
+                our_path = rd_inner.device.device_info.get('path')
+            except Exception:
+                continue
+            if our_path and our_path not in enumerated_paths:
+                logging.info(
+                    "DeviceSupervisor: %s no longer enumerated, marking disconnected",
+                    vd.get_serial_number())
+                vd.mark_disconnected()
+
+        # Phase 2: reattach targets.
+        targets = [vd for vd in physical_vdecks if not vd.connected]
+        if not targets:
+            return
         target_serials = {vd.get_serial_number(): vd for vd in targets}
 
-        # Throttled "still waiting" log (every ~30s).
+        # Throttled waiting log.
         import time
         now = time.monotonic()
         if now - DeviceSupervisor._last_waiting_log > 30:
@@ -182,19 +221,16 @@ class DeviceSupervisor:
                 sorted(target_serials.keys()))
             DeviceSupervisor._last_waiting_log = now
 
-        try:
-            enumerated = list(self._enumerator())
-        except Exception as e:
-            logging.error("enumerate failed: %s", e)
-            return
-
         logging.debug(
             "DeviceSupervisor: enumerate returned %d candidates, %d targets",
             len(enumerated), len(targets))
 
+        # Skip candidates whose path matches an already-connected VDeck.
         skip_paths = self._connected_paths()
 
         for rd in enumerated:
+            if not target_serials:
+                break
             try:
                 cand_path = rd.device.device_info.get('path')
             except Exception:
@@ -204,8 +240,6 @@ class DeviceSupervisor:
                     "DeviceSupervisor: skipping already-connected path %s",
                     cand_path)
                 continue
-            if not target_serials:
-                break
             try:
                 self._opener(rd)
             except (TransportError, OSError) as e:
@@ -224,7 +258,6 @@ class DeviceSupervisor:
 
             vd = target_serials.pop(sn, None)
             if vd is None:
-                # Not one of our targets; close it and move on.
                 try:
                     rd.close()
                 except Exception:

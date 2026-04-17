@@ -739,5 +739,52 @@ class TestLockReentrancy(unittest.TestCase):
         Lock.do_with_lock('k2', lambda: None)
 
 
+class TestSupervisorProactiveDisconnect(unittest.TestCase):
+    """Regression: supervisor must mark a VDeck disconnected when its path
+    disappears from enumerate, even if no app has touched the device yet."""
+
+    def test_missing_path_triggers_mark_disconnected(self):
+        vd = FakeManagerVDeck('SN_GONE', has_real=True, connected=True)
+        inner_real = MagicMock()
+        inner_real.device.device_info = {'path': b'/dev/hidraw9'}
+        vd._guard = MagicMock()
+        vd._guard._get_real_deck = MagicMock(return_value=inner_real)
+        # Override mark_disconnected to record without needing update_lock
+        mark_calls = []
+        vd.mark_disconnected = lambda: (
+            mark_calls.append(1),
+            setattr(vd, 'connected', False))[0]
+
+        # Enumerate returns only a different device — our path is missing.
+        other = MagicMock()
+        other.device.device_info = {'path': b'/dev/hidraw1'}
+
+        sup = DeviceSupervisor([vd], enumerator=lambda: [other],
+                               opener=lambda r: None, interval=0.01)
+        sup.tick_once()
+
+        self.assertEqual(len(mark_calls), 1)
+        self.assertFalse(vd.connected)
+
+    def test_present_path_is_not_disconnected(self):
+        vd = FakeManagerVDeck('SN_HERE', has_real=True, connected=True)
+        inner_real = MagicMock()
+        inner_real.device.device_info = {'path': b'/dev/hidraw2'}
+        vd._guard = MagicMock()
+        vd._guard._get_real_deck = MagicMock(return_value=inner_real)
+        mark_calls = []
+        vd.mark_disconnected = lambda: mark_calls.append(1)
+
+        # Enumerate still has our path.
+        enum = MagicMock()
+        enum.device.device_info = {'path': b'/dev/hidraw2'}
+
+        sup = DeviceSupervisor([vd], enumerator=lambda: [enum],
+                               opener=lambda r: None, interval=0.01)
+        sup.tick_once()
+
+        self.assertEqual(len(mark_calls), 0)
+
+
 if __name__ == '__main__':
     unittest.main()
