@@ -1,4 +1,5 @@
 from .web_server import DeckOutputWebHandler
+from .device_resilience import DeckGuard
 import base64
 import http.server
 import logging
@@ -66,7 +67,7 @@ class MyDecksManager:
             input = DeckInput.FromOption({})
             output = DeckOutputWeb({})
             deck: VirtualDeck = VirtualDeck(config.config(), input, output)
-            deck.real_deck = real_deck
+            deck.attach_real_deck(real_deck)
             decks.append(deck)
             MyDecksManager.ConfigQueue[real_deck.get_serial_number(
             )] = queue.Queue()
@@ -233,7 +234,22 @@ class VirtualDeck:
 
     def __init__(self, opt: dict, input: 'DeckInput', output: 'DeckOutput'):
         """Pass Virutal Deck option, DeckInput instance and DeckOutput instance."""
-        self.real_deck: StreamDeck = None
+        # connection state for physical devices; virtual-only decks stay True forever
+        self.connected: bool = True
+        # Callbacks set by the user are cached here so we can re-bind them to a
+        # freshly-opened real_deck on reconnect.
+        self._cached_key_callback = None
+        self._cached_dial_callback = None
+        self._cached_touchscreen_callback = None
+        self._cached_brightness: int = 30
+        self._cached_poll_frequency = None
+        # disconnect/reconnect listener set by MyDecksManager
+        self._lifecycle_listener = None
+        # DeckGuard wraps the real device once one is attached.
+        self._guard: DeckGuard = DeckGuard(self)
+        # self.real_deck exposes the guard so existing call sites keep working.
+        self.real_deck = self._guard
+        self._has_real_deck: bool = False
         self.is_touch_interface: bool = False
         plus = StreamDeckPlus
         self.touchscreen_size: tuple[int, int] = (0, 0)
@@ -301,7 +317,78 @@ class VirtualDeck:
             self.update_lock.release()
 
     def has_real_deck(self) -> bool:
-        return self.real_deck is not None
+        return self._has_real_deck
+
+    def attach_real_deck(self, real_deck: StreamDeck) -> None:
+        """Initial attach of a real_deck (called at startup for already-connected devices)."""
+        self._guard._set_real_deck(real_deck)
+        self._has_real_deck = True
+        self.connected = True
+
+    def set_lifecycle_listener(self, listener) -> None:
+        """Register a callable invoked with (self, event) where event is
+        'disconnected' or 'reconnected'."""
+        self._lifecycle_listener = listener
+
+    def mark_disconnected(self) -> None:
+        """Called by DeckGuard when a TransportError/OSError is caught.
+
+        Idempotent: multiple calls in quick succession from different threads
+        result in a single listener notification.
+        """
+        with self.update_lock:
+            if not self.connected:
+                return
+            self.connected = False
+            listener = self._lifecycle_listener
+        if listener is not None:
+            try:
+                listener(self, 'disconnected')
+            except Exception as e:
+                logging.error("lifecycle listener error on disconnect: %s", e)
+
+    def reattach(self, real_deck: StreamDeck) -> None:
+        """Swap in a freshly-opened real_deck (supervisor calls this on reconnect).
+
+        Re-binds cached callbacks and restores brightness/poll frequency so the
+        new physical device matches pre-disconnect state.
+        """
+        with self.update_lock:
+            self._guard._set_real_deck(real_deck)
+            self._has_real_deck = True
+            self.connected = True
+            if self._cached_key_callback is not None:
+                try:
+                    real_deck.set_key_callback(self._cached_key_callback)
+                except Exception as e:
+                    logging.error("reattach set_key_callback failed: %s", e)
+            if self._cached_dial_callback is not None:
+                try:
+                    real_deck.set_dial_callback(self._cached_dial_callback)
+                except Exception as e:
+                    logging.error("reattach set_dial_callback failed: %s", e)
+            if self._cached_touchscreen_callback is not None:
+                try:
+                    real_deck.set_touchscreen_callback(
+                        self._cached_touchscreen_callback)
+                except Exception as e:
+                    logging.error(
+                        "reattach set_touchscreen_callback failed: %s", e)
+            try:
+                real_deck.set_brightness(self._cached_brightness)
+            except Exception as e:
+                logging.error("reattach set_brightness failed: %s", e)
+            if self._cached_poll_frequency is not None:
+                try:
+                    real_deck.set_poll_frequency(self._cached_poll_frequency)
+                except Exception as e:
+                    logging.error("reattach set_poll_frequency failed: %s", e)
+            listener = self._lifecycle_listener
+        if listener is not None:
+            try:
+                listener(self, 'reconnected')
+            except Exception as e:
+                logging.error("lifecycle listener error on reconnect: %s", e)
 
     def is_virtual(self) -> bool:
         """Always returns true."""
@@ -374,12 +461,14 @@ class VirtualDeck:
 
     def set_brightness(self, d1):
         """Do nothing."""
+        self._cached_brightness = d1
         if self.has_real_deck():
             return self.real_deck.set_brightness(d1)
 
     def set_key_callback(self, func):
         """Set key callback"""
         self.key_callback = func
+        self._cached_key_callback = func
         if self.has_real_deck():
             self.real_deck.set_key_callback(func)
 
@@ -468,6 +557,7 @@ class VirtualDeck:
         }
 
     def set_poll_frequency(self, freq: int) -> None:
+        self._cached_poll_frequency = freq
         if self.has_real_deck():
             self.real_deck.set_poll_frequency(freq)
 
@@ -476,11 +566,13 @@ class VirtualDeck:
 
     def set_dial_callback(self, func) -> None:
         self.dial_callback = func
+        self._cached_dial_callback = func
         if self.has_real_deck():
             self.real_deck.set_dial_callback(func)
 
     def set_touchscreen_callback(self, func) -> None:
         self.touchscreen_callback = func
+        self._cached_touchscreen_callback = func
         if self.has_real_deck():
             self.real_deck.set_touchscreen_callback(func)
 
