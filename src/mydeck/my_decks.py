@@ -246,6 +246,7 @@ class MyDeck:
         self._exit: bool = False
         self._current_page: str = '@HOME'
         self._previous_pages: list[str] = ['@HOME']
+        self._pre_disconnect_page: Optional[str] = None
         self._previous_window: str = ''
         self._in_alert: bool = False
         self._game_status: bool = False
@@ -402,6 +403,39 @@ class MyDeck:
 
         # run hook page_change_any whenever set_current_page is called.
         self.run_hook_apps('page_change_any')
+
+    def on_disconnect(self) -> None:
+        """Called when the physical device is detected as disconnected.
+
+        Saves the current page and switches to the reserved ``~DISCONNECTED``
+        page, which has no keys/apps; existing app threads observe this via
+        ``check_to_stop`` and exit cleanly.
+        """
+        if self._current_page == '~DISCONNECTED':
+            return
+        self._pre_disconnect_page = self._current_page
+        logging.info("[%s] device disconnected; saving page %s",
+                     self.deck.id(), self._current_page)
+        self.set_current_page('~DISCONNECTED', add_previous=False)
+
+    def on_reconnect(self) -> None:
+        """Called when the physical device is re-attached via supervisor.
+
+        Restores the page that was active before disconnect so the
+        normal page-change machinery re-spawns foreground apps and
+        re-renders key images.
+        """
+        target: str = self._pre_disconnect_page or '@HOME'
+        self._pre_disconnect_page = None
+        logging.info("[%s] device reconnected; restoring page %s",
+                     self.deck.id(), target)
+        # deck.reset and set_brightness will go through DeckGuard; safe either
+        # way. set_current_page triggers threading_apps + key_touchscreen_setup.
+        try:
+            self.deck.reset()
+        except Exception as e:
+            logging.error("reset on reconnect failed: %s", e)
+        self.set_current_page(target, add_previous=False)
 
     def set_previouse_page_if_current_page_is_empty(self):
         """Set previous page if current page is empty."""

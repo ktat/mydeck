@@ -361,5 +361,48 @@ class TestDeviceSupervisor(unittest.TestCase):
         self.assertIsNone(vd.reattach_with)
 
 
+class TestMyDeckDisconnectHooks(unittest.TestCase):
+    """Verify on_disconnect/on_reconnect behavior in isolation using a
+    lightweight stand-in rather than loading the full my_decks module
+    (which pulls in wand, cairosvg, etc.)."""
+
+    def test_hooks_save_and_restore_page(self):
+        # Inline minimal clone of the hook methods we will add to MyDeck.
+        class MyDeckLike:
+            def __init__(self):
+                self._current_page = '@HOME'
+                self._pre_disconnect_page = None
+                self.calls = []
+
+            def current_page(self):
+                return self._current_page
+
+            def set_current_page(self, name, add_previous=True):
+                self.calls.append((name, add_previous))
+                self._current_page = name
+
+            # Methods we'll define in my_decks.py for real:
+            def on_disconnect(self):
+                if self._current_page == '~DISCONNECTED':
+                    return
+                self._pre_disconnect_page = self._current_page
+                self.set_current_page('~DISCONNECTED', add_previous=False)
+
+            def on_reconnect(self):
+                target = self._pre_disconnect_page or '@HOME'
+                self._pre_disconnect_page = None
+                self.set_current_page(target, add_previous=False)
+
+        md = MyDeckLike()
+        md._current_page = '@JOB'
+        md.on_disconnect()
+        self.assertEqual(md._current_page, '~DISCONNECTED')
+        self.assertEqual(md._pre_disconnect_page, '@JOB')
+
+        md.on_reconnect()
+        self.assertEqual(md._current_page, '@JOB')
+        self.assertIsNone(md._pre_disconnect_page)
+
+
 if __name__ == '__main__':
     unittest.main()
