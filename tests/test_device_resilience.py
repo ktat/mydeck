@@ -431,5 +431,28 @@ class TestMyDecksManagerStartupWithoutDevice(unittest.TestCase):
         self.assertFalse(vd.connected)        # but not attached yet
 
 
+class TestReattachUpdatesSpecs(unittest.TestCase):
+    def test_reattach_updates_key_count_from_real_deck(self):
+        mdm = sys.modules.get('mydeck.my_decks_manager')
+        VirtualDeck = mdm.VirtualDeck
+        DeckInput = mdm.DeckInput
+        DeckOutputWeb = mdm.DeckOutputWeb
+        opt = {'id': 'k0', 'key_count': 15, 'columns': 5,
+               'serial_number': 'SN1'}
+        vd = VirtualDeck(opt, DeckInput({}), DeckOutputWeb({}))
+        vd._has_real_deck = True
+        vd.connected = False
+
+        real = MagicMock()
+        real.KEY_COUNT = 6
+        real.KEY_COLS = 3
+        real.get_serial_number.return_value = 'SN1'
+
+        vd.reattach(real)
+
+        self.assertEqual(vd.key_count(), 6)
+        self.assertEqual(vd.columns(), 3)
+
+
 if __name__ == '__main__':
     unittest.main()

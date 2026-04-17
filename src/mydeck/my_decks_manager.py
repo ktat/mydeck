@@ -399,6 +399,13 @@ class VirtualDeck:
         """
         with self.update_lock:
             self._guard._set_real_deck(real_deck)
+            try:
+                self._key_count = int(getattr(real_deck, 'KEY_COUNT',
+                                               self._key_count))
+                self._columns = int(getattr(real_deck, 'KEY_COLS',
+                                             self._columns))
+            except Exception as e:
+                logging.error("reattach spec update failed: %s", e)
             self._has_real_deck = True
             self.connected = True
             if self._cached_key_callback is not None:
