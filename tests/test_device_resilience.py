@@ -266,5 +266,100 @@ class TestVirtualDeckState(unittest.TestCase):
         self.assertEqual(events, ['reconnected'])
 
 
+DeviceSupervisor = _mod.DeviceSupervisor
+
+
+class FakeManagerVDeck:
+    """Stand-in for VirtualDeck used by DeviceSupervisor tests."""
+    def __init__(self, serial, has_real=True, connected=True):
+        self.serial = serial
+        self._has_real = has_real
+        self.connected = connected
+        self.reattach_with = None
+
+    def get_serial_number(self):
+        return self.serial
+
+    def has_real_deck(self):
+        return self._has_real
+
+    def reattach(self, real_deck):
+        self.reattach_with = real_deck
+        self.connected = True
+
+
+class TestDeviceSupervisor(unittest.TestCase):
+    def _enumerator(self, by_tick):
+        """Return a function that returns by_tick[i] on call i (clamped)."""
+        calls = {'i': 0}
+        def enum():
+            i = min(calls['i'], len(by_tick) - 1)
+            calls['i'] += 1
+            return by_tick[i]
+        return enum
+
+    def test_reconnect_matches_by_serial_and_calls_reattach(self):
+        vd = FakeManagerVDeck('SN1', has_real=True, connected=False)
+        new_real = MagicMock()
+        new_real.get_serial_number.return_value = 'SN1'
+        enum = lambda: [new_real]
+        opener = lambda rd: None  # rd.open() no-op
+
+        sup = DeviceSupervisor([vd], enumerator=enum, opener=opener,
+                               interval=0.01)
+        sup.tick_once()
+
+        self.assertEqual(vd.reattach_with, new_real)
+        self.assertTrue(vd.connected)
+
+    def test_unknown_serial_is_ignored(self):
+        vd = FakeManagerVDeck('SN1', has_real=True, connected=False)
+        other = MagicMock()
+        other.get_serial_number.return_value = 'SN_OTHER'
+
+        sup = DeviceSupervisor([vd], enumerator=lambda: [other],
+                               opener=lambda rd: None, interval=0.01)
+        sup.tick_once()
+
+        self.assertIsNone(vd.reattach_with)
+        self.assertFalse(vd.connected)
+
+    def test_already_connected_deck_is_skipped(self):
+        vd = FakeManagerVDeck('SN1', has_real=True, connected=True)
+        rd = MagicMock()
+        rd.get_serial_number.return_value = 'SN1'
+
+        sup = DeviceSupervisor([vd], enumerator=lambda: [rd],
+                               opener=lambda r: None, interval=0.01)
+        sup.tick_once()
+
+        self.assertIsNone(vd.reattach_with)
+
+    def test_open_failure_leaves_disconnected(self):
+        vd = FakeManagerVDeck('SN1', has_real=True, connected=False)
+        rd = MagicMock()
+        rd.get_serial_number.return_value = 'SN1'
+        def opener(r):
+            raise TransportError("busy")
+
+        sup = DeviceSupervisor([vd], enumerator=lambda: [rd],
+                               opener=opener, interval=0.01)
+        sup.tick_once()
+
+        self.assertIsNone(vd.reattach_with)
+        self.assertFalse(vd.connected)
+
+    def test_virtual_only_deck_is_skipped(self):
+        vd = FakeManagerVDeck('VIRT1', has_real=False, connected=True)
+        rd = MagicMock()
+        rd.get_serial_number.return_value = 'VIRT1'
+
+        sup = DeviceSupervisor([vd], enumerator=lambda: [rd],
+                               opener=lambda r: None, interval=0.01)
+        sup.tick_once()
+
+        self.assertIsNone(vd.reattach_with)
+
+
 if __name__ == '__main__':
     unittest.main()

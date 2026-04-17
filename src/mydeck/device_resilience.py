@@ -85,3 +85,86 @@ class DeckGuard:
                 vd = object.__getattribute__(self, '_virtual_deck')
                 vd.mark_disconnected()
         return False
+
+
+import threading
+
+
+class DeviceSupervisor:
+    """Periodically re-enumerate physical devices and reattach matching serials.
+
+    The supervisor is a daemon thread. Dependency injection keeps tests fast:
+    `enumerator` returns the current list of physical deck handles (same shape
+    as `DeviceManager().enumerate()`); `opener` is a callable that opens a
+    freshly-enumerated deck (default: `real_deck.open()`).
+    """
+
+    def __init__(self, virtual_decks, enumerator=None, opener=None,
+                 interval: float = 3.0):
+        self._vdecks = list(virtual_decks)
+        if enumerator is None:
+            from StreamDeck.DeviceManager import DeviceManager
+            enumerator = lambda: DeviceManager().enumerate()
+        if opener is None:
+            opener = lambda rd: rd.open()
+        self._enumerator = enumerator
+        self._opener = opener
+        self._interval = interval
+        self._stop_event = threading.Event()
+        self._thread = None
+
+    def add_virtual_deck(self, vdeck) -> None:
+        self._vdecks.append(vdeck)
+
+    def start(self) -> None:
+        if self._thread is not None and self._thread.is_alive():
+            return
+        self._thread = threading.Thread(
+            target=self._run, daemon=True, name='DeviceSupervisor')
+        self._thread.start()
+
+    def stop(self) -> None:
+        self._stop_event.set()
+
+    def _run(self) -> None:
+        while not self._stop_event.is_set():
+            try:
+                self.tick_once()
+            except Exception as e:
+                logging.error("DeviceSupervisor tick error: %s", e)
+            self._stop_event.wait(self._interval)
+
+    def tick_once(self) -> None:
+        """Run one enumerate+reattach pass. Exposed for unit tests."""
+        targets = [vd for vd in self._vdecks
+                   if vd.has_real_deck() and not vd.connected]
+        if not targets:
+            return
+        try:
+            enumerated = list(self._enumerator())
+        except Exception as e:
+            logging.error("enumerate failed: %s", e)
+            return
+        by_serial = {}
+        for rd in enumerated:
+            try:
+                sn = rd.get_serial_number()
+            except Exception:
+                continue
+            by_serial[sn] = rd
+        for vd in targets:
+            sn = vd.get_serial_number()
+            rd = by_serial.get(sn)
+            if rd is None:
+                continue
+            try:
+                self._opener(rd)
+            except (TransportError, OSError) as e:
+                logging.info(
+                    "reconnect open failed for %s: %s (will retry)", sn, e)
+                continue
+            try:
+                vd.reattach(rd)
+                logging.info("device %s reconnected", sn)
+            except Exception as e:
+                logging.error("reattach failed for %s: %s", sn, e)
