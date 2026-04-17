@@ -65,3 +65,23 @@ class DeckGuard:
                 return None
 
         return wrapped
+
+    def __enter__(self):
+        real_deck = object.__getattribute__(self, '_real_deck')
+        if real_deck is not None:
+            try:
+                real_deck.__enter__()
+            except (TransportError, OSError):
+                vd = object.__getattribute__(self, '_virtual_deck')
+                vd.mark_disconnected()
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        real_deck = object.__getattribute__(self, '_real_deck')
+        if real_deck is not None:
+            try:
+                real_deck.__exit__(exc_type, exc_val, exc_tb)
+            except (TransportError, OSError):
+                vd = object.__getattribute__(self, '_virtual_deck')
+                vd.mark_disconnected()
+        return False

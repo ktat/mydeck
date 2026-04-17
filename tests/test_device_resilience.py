@@ -123,5 +123,26 @@ class TestDeckGuardDisconnect(unittest.TestCase):
         self.assertEqual(vd.mark_disconnected_called, 0)
 
 
+class TestDeckGuardContextManager(unittest.TestCase):
+    def test_context_manager_delegates(self):
+        vd = FakeVirtualDeck()
+        real = MagicMock()
+        guard = DeckGuard(vd)
+        guard._set_real_deck(real)
+
+        with guard:
+            pass
+
+        real.__enter__.assert_called_once()
+        real.__exit__.assert_called_once()
+
+    def test_context_manager_noop_when_no_real_deck(self):
+        vd = FakeVirtualDeck()
+        guard = DeckGuard(vd)
+
+        with guard:
+            pass  # must not raise
+
+
 if __name__ == '__main__':
     unittest.main()
