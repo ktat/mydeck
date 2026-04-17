@@ -454,5 +454,26 @@ class TestReattachUpdatesSpecs(unittest.TestCase):
         self.assertEqual(vd.columns(), 3)
 
 
+class TestGuardWhenDisconnectedExitFlow(unittest.TestCase):
+    def test_with_statement_on_disconnected_guard_is_noop(self):
+        vd = FakeVirtualDeck()
+        vd.connected = False
+        guard = DeckGuard(vd)
+        real = MagicMock()
+        guard._set_real_deck(real)
+
+        # Disconnect → with block should not raise, and real.reset should
+        # be a no-op via guard (never called on the real object).
+        with guard:
+            guard.reset()
+            guard.close()
+
+        real.reset.assert_not_called()
+        real.close.assert_not_called()
+        # Context manager itself does delegate __enter__/__exit__ though.
+        real.__enter__.assert_called_once()
+        real.__exit__.assert_called_once()
+
+
 if __name__ == '__main__':
     unittest.main()
