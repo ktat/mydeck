@@ -406,6 +406,15 @@ class VirtualDeck:
         new physical device matches pre-disconnect state.
         """
         with self.update_lock:
+            # Release the stale HID handle, if any, before attaching the new
+            # real_deck. The old handle is almost certainly broken after a
+            # disconnect but may still hold a hidapi resource slot.
+            old = self._guard._get_real_deck()
+            if old is not None and old is not real_deck:
+                try:
+                    old.close()
+                except Exception as e:
+                    logging.debug("old real_deck close failed: %s", e)
             self._guard._set_real_deck(real_deck)
             try:
                 self._key_count = int(getattr(real_deck, 'KEY_COUNT',

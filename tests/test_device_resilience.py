@@ -360,6 +360,35 @@ class TestDeviceSupervisor(unittest.TestCase):
 
         self.assertIsNone(vd.reattach_with)
 
+    def test_reconnect_opens_before_reading_serial(self):
+        """Regression: get_serial_number must be called AFTER open()."""
+        vd = FakeManagerVDeck('SN1', has_real=True, connected=False)
+        rd = MagicMock()
+        call_order = []
+        rd.open.side_effect = lambda: call_order.append('open')
+        rd.get_serial_number.side_effect = (
+            lambda: call_order.append('serial') or 'SN1')
+
+        sup = DeviceSupervisor([vd], enumerator=lambda: [rd],
+                               opener=lambda r: r.open(), interval=0.01)
+        sup.tick_once()
+
+        self.assertEqual(call_order, ['open', 'serial'])
+        self.assertIsNotNone(vd.reattach_with)
+
+    def test_non_matching_candidate_is_closed(self):
+        """Candidates whose serial doesn't match any target should be closed."""
+        vd = FakeManagerVDeck('SN1', has_real=True, connected=False)
+        rd_other = MagicMock()
+        rd_other.get_serial_number.return_value = 'SN_OTHER'
+
+        sup = DeviceSupervisor([vd], enumerator=lambda: [rd_other],
+                               opener=lambda r: None, interval=0.01)
+        sup.tick_once()
+
+        rd_other.close.assert_called_once()
+        self.assertIsNone(vd.reattach_with)
+
 
 class TestMyDeckDisconnectHooks(unittest.TestCase):
     """Verify on_disconnect/on_reconnect behavior in isolation using a

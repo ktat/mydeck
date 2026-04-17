@@ -101,6 +101,8 @@ class DeviceSupervisor:
     freshly-enumerated deck (default: `real_deck.open()`).
     """
 
+    _last_waiting_log = 0.0
+
     def __init__(self, virtual_decks, enumerator=None, opener=None,
                  interval: float = 3.0):
         self._vdecks = list(virtual_decks)
@@ -124,6 +126,9 @@ class DeviceSupervisor:
         self._thread = threading.Thread(
             target=self._run, daemon=True, name='DeviceSupervisor')
         self._thread.start()
+        logging.info(
+            "DeviceSupervisor started (interval=%.1fs, watching %d decks)",
+            self._interval, len(self._vdecks))
 
     def stop(self) -> None:
         self._stop_event.set()
@@ -137,36 +142,73 @@ class DeviceSupervisor:
             self._stop_event.wait(self._interval)
 
     def tick_once(self) -> None:
-        """Run one enumerate+reattach pass. Exposed for unit tests."""
+        """Run one enumerate+reattach pass. Exposed for unit tests.
+
+        Strategy: python-elgato-streamdeck's get_serial_number() requires the
+        device to be open, so we open each enumerated candidate, read its
+        serial, match against pending targets, reattach on match, otherwise
+        close the candidate and move on.
+        """
         targets = [vd for vd in self._vdecks
                    if vd.has_real_deck() and not vd.connected]
         if not targets:
             return
+
+        target_serials = {vd.get_serial_number(): vd for vd in targets}
+
+        # Throttled "still waiting" log (every ~30s).
+        import time
+        now = time.monotonic()
+        if now - DeviceSupervisor._last_waiting_log > 30:
+            logging.info(
+                "DeviceSupervisor: waiting for %s to reconnect",
+                sorted(target_serials.keys()))
+            DeviceSupervisor._last_waiting_log = now
+
         try:
             enumerated = list(self._enumerator())
         except Exception as e:
             logging.error("enumerate failed: %s", e)
             return
-        by_serial = {}
+
+        logging.debug(
+            "DeviceSupervisor: enumerate returned %d candidates, %d targets",
+            len(enumerated), len(targets))
+
         for rd in enumerated:
-            try:
-                sn = rd.get_serial_number()
-            except Exception:
-                continue
-            by_serial[sn] = rd
-        for vd in targets:
-            sn = vd.get_serial_number()
-            rd = by_serial.get(sn)
-            if rd is None:
-                continue
+            if not target_serials:
+                break
             try:
                 self._opener(rd)
             except (TransportError, OSError) as e:
-                logging.info(
-                    "reconnect open failed for %s: %s (will retry)", sn, e)
+                logging.debug("open candidate failed: %s", e)
                 continue
+
+            try:
+                sn = rd.get_serial_number()
+            except (TransportError, OSError) as e:
+                logging.debug("get_serial after open failed: %s", e)
+                try:
+                    rd.close()
+                except Exception:
+                    pass
+                continue
+
+            vd = target_serials.pop(sn, None)
+            if vd is None:
+                # Not one of our targets; close it and move on.
+                try:
+                    rd.close()
+                except Exception:
+                    pass
+                continue
+
             try:
                 vd.reattach(rd)
                 logging.info("device %s reconnected", sn)
             except Exception as e:
                 logging.error("reattach failed for %s: %s", sn, e)
+                try:
+                    rd.close()
+                except Exception:
+                    pass
