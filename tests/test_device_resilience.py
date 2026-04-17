@@ -528,5 +528,105 @@ class TestEndToEndDisconnectReconnect(unittest.TestCase):
         real2.set_key_image.assert_called_once_with(1, 'img2')
 
 
+class TestGuardReadsWhenDisconnected(unittest.TestCase):
+    def test_deck_type_returns_none_when_no_real_deck(self):
+        vd = FakeVirtualDeck()
+        guard = DeckGuard(vd)
+        # _set_real_deck never called
+        self.assertIsNone(guard.deck_type())
+
+    def test_deck_type_returns_none_when_disconnected(self):
+        vd = FakeVirtualDeck()
+        vd.connected = False
+        real = MagicMock()
+        real.deck_type.return_value = 'StreamDeckXL'
+        guard = DeckGuard(vd)
+        guard._set_real_deck(real)
+        self.assertIsNone(guard.deck_type())
+        real.deck_type.assert_not_called()
+
+
+class TestNoDuplicateSeeding(unittest.TestCase):
+    """Regression test for bug where known_serials seeded duplicates of
+    VirtualDecks already created from vdeck_config."""
+
+    @classmethod
+    def setUpClass(cls):
+        mdm = sys.modules.get('mydeck.my_decks_manager')
+        if mdm is None:
+            # Alphabetical ordering placed us before TestVirtualDeckState;
+            # load the module ourselves using the same stub approach.
+            import types
+            pil_mod = types.ModuleType('PIL')
+            pil_mod.Image = MagicMock()
+            sys.modules.setdefault('PIL', pil_mod)
+            sd = MagicMock()
+            sd.Devices.StreamDeck.StreamDeck = type('StreamDeck', (), {})
+            sd.Devices.StreamDeckPlus.StreamDeckPlus = type(
+                'StreamDeckPlus', (),
+                {'TOUCHSCREEN_PIXEL_WIDTH': 800, 'TOUCHSCREEN_PIXEL_HEIGHT': 100,
+                 'TOUCHSCREEN_IMAGE_FORMAT': 'JPEG',
+                 'TOUCHSCREEN_FLIP': (False, False),
+                 'TOUCHSCREEN_ROTATION': None})
+            sd.DeviceManager.DeviceManager = MagicMock()
+            sd.ImageHelpers.PILHelper = MagicMock()
+            sys.modules.setdefault('StreamDeck.Devices', sd.Devices)
+            sys.modules.setdefault('StreamDeck.Devices.StreamDeck',
+                                    sd.Devices.StreamDeck)
+            sys.modules.setdefault('StreamDeck.Devices.StreamDeckPlus',
+                                    sd.Devices.StreamDeckPlus)
+            sys.modules.setdefault('StreamDeck.DeviceManager', sd.DeviceManager)
+            sys.modules.setdefault('StreamDeck.ImageHelpers', sd.ImageHelpers)
+            ws_stub = types.ModuleType('mydeck.web_server')
+            ws_stub.DeckOutputWebHandler = MagicMock()
+            ws_stub.DeckOutputWebHandler.idDeckMap = {}
+            sys.modules.setdefault('mydeck.web_server', ws_stub)
+            lock_stub = types.ModuleType('mydeck.lock')
+            class _L:
+                @staticmethod
+                def do_with_lock(k, fn, wait=0.05):
+                    fn()
+            lock_stub.Lock = _L
+            sys.modules.setdefault('mydeck.lock', lock_stub)
+            mydeck_pkg = types.ModuleType('mydeck')
+            mydeck_pkg.__path__ = [os.path.join(
+                os.path.dirname(__file__), '..', 'src', 'mydeck')]
+            sys.modules.setdefault('mydeck', mydeck_pkg)
+            mdm_path = os.path.join(
+                os.path.dirname(__file__), '..', 'src', 'mydeck',
+                'my_decks_manager.py')
+            spec = importlib.util.spec_from_file_location(
+                'mydeck.my_decks_manager', mdm_path)
+            mod = importlib.util.module_from_spec(spec)
+            sys.modules['mydeck.my_decks_manager'] = mod
+            spec.loader.exec_module(mod)
+            mdm = mod
+        cls.mdm = mdm
+
+    def test_vdeck_config_serials_excluded_from_known_serials(self):
+        import tempfile
+        import yaml
+        mdm = self.mdm
+        with tempfile.NamedTemporaryFile(
+                mode='w', suffix='.yml', delete=False) as f:
+            yaml.dump({
+                1: {'key_count': 4, 'columns': 2,
+                    'serial_number': 'VDECK_SN1'},
+            }, f)
+            vdeck_config_path = f.name
+
+        try:
+            manager = mdm.MyDecksManager(
+                vdeck_config_path, no_real_device=True,
+                known_serials={
+                    'VDECK_SN1': {'key_count': 15, 'columns': 5},
+                    'PHYS_SN2': {'key_count': 15, 'columns': 5},
+                })
+            serials = sorted(d.get_serial_number() for d in manager.devices)
+            self.assertEqual(serials, ['PHYS_SN2', 'VDECK_SN1'])
+        finally:
+            os.unlink(vdeck_config_path)
+
+
 if __name__ == '__main__':
     unittest.main()

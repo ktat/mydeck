@@ -38,6 +38,14 @@ class MyDecksManager:
         self.devices: list = []
         if config_file is not None:
             self.devices = self.devices_from_config(config_file)
+        # Track serials already seeded from vdeck_config to avoid duplicates
+        # when a vdeck serial also appears in known_serials.
+        existing_serials: set = set()
+        for d in self.devices:
+            try:
+                existing_serials.add(d.get_serial_number())
+            except Exception:
+                pass
         enumerated_serials: set = set()
         if no_real_device is False:
             real_decks = DeviceManager().enumerate()
@@ -51,7 +59,7 @@ class MyDecksManager:
                         pass
         if known_serials:
             self.devices[len(self.devices):] = self.devices_from_known_serials(
-                known_serials, exclude=enumerated_serials)
+                known_serials, exclude=enumerated_serials | existing_serials)
 
     def devices_from_config(self, config_file) -> list['VirtualDeck']:
         """Return virtual decks from virtual deck configuration file"""

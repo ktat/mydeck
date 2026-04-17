@@ -14,6 +14,8 @@ _GUARDED_METHODS = frozenset({
     'set_key_callback', 'set_dial_callback', 'set_touchscreen_callback',
     'set_dial_callback_async', 'set_touchscreen_callback_async',
     'set_poll_frequency',
+    # Read methods that may be called while disconnected or before reattach.
+    'deck_type', 'is_visual', 'get_serial_number', 'get_firmware_version',
 })
 
 
