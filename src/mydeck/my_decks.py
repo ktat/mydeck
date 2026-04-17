@@ -147,8 +147,36 @@ class MyDecks:
                 logging.warning("config or (decks and configs) is required")
                 raise (ExceptionNoConfig)
 
+        # Wire device resilience: each VirtualDeck gets a lifecycle listener
+        # that dispatches to the owning MyDeck. A single DeviceSupervisor
+        # thread re-enumerates every 3s to detect reconnects.
+        from .device_resilience import DeviceSupervisor
+
+        def _dispatch(vdeck, event):
+            mydeck = None
+            for md in self.mydecks.values():
+                if md.deck is vdeck:
+                    mydeck = md
+                    break
+            if mydeck is None:
+                return
+            if event == 'disconnected':
+                mydeck.on_disconnect()
+            elif event == 'reconnected':
+                mydeck.on_reconnect()
+
+        for md in self.mydecks.values():
+            md.deck.set_lifecycle_listener(_dispatch)
+
+        self._device_supervisor = DeviceSupervisor(
+            [md.deck for md in self.mydecks.values()])
+        self._device_supervisor.start()
+
         def stop_decks(signal, frame):
             from . import DeckOutputWebServer
+
+            if getattr(self, '_device_supervisor', None) is not None:
+                self._device_supervisor.stop()
 
             DeckOutputWebServer.shutdown()
             for deck in self.mydecks.values():
