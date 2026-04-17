@@ -54,5 +54,74 @@ class TestDeckGuardProxy(unittest.TestCase):
         real.set_key_image.assert_called_once_with(0, 'img')
 
 
+class TestDeckGuardDisconnect(unittest.TestCase):
+    def test_transport_error_marks_disconnected(self):
+        vd = FakeVirtualDeck()
+        real = MagicMock()
+        real.set_key_image.side_effect = TransportError("usb gone")
+        guard = DeckGuard(vd)
+        guard._set_real_deck(real)
+
+        result = guard.set_key_image(0, 'img')
+
+        self.assertIsNone(result)
+        self.assertEqual(vd.mark_disconnected_called, 1)
+        self.assertFalse(vd.connected)
+
+    def test_oserror_marks_disconnected(self):
+        vd = FakeVirtualDeck()
+        real = MagicMock()
+        real.set_brightness.side_effect = OSError("no device")
+        guard = DeckGuard(vd)
+        guard._set_real_deck(real)
+
+        guard.set_brightness(30)
+
+        self.assertEqual(vd.mark_disconnected_called, 1)
+
+    def test_disconnected_write_is_noop(self):
+        vd = FakeVirtualDeck()
+        real = MagicMock()
+        guard = DeckGuard(vd)
+        guard._set_real_deck(real)
+        vd.connected = False
+
+        result = guard.set_key_image(0, 'img')
+
+        self.assertIsNone(result)
+        real.set_key_image.assert_not_called()
+
+    def test_no_real_deck_write_is_noop(self):
+        vd = FakeVirtualDeck()
+        guard = DeckGuard(vd)
+        # _set_real_deck never called
+
+        result = guard.set_key_image(0, 'img')
+
+        self.assertIsNone(result)
+
+    def test_non_guarded_attribute_passes_through(self):
+        vd = FakeVirtualDeck()
+        real = MagicMock()
+        real.KEY_COUNT = 15
+        real.get_serial_number.return_value = 'SN1'
+        guard = DeckGuard(vd)
+        guard._set_real_deck(real)
+
+        self.assertEqual(guard.KEY_COUNT, 15)
+        self.assertEqual(guard.get_serial_number(), 'SN1')
+
+    def test_other_exceptions_bubble(self):
+        vd = FakeVirtualDeck()
+        real = MagicMock()
+        real.set_key_image.side_effect = ValueError("bad image")
+        guard = DeckGuard(vd)
+        guard._set_real_deck(real)
+
+        with self.assertRaises(ValueError):
+            guard.set_key_image(0, 'img')
+        self.assertEqual(vd.mark_disconnected_called, 0)
+
+
 if __name__ == '__main__':
     unittest.main()
