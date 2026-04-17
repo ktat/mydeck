@@ -550,7 +550,7 @@ class MyDeck:
             page_configuration = self.key_config().get(self.current_page())
             if page_configuration is not None:
                 if page_configuration.get(key) is not None:
-                    logging.info(
+                    logging.debug(
                         "[%s] draw key %d on page %s",
                         deck.id(), key, self.current_page())
                     self.set_key(key, page_configuration.get(key), True)

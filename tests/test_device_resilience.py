@@ -694,5 +694,50 @@ class TestSupervisorSkipsHealthyPaths(unittest.TestCase):
         self.assertEqual(disconnected_vd.reattach_with, rd_new)
 
 
+class TestLockReentrancy(unittest.TestCase):
+    """Regression: Lock.do_with_lock must be safely re-entrant from the
+    same thread. Previously this deadlocked on second acquire."""
+
+    def test_same_thread_reentrant_acquire(self):
+        import importlib.util
+        path = os.path.join(os.path.dirname(__file__), '..', 'src',
+                            'mydeck', 'lock.py')
+        spec = importlib.util.spec_from_file_location(
+            '_lock_test', path)
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        Lock = mod.Lock
+
+        calls = []
+        def inner():
+            Lock.do_with_lock('k', lambda: calls.append('inner'))
+
+        Lock.do_with_lock('k', lambda: (calls.append('outer'), inner()))
+
+        self.assertEqual(calls, ['outer', 'inner'])
+        # Lock is fully released after nested exit.
+        self.assertFalse(Lock.locked('k'))
+
+    def test_lambda_exception_releases_lock(self):
+        import importlib.util
+        path = os.path.join(os.path.dirname(__file__), '..', 'src',
+                            'mydeck', 'lock.py')
+        spec = importlib.util.spec_from_file_location(
+            '_lock_test2', path)
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        Lock = mod.Lock
+
+        def bad():
+            raise RuntimeError("boom")
+
+        with self.assertRaises(RuntimeError):
+            Lock.do_with_lock('k2', bad)
+
+        # Lock released after exception; we can acquire again from this
+        # thread without hanging.
+        Lock.do_with_lock('k2', lambda: None)
+
+
 if __name__ == '__main__':
     unittest.main()
