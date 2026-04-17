@@ -25,17 +25,33 @@ class MyDecksManager:
     real_decks: list[StreamDeck] = []
     # mydeck_configs = {}
 
-    def __init__(self, config_file: str, no_real_device: bool = False):
-        """Pass configration file for veirtual decks, and flag as 2nd argument if you have no real STREAM DECK device."""
+    def __init__(self, config_file: str, no_real_device: bool = False,
+                 known_serials: Optional[dict] = None):
+        """Pass configration file for veirtual decks, and flag as 2nd argument if you have no real STREAM DECK device.
+
+        known_serials: optional dict mapping serial -> {key_count, columns,
+        has_touchscreen, dial_count}. For each serial not currently enumerated,
+        a VirtualDeck is created in connected=False state so DeviceSupervisor
+        can later reattach the real device.
+        """
         real_decks: list[StreamDeck] = []
         self.devices: list = []
         if config_file is not None:
             self.devices = self.devices_from_config(config_file)
+        enumerated_serials: set = set()
         if no_real_device is False:
             real_decks = DeviceManager().enumerate()
             if len(real_decks) > 0:
                 self.devices[len(self.devices):] = self.devices_from_real_decks(
                     real_decks)
+                for rd in real_decks:
+                    try:
+                        enumerated_serials.add(rd.get_serial_number())
+                    except Exception:
+                        pass
+        if known_serials:
+            self.devices[len(self.devices):] = self.devices_from_known_serials(
+                known_serials, exclude=enumerated_serials)
 
     def devices_from_config(self, config_file) -> list['VirtualDeck']:
         """Return virtual decks from virtual deck configuration file"""
@@ -73,6 +89,34 @@ class MyDecksManager:
             )] = queue.Queue()
             i += 1
 
+        return decks
+
+    def devices_from_known_serials(self, known_serials: dict,
+                                   exclude: set) -> list['VirtualDeck']:
+        """Create disconnected VirtualDecks for serials not currently
+        enumerated, so supervisor can reattach once they appear."""
+        decks: list[VirtualDeck] = []
+        i: int = len(self.devices)
+        for sn, spec in known_serials.items():
+            if sn in exclude:
+                continue
+            opt = {
+                'key_count': spec.get('key_count', 15),
+                'columns': spec.get('columns', 5),
+                'serial_number': sn,
+                'has_touchscreen': spec.get('has_touchscreen', False),
+                'dial_count': spec.get('dial_count', 0),
+            }
+            config = VirtualDeckConfig('k' + str(i), opt)
+            input = DeckInput.FromOption({})
+            output = DeckOutputWeb({})
+            deck: VirtualDeck = VirtualDeck(config.config(), input, output)
+            # Mark as physical-backed but not currently connected.
+            deck._has_real_deck = True
+            deck.connected = False
+            decks.append(deck)
+            MyDecksManager.ConfigQueue[sn] = queue.Queue()
+            i += 1
         return decks
 
 

@@ -98,7 +98,14 @@ class MyDecks:
     def start_decks(self, no_real_device: bool = False) -> NoReturn:
         """Start and display images to buttons according to configuration."""
         from .my_decks_manager import MyDecksManager
-        streamdecks = MyDecksManager(self.vdeck_config, no_real_device).devices
+        known_serials: dict = {}
+        if self.decks is not None:
+            for sn in self.decks.keys():
+                known_serials[sn] = {'key_count': 15, 'columns': 5}
+        manager = MyDecksManager(
+            self.vdeck_config, no_real_device,
+            known_serials=known_serials)
+        streamdecks = manager.devices
         logging.info("Found {} Stream Deck(s).\n".format(len(streamdecks)))
 
         for index, deck in enumerate(streamdecks):

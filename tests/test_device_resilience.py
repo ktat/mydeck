@@ -404,5 +404,32 @@ class TestMyDeckDisconnectHooks(unittest.TestCase):
         self.assertIsNone(md._pre_disconnect_page)
 
 
+class TestMyDecksManagerStartupWithoutDevice(unittest.TestCase):
+    """MyDecksManager should allow seeding decks for known serials even if
+    enumerate() returns an empty list at startup."""
+
+    @classmethod
+    def setUpClass(cls):
+        cls.mdm = sys.modules.get('mydeck.my_decks_manager')
+        if cls.mdm is None:
+            # imported by the VirtualDeckState setUp — but be safe
+            raise RuntimeError(
+                "my_decks_manager should be pre-loaded by earlier test")
+
+    def test_seed_creates_disconnected_vdeck(self):
+        mdm = self.mdm
+        # No virtual config file, no real decks, but `known_serials` passed.
+        manager = mdm.MyDecksManager(
+            None, no_real_device=True, known_serials={
+                'SN_KNOWN': {'key_count': 15, 'columns': 5,
+                             'has_touchscreen': False, 'dial_count': 0}
+            })
+        self.assertEqual(len(manager.devices), 1)
+        vd = manager.devices[0]
+        self.assertEqual(vd.get_serial_number(), 'SN_KNOWN')
+        self.assertTrue(vd.has_real_deck())   # marked as physical-backed
+        self.assertFalse(vd.connected)        # but not attached yet
+
+
 if __name__ == '__main__':
     unittest.main()
