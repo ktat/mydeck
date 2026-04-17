@@ -475,5 +475,58 @@ class TestGuardWhenDisconnectedExitFlow(unittest.TestCase):
         real.__exit__.assert_called_once()
 
 
+class TestEndToEndDisconnectReconnect(unittest.TestCase):
+    """Simulate a full disconnect→reconnect cycle using stubbed deps."""
+
+    def test_full_cycle(self):
+        mdm = sys.modules.get('mydeck.my_decks_manager')
+        VirtualDeck = mdm.VirtualDeck
+        DeckInput = mdm.DeckInput
+        DeckOutputWeb = mdm.DeckOutputWeb
+
+        opt = {'id': 'e1', 'key_count': 15, 'columns': 5,
+               'serial_number': 'SN_E2E'}
+        vd = VirtualDeck(opt, DeckInput({}), DeckOutputWeb({}))
+
+        real1 = MagicMock()
+        real1.get_serial_number.return_value = 'SN_E2E'
+        real1.set_key_image.side_effect = TransportError("usb gone")
+        vd.attach_real_deck(real1)
+
+        # Fake MyDeck behavior via listener
+        page_state = {'page': '@JOB', 'saved': None}
+
+        def listener(v, event):
+            if event == 'disconnected':
+                page_state['saved'] = page_state['page']
+                page_state['page'] = '~DISCONNECTED'
+            elif event == 'reconnected':
+                page_state['page'] = page_state['saved']
+                page_state['saved'] = None
+
+        vd.set_lifecycle_listener(listener)
+
+        # 1. App tries to draw → TransportError → disconnect
+        vd.real_deck.set_key_image(0, 'img')
+        self.assertFalse(vd.connected)
+        self.assertEqual(page_state['page'], '~DISCONNECTED')
+
+        # 2. Supervisor sees new device with same serial
+        real2 = MagicMock()
+        real2.get_serial_number.return_value = 'SN_E2E'
+        real2.KEY_COUNT = 15
+        real2.KEY_COLS = 5
+
+        sup = DeviceSupervisor([vd], enumerator=lambda: [real2],
+                               opener=lambda r: None, interval=0.01)
+        sup.tick_once()
+
+        self.assertTrue(vd.connected)
+        self.assertEqual(page_state['page'], '@JOB')
+        # Subsequent I/O goes to the new real_deck
+        vd.real_deck.set_key_image(1, 'img2')
+        real2.set_key_image.assert_called_once_with(1, 'img2')
+
+
 if __name__ == '__main__':
     unittest.main()
