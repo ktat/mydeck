@@ -456,30 +456,46 @@ class MyDeck:
     def on_reconnect(self) -> None:
         """Called when the physical device is re-attached via supervisor.
 
-        reattach() has already re-opened the device, re-registered callbacks,
-        and issued reset()+set_brightness(). Here we only need to restore the
-        application-level page state; set_current_page triggers
-        threading_apps + key_touchscreen_setup to redraw keys.
+        reattach() has already re-opened the device, issued reset()+
+        set_brightness(), and re-registered callbacks. Here we restore the
+        application-level page state directly: reset key images, redraw for
+        the pre-disconnect page, and restart the per-page apps. Bypasses
+        set_current_page so we can log each step and avoid the full
+        page-change machinery that may hang on stale state.
         """
         target: str = self._pre_disconnect_page or '@HOME'
         self._pre_disconnect_page = None
         logging.info("[%s] device reconnected; restoring page %s",
                      self.deck.id(), target)
+
+        # Restore the logical current_page without running the full
+        # set_current_page side effects.
+        self._set_current_page(target)
+        self.set_alert_off()
+        self.set_game_status_off()
+
+        logging.info("[%s] reconnect: resetting keys", self.deck.id())
         try:
-            self.set_current_page(target, add_previous=False)
+            self.deck.reset_keys()
         except Exception as e:
-            logging.error("set_current_page on reconnect failed: %s", e)
-        # Belt-and-suspenders: force a full key redraw even if set_current_page
-        # early-returned (e.g. name == self._current_page).
+            logging.error("reconnect reset_keys failed: %s", e)
+
+        logging.info("[%s] reconnect: drawing keys for %s",
+                     self.deck.id(), target)
         try:
-            logging.debug("[%s] forcing key_touchscreen_setup after reconnect",
-                          self.deck.id())
             self.key_touchscreen_setup()
-            logging.info("[%s] reconnect: key_touchscreen_setup complete",
-                         self.deck.id())
         except Exception as e:
-            logging.error("key_touchscreen_setup after reconnect failed: %s",
-                          e)
+            logging.error("reconnect key_touchscreen_setup failed: %s", e)
+
+        logging.info("[%s] reconnect: restarting page apps", self.deck.id())
+        if self.config is not None:
+            try:
+                self.threading_apps(
+                    self.config.apps, self.config.background_apps)
+            except Exception as e:
+                logging.error("reconnect threading_apps failed: %s", e)
+
+        logging.info("[%s] reconnect: complete", self.deck.id())
 
     def set_previouse_page_if_current_page_is_empty(self):
         """Set previous page if current page is empty."""
@@ -534,7 +550,7 @@ class MyDeck:
             page_configuration = self.key_config().get(self.current_page())
             if page_configuration is not None:
                 if page_configuration.get(key) is not None:
-                    logging.debug(
+                    logging.info(
                         "[%s] draw key %d on page %s",
                         deck.id(), key, self.current_page())
                     self.set_key(key, page_configuration.get(key), True)

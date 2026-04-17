@@ -141,6 +141,23 @@ class DeviceSupervisor:
                 logging.error("DeviceSupervisor tick error: %s", e)
             self._stop_event.wait(self._interval)
 
+    def _connected_paths(self) -> set:
+        paths: set = set()
+        for vd in self._vdecks:
+            if not vd.has_real_deck() or not vd.connected:
+                continue
+            try:
+                rd = vd._guard._get_real_deck()
+                if rd is None:
+                    continue
+                path = rd.device.device_info.get('path')
+                if path:
+                    paths.add(path)
+            except Exception as e:
+                logging.debug("could not read path for %s: %s",
+                              vd.get_serial_number(), e)
+        return paths
+
     def tick_once(self) -> None:
         """Run one enumerate+reattach pass. Exposed for unit tests.
 
@@ -175,7 +192,18 @@ class DeviceSupervisor:
             "DeviceSupervisor: enumerate returned %d candidates, %d targets",
             len(enumerated), len(targets))
 
+        skip_paths = self._connected_paths()
+
         for rd in enumerated:
+            try:
+                cand_path = rd.device.device_info.get('path')
+            except Exception:
+                cand_path = None
+            if cand_path and cand_path in skip_paths:
+                logging.debug(
+                    "DeviceSupervisor: skipping already-connected path %s",
+                    cand_path)
+                continue
             if not target_serials:
                 break
             try:

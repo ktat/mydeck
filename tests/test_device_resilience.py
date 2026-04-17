@@ -658,5 +658,41 @@ class TestNoDuplicateSeeding(unittest.TestCase):
             os.unlink(vdeck_config_path)
 
 
+class TestSupervisorSkipsHealthyPaths(unittest.TestCase):
+    def test_connected_device_path_is_not_probed(self):
+        """Supervisor must not open/close the HID handle of a still-healthy
+        deck every tick — doing so interferes with its writes."""
+        # Connected VDeck with a known path on its real_deck
+        healthy_vd = FakeManagerVDeck('SN_HEALTHY', has_real=True,
+                                      connected=True)
+        # Fake _guard._get_real_deck chain returning path info
+        inner_real = MagicMock()
+        inner_real.device.device_info = {'path': b'/dev/hidraw0'}
+        healthy_vd._guard = MagicMock()
+        healthy_vd._guard._get_real_deck = MagicMock(return_value=inner_real)
+
+        # Disconnected target
+        disconnected_vd = FakeManagerVDeck('SN_DISCONN', has_real=True,
+                                            connected=False)
+
+        # Enumerate returns both — with same path as healthy one and a new one
+        rd_healthy = MagicMock()
+        rd_healthy.device.device_info = {'path': b'/dev/hidraw0'}
+        rd_new = MagicMock()
+        rd_new.device.device_info = {'path': b'/dev/hidraw1'}
+        rd_new.get_serial_number.return_value = 'SN_DISCONN'
+
+        sup = DeviceSupervisor([healthy_vd, disconnected_vd],
+                               enumerator=lambda: [rd_healthy, rd_new],
+                               opener=lambda r: None, interval=0.01)
+        sup.tick_once()
+
+        # Healthy device was NOT opened or closed
+        rd_healthy.open.assert_not_called()
+        rd_healthy.close.assert_not_called()
+        # New device WAS opened and reattached
+        self.assertEqual(disconnected_vd.reattach_with, rd_new)
+
+
 if __name__ == '__main__':
     unittest.main()
