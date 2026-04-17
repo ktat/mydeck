@@ -425,6 +425,18 @@ class VirtualDeck:
                 logging.error("reattach spec update failed: %s", e)
             self._has_real_deck = True
             self.connected = True
+
+            # Settle time: hidapi open returned, but the device firmware may
+            # need a moment before accepting writes reliably after a USB
+            # re-enumeration. Empirically 200ms is plenty.
+            import time as _time
+            _time.sleep(0.2)
+
+            try:
+                real_deck.reset()
+            except Exception as e:
+                logging.error("reattach reset failed: %s", e)
+
             if self._cached_key_callback is not None:
                 try:
                     real_deck.set_key_callback(self._cached_key_callback)

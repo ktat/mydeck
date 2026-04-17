@@ -261,6 +261,7 @@ class TestVirtualDeckState(unittest.TestCase):
         vd.reattach(new_real)
 
         self.assertTrue(vd.connected)
+        new_real.reset.assert_called_once()  # NEW assertion
         new_real.set_key_callback.assert_called_once_with(cb)
         new_real.set_brightness.assert_called_once_with(50)
         self.assertEqual(events, ['reconnected'])
