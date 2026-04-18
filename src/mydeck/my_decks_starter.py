@@ -312,6 +312,11 @@ def main():
         mydecks_starter = MyDecksStarter(config, args.vdeck)
         mydecks_starter.run()
 
+    # os._exit (not sys.exit) intentionally: daemon threads started by apps
+    # (HID reader, polling loops, Web UI) would otherwise keep the process
+    # alive past the point where the user has asked mydeck to stop. Atexit
+    # handlers are skipped; we've already cleaned up device state in
+    # stop_decks / start_decks before reaching this point.
     os._exit(0)
 
 

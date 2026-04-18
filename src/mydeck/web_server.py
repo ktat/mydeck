@@ -23,6 +23,11 @@ BLANK_TOUCH_IMAGE = "iVBORw0KGgoAAAANSUhEUgAAAGQAAABkCAQAAADa613fAAAAaUlEQVR42u3
 
 
 class DeckOutputWebHandler(http.server.BaseHTTPRequestHandler):
+    # Intentional class-level mutable state: `http.server.BaseHTTPRequestHandler`
+    # instantiates a fresh handler per request, so per-instance dicts would be
+    # useless for cross-request state. These maps are shared across all handler
+    # instances (keyed by deck id) and serve as the process-wide bridge between
+    # the StreamDeck devices and the Web UI.
     path_key_map: dict = {}
     touchscreen_image: dict = {}
     id_deck_map: dict = {}

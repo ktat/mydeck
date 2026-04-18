@@ -194,6 +194,10 @@ class MyDecks:
 
             logging.info("mydeck is about to stop. wait a moment.")
 
+            # sys.exit in a signal handler: raises SystemExit on the main
+            # thread so finally/atexit hooks (daemon module pidfile cleanup,
+            # logging flush) run. Daemon threads get killed by the interpreter
+            # on the way out.
             sys.exit()
 
         signal.signal(signal.SIGINT, stop_decks)
@@ -211,6 +215,11 @@ class MyDecks:
                     logging.critical("Error in start_decks {}".format(e))
 
         logging.info("start_decks end!")
+        # os._exit (not sys.exit): by this point all non-daemon worker threads
+        # have been joined, but daemon threads (DeviceSupervisor, HID readers)
+        # are still alive. os._exit terminates the whole process without
+        # waiting for them — the alternative would leave mydeck running
+        # silently when the user pressed the Exit key on the deck.
         os._exit(0)
 
     def list_mydecks(self) -> List['MyDeck']:
@@ -861,6 +870,9 @@ class MyDeck:
                         # Close deck handle, terminating internal worker threads.
                         deck.close()
 
+                    # Exit key on the physical deck -> terminate the whole
+                    # mydeck process. sys.exit here (vs. os._exit) lets atexit
+                    # hooks run on the main thread; daemon threads are killed.
                     sys.exit()
 
                 elif type(conf.get("command")) is str and self._game_command.get(conf.get("command")):
