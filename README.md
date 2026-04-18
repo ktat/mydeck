@@ -17,8 +17,8 @@ Check [the instruction](https://onlinux.systems/guides/20220520_how-to-set-up-el
 This package is intended primarily for Linux environments.
 However, with the exception of one module (`app_window_check_linux`),
 it does not depend on Linux at all.
-It has not been tested on environments other than Ubuntu 22.04,
-but I believe it can be used on other environments as well.
+It has been tested on Ubuntu 22.04, 24.04, and 26.04 (pre-release),
+and should work on other Linux distributions as well.
 
 ## Dependency
 
