@@ -353,12 +353,14 @@ page_config:
         "image": "./src/Assets/back.png"
 ```
 
-### メインスクリプト
+### カスタムスクリプト（`mydeck` コマンドでは対応できない場合）
+
+`mydeck` コマンドで大半のユースケースはカバーできますが、`alert_func` によるカスタムアラートロジックなど、コマンドがサポートしていないカスタマイズが必要な場合は、`MyDecks` クラスを直接使って自分でスクリプトを書くことができます。
 
 ```python
-from mystreamdeck import *
+from mydeck import MyDecks
 
-import os
+import requests
 
 CHECK_URL = 'https://example.com/'
 
@@ -369,26 +371,24 @@ def check_alert():
     return False
 
 if __name__ == "__main__":
-    mydecks = MyStreamDecks(
+    mydecks = MyDecks(
         {
             'server_port': 3001, # default is 3000
             'config': {
                'file': "./example/config/config.yml",
                'alert_func': check_alert,
             },
-      	}
+        }
     )
 
     mydecks.start_decks()
-
-    os.exit()
 ```
 
 複数デバイスを持っている場合:
 
 ```python
 if __name__ == "__main__":
-    mydecks = MyStreamDecks({
+    mydecks = MyDecks({
         'server_port': 3001, # default is 3000
         'decks': {
             'SERIAL_KEY_1': 'name1',

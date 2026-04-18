@@ -357,12 +357,14 @@ If you set window title as PAGE\_LABEL, page is changed according to active wind
         "image": "./src/Assets/back.png"
 ```
 
-### main script
+### Custom script (when `mydeck` command is not enough)
+
+The `mydeck` command covers most use cases, but if you need customizations not supported by the command — such as `alert_func` for custom alert logic — you can write your own script using the `MyDecks` class directly.
 
 ```python
-from mystreamdeck import *
+from mydeck import MyDecks
 
-import os
+import requests
 
 CHECK_URL = 'https://example.com/'
 
@@ -373,26 +375,24 @@ def check_alert():
     return False
 
 if __name__ == "__main__":
-    mydecks = MyStreamDecks(
+    mydecks = MyDecks(
         {
             'server_port': 3001, # default is 3000
             'config': {
                'file': "./example/config/config.yml",
                'alert_func': check_alert,
             },
-      	}
+        }
     )
 
     mydecks.start_decks()
-
-    os.exit()
 ```
 
-If you have multi devices.
+If you have multiple devices:
 
 ```python
 if __name__ == "__main__":
-    mydecks = MyStreamDecks({
+    mydecks = MyDecks({
         'server_port': 3001, # default is 3000
         'decks': {
             'SERIAL_KEY_1': 'name1',
