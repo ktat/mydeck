@@ -166,8 +166,13 @@ page_config:
 `command` and `change_page` can be used in same time.
 In the case, command is executed and then page is changed.
 
-configuration is live reload,
-when you change yaml file, it is loaded when page is changed.
+#### Live reload of the YAML config
+
+Config files are re-read automatically when their mtime changes, but only at the point `key_touchscreen_setup()` runs — which is on **page change**. There's no inotify-style filesystem watcher.
+
+- Edits to an already-installed app (added/removed/repositioned keys, option changes): take effect the next time you switch pages on that deck.
+- Installing a **new** Python package (e.g., a plugin under a new dotted path) requires **restarting `mydeck`** (`mydeck --restart -d`). Python only scans `site-packages` / `.pth` files at interpreter startup, so a running process can't discover a freshly-`pip install`ed plugin until it restarts.
+- Editing code inside an already-loaded app (e.g., tweaking a built-in `app_*.py` file) likewise needs a restart — modules are cached in `importlib`.
 
 #### PAGE\_LABEL
 
