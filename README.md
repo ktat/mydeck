@@ -46,8 +46,8 @@ Python dependencies (installed automatically via `pip install .`):
 
 This is still alpha-quality software.
 
-- Some code may not be idiomatic Python
 - The API around `MyDeck` / `MyDecksManager` may change
+- Test coverage is growing but far from comprehensive — manual smoke-test any workflow that matters to you
 
 ## How to use?
 
