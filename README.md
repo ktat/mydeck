@@ -1,5 +1,7 @@
 # MyDeck
 
+English | [日本語](README.ja.md)
+
 MyDeck allows you to configure a real STREAM DECK.
 It also allows you to view and control the status of the actual STREAM DECK in your browser.
 Even if you don't have a real STREAM DECK device, you can use it as a virtual external keyboard in the browser.
