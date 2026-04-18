@@ -1,5 +1,6 @@
 import datetime
 import time
+from typing import Optional
 from mydeck import MyDeck, BackgroundAppBase
 import logging
 
@@ -8,7 +9,7 @@ class AppTrigger(BackgroundAppBase):
     # if app requires thread, true
     use_thread = True
 
-    def __init__(self, mydeck: MyDeck, config: dict = {}):
+    def __init__(self, mydeck: MyDeck, config: Optional[dict] = None):
         super().__init__(mydeck)
         self.last_checked_time = datetime.datetime.now()
 

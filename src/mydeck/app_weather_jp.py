@@ -143,7 +143,9 @@ class AppWeatherJp(TriggerAppBase):
         "division": "大阪府",
     }
 
-    def __init__(self, mydeck: MyDeck, option: dict = {}):
+    def __init__(self, mydeck: MyDeck, option: Optional[dict] = None):
+        if option is None:
+            option = {}
         super().__init__(mydeck, option)
         self.area: Area = Area(option)
         self.jma: JMA = JMA(self.area)

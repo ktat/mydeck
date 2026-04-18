@@ -1,4 +1,5 @@
 from PIL import Image, ImageDraw, ImageFont
+from typing import Optional
 from mydeck import MyDeck, TouchAppBase
 import logging
 
@@ -11,7 +12,9 @@ class AppTouchscreenSample(TouchAppBase):
         "TouchscreenSample": lambda app, event, args: app.render_touchscreen_sample_image(args),
     }
 
-    def __init__(self, mydeck: MyDeck, option: dict = {}):
+    def __init__(self, mydeck: MyDeck, option: Optional[dict] = None):
+        if option is None:
+            option = {}
         super().__init__(mydeck, option)
 
     def key_setup(self):

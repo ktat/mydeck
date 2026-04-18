@@ -6,7 +6,7 @@ from threading import Event
 import logging
 import re
 
-from typing import NoReturn, TYPE_CHECKING, Any
+from typing import NoReturn, TYPE_CHECKING, Any, Optional
 from . import MyDeck
 
 APP_NAMES: dict[str, bool] = {}
@@ -139,8 +139,10 @@ class GameAppBase(App):
 class AppBase(App):
     """Base class of a normal application"""
 
-    def __init__(self, mydeck: 'MyDeck', option: dict = {}):
+    def __init__(self, mydeck: 'MyDeck', option: Optional[dict] = None):
         """Constructor. Pass MyDeck instance and app configuration."""
+        if option is None:
+            option = {}
         super().__init__(mydeck)
 
         self.temp_wait = 0
@@ -306,7 +308,9 @@ class ThreadAppBase(AppBase):
 class TriggerAppBase(AppBase):
     use_thread: bool = True
 
-    def __init__(self, mydeck: MyDeck, config: dict = {}):
+    def __init__(self, mydeck: MyDeck, config: Optional[dict] = None):
+        if config is None:
+            config = {}
         super().__init__(mydeck, config)
         if self.use_day_trigger or self.use_hour_trigger or self.use_minute_trigger:
             self.use_trigger = True
@@ -317,7 +321,7 @@ class BackgroundAppBase(App):
     """Base class of the application which works in background."""
     use_thread: bool = True
 
-    def __init__(self, mydeck: MyDeck, config: dict = {}):
+    def __init__(self, mydeck: MyDeck, config: Optional[dict] = None):
         """Pass MyDeck instance and configuration"""
         super().__init__(mydeck)
         # need to stop thread
@@ -355,7 +359,7 @@ class HookAppBase(App):
     use_thread: bool = False
     on: str
 
-    def __init__(self, mydeck: MyDeck, config: dict = {}):
+    def __init__(self, mydeck: MyDeck, config: Optional[dict] = None):
         """Pass MyDeck instance and configuration"""
         super().__init__(mydeck)
         if config is not None:

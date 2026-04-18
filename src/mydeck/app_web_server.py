@@ -1,3 +1,4 @@
+from typing import Optional
 from mydeck import MyDeck, BackgroundAppBase, DeckOutputWebServer
 import logging
 
@@ -8,7 +9,9 @@ class AppWebServer(BackgroundAppBase):
     # class-level flag used externally (e.g. my_decks.py) to check if server is running
     IS_ALREADY_WORKING: bool = False
 
-    def __init__(self, mydeck: MyDeck, config: dict = {}):
+    def __init__(self, mydeck: MyDeck, config: Optional[dict] = None):
+        if config is None:
+            config = {}
         super().__init__(mydeck)
         self.port = config.get('port', 3000)
 

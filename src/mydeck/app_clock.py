@@ -3,7 +3,7 @@ import datetime
 import time
 
 from PIL import Image, ImageDraw
-from typing import Tuple
+from typing import Optional, Tuple
 from mydeck import MyDeck, ThreadAppBase, ImageOrFile
 
 # whole image size
@@ -21,7 +21,9 @@ class AppClock(ThreadAppBase):
     center_y: int = 50
     hand_length: int = 45
 
-    def __init__(self, mydeck: MyDeck, option: dict = {}):
+    def __init__(self, mydeck: MyDeck, option: Optional[dict] = None):
+        if option is None:
+            option = {}
         super().__init__(mydeck, option)
 
     def _hand_end_point(self, length: float, time_units: float) -> XY:

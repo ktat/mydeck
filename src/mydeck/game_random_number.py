@@ -2,6 +2,7 @@ import time
 import random
 import threading
 import logging
+from typing import Optional
 from mydeck import MyDeck, GameAppBase, ROOT_DIR
 
 
@@ -10,7 +11,9 @@ class GameRandomNumber(GameAppBase):
     require_columns: int = 2
     mode_explanation = "n <= 10: show n numbers."
 
-    def __init__(self, mydeck: MyDeck, conf: dict = {}):
+    def __init__(self, mydeck: MyDeck, conf: Optional[dict] = None):
+        if conf is None:
+            conf = {}
         super().__init__(mydeck)
 
         self.data: dict = {}

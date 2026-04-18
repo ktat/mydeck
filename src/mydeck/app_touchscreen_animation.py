@@ -1,4 +1,5 @@
 from PIL import Image, ImageDraw, ImageFont
+from typing import Optional
 from mydeck import MyDeck, TouchAppBase
 import logging
 import time
@@ -21,7 +22,9 @@ class AppTouchscreenAnimation(TouchAppBase):
 
     use_thread: bool = True
 
-    def __init__(self, mydeck: MyDeck, option: dict = {}):
+    def __init__(self, mydeck: MyDeck, option: Optional[dict] = None):
+        if option is None:
+            option = {}
         super().__init__(mydeck, option)
         self.rectangles: list[AppTouchscreenAnimation.Rect] = []
         self.time_to_sleep: float = 0.05

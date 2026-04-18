@@ -1,4 +1,5 @@
 from PIL import Image, ImageDraw, ImageFont
+from typing import Optional
 from mydeck import MyDeck, TouchAppBase
 import subprocess
 
@@ -6,7 +7,9 @@ import subprocess
 class AppTouchscreenVmstat(TouchAppBase):
     use_thread: bool = True
 
-    def __init__(self, mydeck: MyDeck, option: dict = {}):
+    def __init__(self, mydeck: MyDeck, option: Optional[dict] = None):
+        if option is None:
+            option = {}
         super().__init__(mydeck, option)
         self.time_to_sleep: float = 1
 

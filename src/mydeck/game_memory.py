@@ -1,6 +1,7 @@
 import time
 import random
 import logging
+from typing import Optional
 from mydeck import MyDeck, GameAppBase, ExceptionNoDeck, ROOT_DIR
 
 
@@ -9,7 +10,9 @@ class GameMemory(GameAppBase):
     require_columns: int = 3
     mode_explanation = "-1: VS mode, 0: No wait, 4: 4 seconds, 8: 8 seconds n: n seconds"
 
-    def __init__(self, mydeck: MyDeck, conf: dict = {}):
+    def __init__(self, mydeck: MyDeck, conf: Optional[dict] = None):
+        if conf is None:
+            conf = {}
         super().__init__(mydeck)
 
         if self.enable == False:

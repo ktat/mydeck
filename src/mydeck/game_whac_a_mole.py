@@ -2,6 +2,7 @@ from PIL import Image, ImageDraw, ImageFont
 import time
 import random
 import threading
+from typing import Optional
 from mydeck import MyDeck, ImageOrFile, GameAppBase, ExceptionNoDeck, ROOT_DIR
 
 
@@ -9,7 +10,7 @@ class GameWhacAMole(GameAppBase):
     require_key_count: int = 15
     require_columns: int = 3
 
-    def __init__(self, mydeck: MyDeck, conf: dict = {}):
+    def __init__(self, mydeck: MyDeck, conf: Optional[dict] = None):
         self.in_game = False
         self._stop = False
         self.exit = False

@@ -1,3 +1,4 @@
+from typing import Optional
 from mydeck import MyDeck, TriggerAppBase, ImageOrFile, ROOT_DIR
 import requests
 import json
@@ -23,7 +24,9 @@ class AppBingPhoto(TriggerAppBase):
         "OpenBing": lambda app: app.open_browser(),
     }
 
-    def __init__(self, mydeck: MyDeck, config: dict = {}):
+    def __init__(self, mydeck: MyDeck, config: Optional[dict] = None):
+        if config is None:
+            config = {}
         super().__init__(mydeck, config)
         self.lang = 'en-US'
         self.now = datetime.datetime.now()

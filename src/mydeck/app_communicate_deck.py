@@ -13,7 +13,9 @@ class AppCommunicateDeck(AppBase):
         "MyDeckCommunicateDeck": lambda app: app.communicate(),
     }
 
-    def __init__(self, mydeck: MyDeck, option: dict = {}):
+    def __init__(self, mydeck: MyDeck, option: Optional[dict] = None):
+        if option is None:
+            option = {}
         super().__init__(mydeck, option)
         self.index: Dict[str, Dict[int, int]] = {}
         self.page_cache: Dict[str, dict] = {}

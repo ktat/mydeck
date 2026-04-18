@@ -13,7 +13,7 @@ class WindowCheckBase(BackgroundAppBase):
         [r'^.+  YouTube.+Google Chrome$', 'YouTube'],
     ]
 
-    def __init__(self, mydeck: MyDeck, config: dict = {}):
+    def __init__(self, mydeck: MyDeck, config: Optional[dict] = None):
         """'window_title_regexps' is a dict whose key is regexp and value is a replacement like the following
         {
           [r'^Meet.+Google Chrome$', 'Meet'],

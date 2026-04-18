@@ -1,6 +1,6 @@
 from PIL import Image, ImageDraw, ImageFont
 from PIL.ImageFont import FreeTypeFont, ImageFont as PILImageFont
-from typing import Union
+from typing import Optional, Union
 from mydeck import MyDeck, DialAppBase
 import logging
 
@@ -13,7 +13,9 @@ class AppDialSample(DialAppBase):
         "DialSample": lambda app, dial_num, event, value: app.render_dial(dial_num, event, value),
     }
 
-    def __init__(self, mydeck: MyDeck, option: dict = {}):
+    def __init__(self, mydeck: MyDeck, option: Optional[dict] = None):
+        if option is None:
+            option = {}
         super().__init__(mydeck, option)
         self._font: Union[FreeTypeFont, PILImageFont]
         try:

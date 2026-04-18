@@ -1547,12 +1547,14 @@ class Config:
         for game_conf in games_conf:
             self.parse_game(game_conf["game"], game_conf)
 
-    def parse_game(self, game: str, game_conf: dict = {}):
+    def parse_game(self, game: str, game_conf: Optional[dict] = None):
         """Apply the configuration of a game.
 
         `game` may be a short name (``RandomNumber`` → ``mydeck.game_random_number.GameRandomNumber``)
         or a fully-qualified path (``my_pkg.games.MyGame``) for third-party plugins.
         """
+        if game_conf is None:
+            game_conf = {}
         module_path, class_name = self._resolve_app_target(game, prefix='Game')
         m = self._load_module(module_path)
         getattr(m, class_name)(self.mydeck, game_conf)

@@ -5,6 +5,7 @@ import logging
 
 import os
 
+from typing import Optional
 from PIL import Image, ImageDraw, ImageFont
 from mydeck import MyDeck, ThreadAppBase, ImageOrFile, ROOT_DIR
 from .totp_account_manager import TotpAccountManager
@@ -20,7 +21,9 @@ FORWARD_IMAGE = os.path.join(ROOT_DIR, "Assets", "forward.png")
 class AppTotp(ThreadAppBase):
     use_thread = True
 
-    def __init__(self, mydeck: MyDeck, option: dict = {}):
+    def __init__(self, mydeck: MyDeck, option: Optional[dict] = None):
+        if option is None:
+            option = {}
         super().__init__(mydeck, option)
         self.manager = TotpAccountManager()
         self.time_to_sleep = 1

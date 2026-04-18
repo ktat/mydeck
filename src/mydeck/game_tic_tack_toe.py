@@ -1,8 +1,8 @@
 import random
 import time
 import logging
+from typing import List, Optional
 from mydeck import MyDeck, GameAppBase, ROOT_DIR
-from typing import List
 
 # 三目並べのビット
 # 1   2    4
@@ -56,7 +56,7 @@ class GameTicTackToe(GameAppBase):
     require_key_count: int = 15
     require_columns: int = 3
 
-    def __init__(self, mydeck: MyDeck, conf: dict = {}):
+    def __init__(self, mydeck: MyDeck, conf: Optional[dict] = None):
         super().__init__(mydeck)
 
         if self.enable == False:

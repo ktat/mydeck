@@ -1,6 +1,7 @@
 import time
 import threading
 
+from typing import Optional
 from PIL import Image, ImageDraw, ImageFont
 from mydeck import AppBase, ImageOrFile, MyDeck, ROOT_DIR
 
@@ -19,7 +20,9 @@ class AppStopWatch(AppBase):
         "MyDeckStopWatchToggle": lambda app: app.toggle_count(),
     }
 
-    def __init__(self, mydeck: MyDeck, option: dict = {}):
+    def __init__(self, mydeck: MyDeck, option: Optional[dict] = None):
+        if option is None:
+            option = {}
         super().__init__(mydeck, option)
 
     # setup key configuration
