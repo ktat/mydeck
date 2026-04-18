@@ -156,15 +156,15 @@ class VirtualDeckConfig:
         else:
             key_count = opt.get('key_count')
             if key_count is None or re.match(r'\D', str(key_count)) is not None:
-                raise (ExceptionInvalidVirtualDeckConfig)
+                raise ExceptionInvalidVirtualDeckConfig()
             self._key_count = key_count
             columns = opt.get('columns')
             if columns is None or re.match(r'\D', str(columns)) is not None:
-                raise (ExceptionInvalidVirtualDeckConfig)
+                raise ExceptionInvalidVirtualDeckConfig()
             self._columns = columns
             serial_number = opt.get('serial_number')
             if serial_number is None:
-                raise (ExceptionInvalidVirtualDeckConfig)
+                raise ExceptionInvalidVirtualDeckConfig()
             self._serial_number = str(serial_number)
             has_touchscreen: Optional[bool] = opt.get('has_touchscreen')
             if has_touchscreen is not None and has_touchscreen:
@@ -205,13 +205,13 @@ class VirtualDeckConfig:
 
     def input_option(self) -> dict:
         i = self.opt.get('input')
-        if type(i) is not dict:
+        if not isinstance(i, dict):
             return {}
         return i
 
     def output_option(self) -> dict:
         o = self.opt.get('output')
-        if type(o) is not dict:
+        if not isinstance(o, dict):
             return {}
         return o
 
@@ -314,20 +314,20 @@ class VirtualDeck:
         self.key_callback: Callable = lambda deck, key, flag: None
 
         key_count = opt.get('key_count')
-        if type(key_count) is not int:
-            raise (ExceptionVirtualDeckConstructor)
+        if not isinstance(key_count, int):
+            raise ExceptionVirtualDeckConstructor()
         self._key_count: int = key_count
         id: Optional[str] = opt.get('id')
-        if type(id) is not str:
-            raise (ExceptionVirtualDeckConstructor)
+        if not isinstance(id, str):
+            raise ExceptionVirtualDeckConstructor()
         self._id: str = id
         columns = opt.get('columns')
-        if type(columns) is not int:
-            raise (ExceptionVirtualDeckConstructor)
+        if not isinstance(columns, int):
+            raise ExceptionVirtualDeckConstructor()
         self._columns: int = columns
         serial_number = opt.get('serial_number')
-        if type(serial_number) is not str:
-            raise (ExceptionVirtualDeckConstructor)
+        if not isinstance(serial_number, str):
+            raise ExceptionVirtualDeckConstructor()
         dial_count: Optional[int] = opt.get('dial_count')
         if dial_count is not None and dial_count > 0:
             self._dial_count = dial_count

@@ -79,7 +79,7 @@ class MyDecks:
         """
         self.vdeck_config: Any[None, str] = config.get('vdeck_config')
         if self.vdeck_config is not None and type(self.vdeck_config) is not str:
-            raise (ExceptionInvalidMyDecksConfig)
+            raise ExceptionInvalidMyDecksConfig()
 
         self._one_deck_only: bool = False
         self.config: Optional[dict]
@@ -131,7 +131,7 @@ class MyDecks:
                 else:
                     logging.warning(
                         "config{file: '/path/to/config_file'} is required")
-                    raise (ExceptionNoConfig)
+                    raise ExceptionNoConfig()
             elif self.decks is not None:
                 sn_alias = self.decks.get(serial_number)
                 configs = self.configs
@@ -152,7 +152,7 @@ class MyDecks:
                         "config is not found for device: {}".format(serial_number))
             else:
                 logging.warning("config or (decks and configs) is required")
-                raise (ExceptionNoConfig)
+                raise ExceptionNoConfig()
 
         # Wire device resilience: each VirtualDeck gets a lifecycle listener
         # that dispatches to the owning MyDeck. A single DeviceSupervisor
@@ -261,7 +261,7 @@ class MyDeck:
         deck: Optional[VirtualDeck] = opt.get('deck')
         if deck is None:
             logging.critical("deck is required for MyDeck constructor")
-            raise (ExceptionNoDeckGiven)
+            raise ExceptionNoDeckGiven()
         self.server_port: int = server_port
         self.deck: VirtualDeck = deck
         self.key_count: int = self.deck.key_count()
@@ -1297,14 +1297,14 @@ class Config:
         key: int = int(key_str)
         page_config: Optional[dict] = self._config_content_origin.get(
             'page_config')
-        if page_config is None or type(page_config) is not dict:
+        if page_config is None or not isinstance(page_config, dict):
             page_config = self._config_content_origin["page_config"] = {}
 
         current_page_config: Optional[dict] = page_config.get(page)
-        if current_page_config is None or type(current_page_config) is not dict:
+        if current_page_config is None or not isinstance(current_page_config, dict):
             current_page_config = page_config[page] = {"keys": {}}
         key_config: Optional[dict] = current_page_config.get('keys')
-        if key_config is None and type(key_config) is not dict:
+        if key_config is None and not isinstance(key_config, dict):
             key_config = current_page_config['keys'] = {}
 
         self._config_content_origin['page_config'][page]['keys'][key] = data
@@ -1705,14 +1705,14 @@ class ImageOrFile:
         self.image: Image.Image
         self.file: str = ''
 
-        if type(file_or_image) != str and type(file_or_image) != Image.Image:
+        if not isinstance(file_or_image, (str, Image.Image)):
             logging.warning(file_or_image)
-            raise (ExceptionWrongTypeGiven)
+            raise ExceptionWrongTypeGiven()
 
-        if type(file_or_image) == str:
+        if isinstance(file_or_image, str):
             self.file = file_or_image
             self.is_file = True
-        elif type(file_or_image) == Image.Image:
+        elif isinstance(file_or_image, Image.Image):
             self.image = file_or_image
 
 

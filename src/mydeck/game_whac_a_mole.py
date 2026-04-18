@@ -42,7 +42,7 @@ class GameWhacAMole(GameAppBase):
         self.data["count"] = 0
 
         if deck is None:
-            raise (ExceptionNoDeck)
+            raise ExceptionNoDeck()
 
         deck.reset_keys()
 

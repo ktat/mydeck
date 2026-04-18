@@ -49,7 +49,7 @@ class GameMemory(GameAppBase):
         mydeck.set_current_page_without_setup("~GAME_MEMORY")
 
         if deck is None:
-            raise (ExceptionNoDeck)
+            raise ExceptionNoDeck()
 
         deck.reset_keys()
 
