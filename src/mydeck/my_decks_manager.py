@@ -609,7 +609,7 @@ class VirtualDeck:
         DeckOutputWebHandler.remove_device(self.id())
 
         # If all devices are removed, shut down the web server so the main thread can exit
-        if not DeckOutputWebHandler.pathKeyMap:
+        if not DeckOutputWebHandler.path_key_map:
             DeckOutputWebServer.shutdown()
 
     def is_touch(self) -> bool:
@@ -738,19 +738,19 @@ class DeckInput:
 
 
 class DeckOutputWeb(DeckOutput):
-    idDeckMap: dict[int, 'VirtualDeck']
+    id_deck_map: dict[int, 'VirtualDeck']
     """Subclass of DeckOutput for Web."""
 
     def __init__(self, opt: dict):
         super().__init__(opt)
 
     def set_deck(self, deck: 'VirtualDeck'):
-        """Set deck ID and deck instance to Globl Variable DeckOutputWebHandleridDeckMap dict."""
+        """Set deck ID and deck instance to Globl Variable DeckOutputWebHandlerid_deck_map dict."""
         super().set_deck(deck)
-        DeckOutputWebHandler.idDeckMap[self.deck.id()] = self.deck
+        DeckOutputWebHandler.id_deck_map[self.deck.id()] = self.deck
 
     def output(self, key_status: dict, touchscreen_image):
-        """pass key and its image to DeckOutputWebHandler.setKeyImage"""
+        """pass key and its image to DeckOutputWebHandler.set_key_image"""
         id = self.deck.id()
         if id == None:
             return
@@ -768,14 +768,14 @@ class DeckOutputWeb(DeckOutput):
             image_buffer = self.key_image_format(key_status[key]["image"])
             b64_image = base64.b64encode(image_buffer.getvalue())
 
-            DeckOutputWebHandler.setKeyImage(
+            DeckOutputWebHandler.set_key_image(
                 id, key, b64_image.decode('utf-8'))
 
         if touchscreen_image:
             image_buffer = self.touchscreen_image_format(touchscreen_image)
             b64_image = base64.b64encode(image_buffer.getvalue())
 
-            DeckOutputWebHandler.setTouchscreenImage(
+            DeckOutputWebHandler.set_touchscreen_image(
                 id, b64_image.decode('utf-8'))
 
     def key_image_format(self, image):

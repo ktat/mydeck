@@ -187,7 +187,7 @@ class TestVirtualDeckState(unittest.TestCase):
         # web_server import inside my_decks_manager needs a stub too
         ws_stub = types.ModuleType('mydeck.web_server')
         ws_stub.DeckOutputWebHandler = MagicMock()
-        ws_stub.DeckOutputWebHandler.idDeckMap = {}
+        ws_stub.DeckOutputWebHandler.id_deck_map = {}
         sys.modules.setdefault('mydeck.web_server', ws_stub)
         # lock stub
         lock_stub = types.ModuleType('mydeck.lock')
@@ -609,7 +609,7 @@ class TestNoDuplicateSeeding(unittest.TestCase):
             sys.modules.setdefault('StreamDeck.ImageHelpers', sd.ImageHelpers)
             ws_stub = types.ModuleType('mydeck.web_server')
             ws_stub.DeckOutputWebHandler = MagicMock()
-            ws_stub.DeckOutputWebHandler.idDeckMap = {}
+            ws_stub.DeckOutputWebHandler.id_deck_map = {}
             sys.modules.setdefault('mydeck.web_server', ws_stub)
             lock_stub = types.ModuleType('mydeck.lock')
             class _L:

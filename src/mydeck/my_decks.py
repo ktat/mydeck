@@ -406,7 +406,7 @@ class MyDeck:
     def _set_current_page(self, name: str):
         """Set current page name"""
         self._current_page = name
-        DeckOutputWebHandler.idCurrentPage[self.deck.id()] = name
+        DeckOutputWebHandler.id_current_page[self.deck.id()] = name
 
     def set_current_page_without_setup(self, name: str, add_previous: bool = True):
         """Set given page name as current_page. but don't setup keys."""

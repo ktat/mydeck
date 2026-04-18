@@ -23,57 +23,57 @@ BLANK_TOUCH_IMAGE = "iVBORw0KGgoAAAANSUhEUgAAAGQAAABkCAQAAADa613fAAAAaUlEQVR42u3
 
 
 class DeckOutputWebHandler(http.server.BaseHTTPRequestHandler):
-    pathKeyMap: dict = {}
-    touchscreenImage: dict = {}
-    idDeckMap: dict = {}
-    idCurrentPage: dict = {}
+    path_key_map: dict = {}
+    touchscreen_image: dict = {}
+    id_deck_map: dict = {}
+    id_current_page: dict = {}
 
     @staticmethod
-    def setKeyImage(id: str, key: str, image: str):
+    def set_key_image(id: str, key: str, image: str):
         c = DeckOutputWebHandler
-        if c.pathKeyMap.get(id) == None:
-            c.pathKeyMap[id] = {}
-        if c.pathKeyMap[id].get(key) == None:
-            c.pathKeyMap[id][key] = None
-        c.pathKeyMap[id][key] = image
+        if c.path_key_map.get(id) == None:
+            c.path_key_map[id] = {}
+        if c.path_key_map[id].get(key) == None:
+            c.path_key_map[id][key] = None
+        c.path_key_map[id][key] = image
 
     @staticmethod
-    def setTouchscreenImage(id: str, image: str):
+    def set_touchscreen_image(id: str, image: str):
         c = DeckOutputWebHandler
-        c.touchscreenImage[id] = image
+        c.touchscreen_image[id] = image
 
     @staticmethod
     def reset_keys(id: str, key_count: int):
         c = DeckOutputWebHandler
-        c.pathKeyMap[id] = {}
+        c.path_key_map[id] = {}
         k: int = 0
 
         while k < key_count:
-            c.pathKeyMap[id][k] = BLANK_IMAGE
+            c.path_key_map[id][k] = BLANK_IMAGE
             k += 1
 
     @staticmethod
     def remove_device(id: str):
         c = DeckOutputWebHandler
-        c.pathKeyMap.pop(id, None)
+        c.path_key_map.pop(id, None)
 
     def call_key_call_back(self, id, key):
         from .my_decks_manager import VirtualDeck
 
-        deck: VirtualDeck = self.idDeckMap[id]
+        deck: VirtualDeck = self.id_deck_map[id]
         deck.key_callback(deck, key, True)
         deck.key_callback(deck, key, False)
 
     def call_dial_call_back(self, id, dial_num, event, value):
         from .my_decks_manager import VirtualDeck
 
-        deck: VirtualDeck = self.idDeckMap[id]
+        deck: VirtualDeck = self.id_deck_map[id]
         deck.dial_callback(deck, dial_num, event, value)
 
     def call_touchscreen_call_back(self, id: str, event: int, args: dict):
         from .my_decks_manager import VirtualDeck
 
-        deck: VirtualDeck = self.idDeckMap[id]
+        deck: VirtualDeck = self.id_deck_map[id]
         if deck.touchscreen_callback is not None:
             deck.touchscreen_callback(deck, event, args)
 
@@ -118,8 +118,8 @@ class DeckOutputWebHandler(http.server.BaseHTTPRequestHandler):
             allowed_roots = [os.path.realpath(ROOT_DIR + '/Assets')]
             try:
                 from .my_decks_starter import MyDecksStarter
-                if MyDecksStarter.configPath:
-                    allowed_roots.append(os.path.realpath(MyDecksStarter.configPath + '/Assets'))
+                if MyDecksStarter.config_path:
+                    allowed_roots.append(os.path.realpath(MyDecksStarter.config_path + '/Assets'))
             except Exception:
                 pass
             if not any(os.path.commonpath([abs_image_path, root]) == root for root in allowed_roots):
@@ -175,8 +175,8 @@ class DeckOutputWebHandler(http.server.BaseHTTPRequestHandler):
         elif (m := re.search(r'^/api/([^/]+)(?:/(\d+|(?:dial|touch)/(\d+)/(\d+)))?$', self.path)) is not None:
             all_zero = True
             c = DeckOutputWebHandler
-            for k in c.pathKeyMap.keys():
-                if c.pathKeyMap.get(k) is not None and len(c.pathKeyMap[k].keys()) != 0:
+            for k in c.path_key_map.keys():
+                if c.path_key_map.get(k) is not None and len(c.path_key_map[k].keys()) != 0:
                     all_zero = False
                     break
 
@@ -191,7 +191,7 @@ class DeckOutputWebHandler(http.server.BaseHTTPRequestHandler):
                     from .my_decks_manager import VirtualDeck
                     dial_num: int = int(m.group(3))
                     value: int = int(m.group(4))
-                    vdeck: VirtualDeck = self.idDeckMap[id]
+                    vdeck: VirtualDeck = self.id_deck_map[id]
                     vdeck.set_dial_states(dial_num, value)
                     return self.res_dial_changed(id, dial_num, value)
                 elif re.search("touch", m.group(2)):
@@ -203,13 +203,13 @@ class DeckOutputWebHandler(http.server.BaseHTTPRequestHandler):
                     key: int = int(m.group(2))
                     return self.res_key_tapped(id, key)
             # /id
-            elif (image_info := self.pathKeyMap.get(id)) is not None:
+            elif (image_info := self.path_key_map.get(id)) is not None:
                 res = {
                     "root_dir": ROOT_DIR,
-                    "current_page": self.idCurrentPage.get(id, "@HOME"),
+                    "current_page": self.id_current_page.get(id, "@HOME"),
                     "key": image_info,
-                    "touch": c.touchscreenImage.get(id),
-                    "dial_states": self.idDeckMap[id].dial_states()
+                    "touch": c.touchscreen_image.get(id),
+                    "dial_states": self.id_deck_map[id].dial_states()
                 }
                 if res["touch"] is None:
                     res["touch"] = BLANK_TOUCH_IMAGE
@@ -302,7 +302,7 @@ class DeckOutputWebHandler(http.server.BaseHTTPRequestHandler):
         from .my_decks_manager import VirtualDeck
         from .my_decks import MyDecks
 
-        deck: VirtualDeck = self.idDeckMap[id]
+        deck: VirtualDeck = self.id_deck_map[id]
 
         games_config: list = []
         for mydeck in MyDecks.mydecks.values():
@@ -325,7 +325,7 @@ class DeckOutputWebHandler(http.server.BaseHTTPRequestHandler):
         from .my_decks_manager import VirtualDeck
         from .my_decks import MyDecks
 
-        deck: VirtualDeck = self.idDeckMap[id]
+        deck: VirtualDeck = self.id_deck_map[id]
 
         page_config_config: Optional[dict] = {}
         apps_config: Optional[list[dict]] = []
@@ -378,7 +378,7 @@ class DeckOutputWebHandler(http.server.BaseHTTPRequestHandler):
         from .my_decks_manager import VirtualDeck
         from .my_decks import MyDecks
 
-        deck: VirtualDeck = self.idDeckMap[id]
+        deck: VirtualDeck = self.id_deck_map[id]
 
         apps_config: Optional[list[dict]] = []
         for mydeck in MyDecks.mydecks.values():
@@ -419,7 +419,7 @@ class DeckOutputWebHandler(http.server.BaseHTTPRequestHandler):
         from .my_decks_manager import VirtualDeck
         from .my_decks import MyDecks
 
-        deck: VirtualDeck = self.idDeckMap[id]
+        deck: VirtualDeck = self.id_deck_map[id]
 
         apps_config: Optional[list] = []
         for mydeck in MyDecks.mydecks.values():
@@ -461,8 +461,8 @@ class DeckOutputWebHandler(http.server.BaseHTTPRequestHandler):
         from .my_decks_manager import VirtualDeck
 
         json_data: dict = {}
-        for key in self.idDeckMap.keys():
-            deck: VirtualDeck = self.idDeckMap[key]
+        for key in self.id_deck_map.keys():
+            deck: VirtualDeck = self.id_deck_map[key]
             json_data[deck.id()] = {
                 "key_count": deck.key_count(),
                 "serial_number": deck.get_serial_number(),
@@ -475,7 +475,7 @@ class DeckOutputWebHandler(http.server.BaseHTTPRequestHandler):
         self.api_json_response(json_data)
 
     def res_device_key_images(self):
-        self.api_json_response(self.pathKeyMap)
+        self.api_json_response(self.path_key_map)
 
     def res_status(self):
         from .my_decks import MyDecks, MyDeck
@@ -516,9 +516,9 @@ class DeckOutputWebHandler(http.server.BaseHTTPRequestHandler):
     def res_images(self):
         from mydeck.my_decks_starter import MyDecksStarter
         images: list = glob.glob(ROOT_DIR+"/Assets/*.png", recursive=False)
-        if MyDecksStarter.configPath != "":
+        if MyDecksStarter.config_path != "":
             images2: list = glob.glob(
-                MyDecksStarter.configPath+"/Assets/*.png", recursive=False)
+                MyDecksStarter.config_path+"/Assets/*.png", recursive=False)
             images.extend(images2)
 
         images.sort()
@@ -569,7 +569,7 @@ class DeckOutputWebHandler(http.server.BaseHTTPRequestHandler):
         deck_id: Union[str, None] = data.pop('id', None)
 
         if deck_id is not None:
-            deck = self.idDeckMap[deck_id]
+            deck = self.id_deck_map[deck_id]
             sn: str = deck.get_serial_number()
             MyDecksManager.ConfigQueue[sn].put(data)
 
