@@ -91,6 +91,8 @@ games:
 
 プラグインを独立パッケージとして配布する場合は、`mydeck` と同じ Python 環境にインストール(例: `pip install my_plugin`)し、YAML ではその import path をそのまま書きます。プラグインクラスは `mydeck.my_decks_app_base` 配下の基底クラス (`ThreadAppBase`, `BackgroundAppBase`, `HookAppBase`, `TouchAppBase`, `GameAppBase`) を継承してください — 契約とライフサイクルの詳細は `docs/make_your_app.md` にあります。
 
+外部プラグインの動作例(CPU使用率のパイチャート)として [ktat/mydeck-hello-plugin](https://github.com/ktat/mydeck-hello-plugin) があります。
+
 ## `mydeck` をインストールせずに example を動かす場合
 
 ### STREAM DECK 実機を持っている場合

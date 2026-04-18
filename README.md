@@ -95,6 +95,8 @@ games:
 
 To ship a plugin as its own package, install it into the same Python environment as `mydeck` (e.g. `pip install my_plugin`) and reference it by its import path. Your plugin class should subclass one of the base classes in `mydeck.my_decks_app_base` (`ThreadAppBase`, `BackgroundAppBase`, `HookAppBase`, `TouchAppBase`, `GameAppBase`) — see `docs/make_your_app.md` for the contract and lifecycle.
 
+A working example of an external plugin (live CPU usage pie chart) is at [ktat/mydeck-hello-plugin](https://github.com/ktat/mydeck-hello-plugin).
+
 ## How to run example without install `mydeck` command
 
 ### If you have STREAM DECK device
