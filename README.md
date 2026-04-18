@@ -77,6 +77,22 @@ If a STREAM DECK is unplugged (or the machine suspends/resumes), `mydeck` stays 
 
 Register TOTP accounts from the Web UI (manual secret, `otpauth://` URI, or QR image upload / camera scan), then display the current 6-digit code and a countdown ring across keys on the STREAM DECK. Secrets are stored in GNOME Keyring; account metadata under `~/.config/mydeck/totp_accounts.json`. A dedicated page `@TOTP_ACCOUNTS` is auto-created; link to it with `change_page: '@TOTP_ACCOUNTS'` on any key.
 
+### Third-party apps (plugins)
+
+`app:` and `game:` values in YAML accept either a short built-in name (`Clock` → `mydeck.app_clock.AppClock`) or a fully-qualified dotted path for out-of-tree packages:
+
+```yaml
+apps:
+  - app: my_plugin.apps.Weather      # resolves to my_plugin.apps.Weather
+    option:
+      page_key:
+        '@HOME': 3
+games:
+  - game: my_plugin.games.MyGame     # resolves to my_plugin.games.MyGame
+```
+
+To ship a plugin as its own package, install it into the same Python environment as `mydeck` (e.g. `pip install my_plugin`) and reference it by its import path. Your plugin class should subclass one of the base classes in `mydeck.my_decks_app_base` (`ThreadAppBase`, `BackgroundAppBase`, `HookAppBase`, `TouchAppBase`, `GameAppBase`) — see `docs/make_your_app.md` for the contract and lifecycle.
+
 ## How to run example without install `mydeck` command
 
 ### If you have STREAM DECK device

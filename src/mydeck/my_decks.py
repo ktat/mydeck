@@ -1548,10 +1548,14 @@ class Config:
             self.parse_game(game_conf["game"], game_conf)
 
     def parse_game(self, game: str, game_conf: dict = {}):
-        """Apply the configuration of a game"""
-        game = 'Game' + game
-        m = self._load_module(game)
-        getattr(m, game)(self.mydeck, game_conf)
+        """Apply the configuration of a game.
+
+        `game` may be a short name (``RandomNumber`` → ``mydeck.game_random_number.GameRandomNumber``)
+        or a fully-qualified path (``my_pkg.games.MyGame``) for third-party plugins.
+        """
+        module_path, class_name = self._resolve_app_target(game, prefix='Game')
+        m = self._load_module(module_path)
+        getattr(m, class_name)(self.mydeck, game_conf)
 
     def reset_apps(self):
         """Reset apps"""
@@ -1604,9 +1608,9 @@ class Config:
 
         app = app_conf.get('app')
         if app is not None:
-            app = 'App' + app
-            m = self._load_module(app)
-            o = getattr(m, app)(self.mydeck, app_conf.get('option'))
+            module_path, class_name = self._resolve_app_target(app, prefix='App')
+            m = self._load_module(module_path)
+            o = getattr(m, class_name)(self.mydeck, app_conf.get('option'))
             if o.is_background_app:
                 self.background_apps.append(o)
                 if app_conf['app'] == 'Alert' and self.mydeck is not None:
@@ -1624,13 +1628,27 @@ class Config:
 
         return o
 
-    def _load_module(self, app: str):
-        module = re.sub('([A-Z])', r'_\1', app)[1:].lower()
-        if self._loaded.get(app) is None:
-            self._loaded[app] = importlib.import_module(
-                'mydeck.' + module, "mydeck")
+    def _resolve_app_target(self, name: str, prefix: str) -> tuple:
+        """Resolve an ``app:``/``game:`` value to a (module_path, class_name).
 
-        return self._loaded[app]
+        - If ``name`` contains a dot it is treated as a fully-qualified path:
+          ``my_plugin.apps.Weather`` → module ``my_plugin.apps``,
+          class ``Weather``. This is how third-party plugin packages are loaded.
+        - Otherwise the built-in convention applies:
+          ``Clock`` with ``prefix='App'`` →
+          module ``mydeck.app_clock``, class ``AppClock``.
+        """
+        if '.' in name:
+            module_path, _, class_name = name.rpartition('.')
+            return module_path, class_name
+        class_name = prefix + name
+        module_name = re.sub('([A-Z])', r'_\1', class_name)[1:].lower()
+        return 'mydeck.' + module_name, class_name
+
+    def _load_module(self, module_path: str):
+        if self._loaded.get(module_path) is None:
+            self._loaded[module_path] = importlib.import_module(module_path)
+        return self._loaded[module_path]
 
     def not_working_apps(self) -> List['AppBase']:
         """Return the list of the apps not working"""
