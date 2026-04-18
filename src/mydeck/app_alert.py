@@ -68,5 +68,3 @@ class AppAlert(BackgroundAppBase):
             except Exception as e:
                 print(f"Unexpected error in AppAlert loop: {e}")
                 time.sleep(5)
-
-        sys.exit()

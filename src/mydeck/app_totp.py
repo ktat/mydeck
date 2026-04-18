@@ -162,7 +162,6 @@ class AppTotp(ThreadAppBase):
 
         self.stop_app()
         self.init_app_flag()
-        sys.exit()
 
     def _render_accounts_page(self, current_page: str) -> None:
         accounts = self.manager.load_accounts()

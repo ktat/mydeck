@@ -237,7 +237,6 @@ class AppBase(App):
 
         self.debug("finished")
         self.init_app_flag()
-        sys.exit()
 
     def update_key_image(self, key: int, image):
         if self.check_to_stop() is False:
@@ -351,7 +350,6 @@ class BackgroundAppBase(App):
 
         self.debug("finished")
         self.init_app_flag()
-        sys.exit()
 
 
 class HookAppBase(App):
@@ -378,8 +376,6 @@ class HookAppBase(App):
         """Run application on a hook."""
         if self.on == hookname:
             self.execute_on_hook()
-
-        sys.exit()
 
 
 class TouchAppBase(AppBase):

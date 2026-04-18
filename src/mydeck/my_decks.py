@@ -1144,7 +1144,6 @@ class MyDeck:
                     self.set_previouse_page_if_current_page_is_empty()
 
         self.debug("update_config is exited")
-        sys.exit()
 
 
 class Config:
