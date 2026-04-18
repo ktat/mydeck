@@ -54,6 +54,30 @@ STREAM DECK 実機が無くても動きます。
 3. `mydeck` を実行
 4. ブラウザで `http://127.0.0.1:3000` を開いて deck を設定
 
+### [uv](https://docs.astral.sh/uv/) を使うインストール(別解)
+
+`pip install .` の代わりに `uv tool install` を使うと、独立した venv にインストールされつつグローバルに `mydeck` コマンドを使えます:
+
+```
+uv tool install .
+```
+
+`mydeck` は `~/.local/bin/mydeck` に、venv 自体は `~/.local/share/uv/tools/mydeck/` に作られます。
+
+後からプラグインを同じ venv に追加するには、その Python を直接指定します:
+
+```
+uv pip install --python ~/.local/share/uv/tools/mydeck/bin/python3 <プラグインのパッケージ名またはパス>
+```
+
+あるいは最初からプラグインを含めて再インストールする方法もあります:
+
+```
+uv tool install --reinstall --with <プラグインのパッケージ名> .
+```
+
+新しいプラグインを足した後は `mydeck --restart -d` で `mydeck` を再起動してください。Python は起動時にしか `site-packages` を見ないため、稼働中のプロセスは後から入ったプラグインを import できません。
+
 ### `mydeck` の CLI オプション
 
 | オプション | デフォルト | 説明 |

@@ -58,6 +58,30 @@ If you don't have STREAM DECK device, no worry.
 1. do `mydeck`
 1. open `http://127.0.0.1:3000` to configure deck
 
+### Install with [uv](https://docs.astral.sh/uv/) (alternative)
+
+Instead of `pip install .`, you can use `uv tool install` for an isolated, globally-available install:
+
+```
+uv tool install .
+```
+
+`mydeck` will be available at `~/.local/bin/mydeck`, backed by a dedicated virtualenv at `~/.local/share/uv/tools/mydeck/`.
+
+To add a plugin to that isolated environment later, target its Python directly:
+
+```
+uv pip install --python ~/.local/share/uv/tools/mydeck/bin/python3 <plugin-package-or-path>
+```
+
+Or reinstall the tool with the plugin included from the start:
+
+```
+uv tool install --reinstall --with <plugin-package> .
+```
+
+After installing a new plugin, restart `mydeck` (`mydeck --restart -d`) so the new package is picked up — Python scans `site-packages` only at interpreter startup.
+
 ### `mydeck` CLI options
 
 | Option | Default | Description |
