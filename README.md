@@ -20,20 +20,32 @@ but I believe it can be used on other environments as well.
 
 ## Dependency
 
-- [xdotool](https://manpages.ubuntu.com/manpages/trusty/man1/xdotool.1.html) for active window checking(`app_window_check_linux`)
-- python3-wand
-- python3-cairosvg
+System packages:
+
+- [xdotool](https://manpages.ubuntu.com/manpages/trusty/man1/xdotool.1.html) for active window checking (`app_window_check_linux`)
+- ImageMagick libraries for `python3-wand`
+- `cairo` / `libzbar0` (QR scanning for TOTP registration)
+- GNOME Keyring (or any `secretstorage`-compatible backend) for TOTP secret storage
 
 Ubuntu:
+
 ```
-apt install xdotool python3-wand python3-cairosvg
+apt install xdotool libmagickwand-dev libcairo2-dev libzbar0 gnome-keyring
 ```
+
+Python dependencies (installed automatically via `pip install .`):
+
+- `streamdeck`, `Pillow`, `wand`, `cairosvg`
+- `pyyaml`, `requests`, `qrcode`, `netifaces`
+- `python-daemon`, `pidfile`, `psutil`
+- `pyotp`, `pyzbar`, `keyring` (TOTP 2FA app)
+
 ## CAUTION
 
-This is an alpha version software and I don't know much about Python.
+This is still alpha-quality software.
 
-- Some code may be wrong for Python way
-- Exception handlings are not yet coded at all
+- Some code may not be idiomatic Python
+- The API around `MyDeck` / `MyDecksManager` may change
 
 ## How to use?
 
@@ -42,8 +54,28 @@ If you don't have STREAM DECK device, no worry.
 1. clone the code
 1. do `pip install .` and `mydeck` command is installed
 1. do `mydeck`
-   - if you change webserver port(default 3000), use `--port` option
 1. open `http://127.0.0.1:3000` to configure deck
+
+### `mydeck` CLI options
+
+| Option | Default | Description |
+|---|---|---|
+| `--port` | `3000` | Web server port |
+| `--config-path` | `~/.config/mydeck` | Directory holding per-device YAML configs |
+| `--log-level` | `INFO` | One of `DEBUG` / `INFO` / `WARNING` / `ERROR` / `CRITICAL` |
+| `--vdeck` | off | Start with virtual decks even when no physical device is connected |
+| `--no-qr` | off | Skip printing the QR code for the Web UI URL at startup |
+| `-d` | off | Run as a daemon (PID file written under `--config-path`) |
+| `--stop` | — | Stop a running daemon |
+| `--restart` | — | Stop the running daemon and start a fresh one |
+
+### Device resilience
+
+If a STREAM DECK is unplugged (or the machine suspends/resumes), `mydeck` stays alive. A background supervisor re-enumerates every 3 seconds and reattaches the device as soon as it comes back, restoring the page and apps that were active before the disconnect. Devices whose serial is already known can also be started without being plugged in — they will attach automatically when connected.
+
+### TOTP 2FA app (`AppTotp`)
+
+Register TOTP accounts from the Web UI (manual secret, `otpauth://` URI, or QR image upload / camera scan), then display the current 6-digit code and a countdown ring across keys on the STREAM DECK. Secrets are stored in GNOME Keyring; account metadata under `~/.config/mydeck/totp_accounts.json`. A dedicated page `@TOTP_ACCOUNTS` is auto-created; link to it with `change_page: '@TOTP_ACCOUNTS'` on any key.
 
 ## How to run example without install `mydeck` command
 
