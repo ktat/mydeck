@@ -57,6 +57,7 @@ const App = {
     },
     template: `
             <div id="container">
+                <a v-if="page.match('^full-device')" @click="page='home'" href="/" class="home-icon" title="Home">&#x2302;</a>
                 <div id="header-menu" class="header-menu" v-if="!page.match('^full-device')">
                     <strong>MyDeck</strong>
                     <div class="dropdown">
