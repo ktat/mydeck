@@ -453,15 +453,34 @@ class MyDeck:
         """Called when the physical device is detected as disconnected.
 
         Saves the current page and switches to the reserved ``~DISCONNECTED``
-        page, which has no keys/apps; existing app threads observe this via
-        ``check_to_stop`` and exit cleanly.
+        page. Injects a home-key config on key 0 so the Web UI still has a
+        way to navigate back to ``@HOME`` while the physical deck is offline;
+        existing app threads observe the page change via ``check_to_stop``
+        and exit cleanly.
         """
         if self._current_page == '~DISCONNECTED':
             return
         self._pre_disconnect_page = self._current_page
         logging.info("[%s] device disconnected; saving page %s",
                      self.deck.id(), self._current_page)
+        self._ensure_disconnected_page_config()
         self.set_current_page('~DISCONNECTED', add_previous=False)
+
+    def _ensure_disconnected_page_config(self) -> None:
+        """Ensure the ``~DISCONNECTED`` page has a home key on index 0.
+
+        The page is otherwise empty by design; without this, the Web UI shows
+        no clickable keys and the user cannot return to ``@HOME`` until the
+        device reconnects.
+        """
+        keys_config = self._PAGE_CONFIG.setdefault('keys', {})
+        page_keys = keys_config.setdefault('~DISCONNECTED', {})
+        if 0 not in page_keys:
+            page_keys[0] = {
+                'image': ROOT_DIR + '/Assets/home.png',
+                'label': 'HOME',
+                'change_page': '@HOME',
+            }
 
     def on_reconnect(self) -> None:
         """Called when the physical device is re-attached via supervisor.
