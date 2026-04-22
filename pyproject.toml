@@ -1,7 +1,7 @@
 [project]
 name = "mydeck"
 version = "0.1.0"
-description = "Handling STREAM DECK device - configure real devices and virtual decks in a browser"
+description = "Unofficial Python toolkit for configuring and automating Elgato Stream Deck devices (and virtual decks in a browser)"
 readme = "README.md"
 requires-python = ">=3.10"
 license = { file = "LICENSE" }

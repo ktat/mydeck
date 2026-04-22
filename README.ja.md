@@ -450,6 +450,10 @@ MIT: https://ktat.mit-license.org/2016
 
 メンテナ向け: PyPI へのリリース手順は [`docs/releasing.md`](docs/releasing.md) を参照してください。
 
+## 商標について
+
+`Elgato` および `Stream Deck` は Corsair Memory, Inc. の商標です。本プロジェクトは独立した非公式のコミュニティ製ツールであり、Elgato および Corsair とは一切関係ありません(提携・後援・推奨関係にありません)。
+
 ## 関連情報
 
 ### python-elgato-streamdeck リポジトリ

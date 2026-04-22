@@ -454,6 +454,10 @@ See also [`LICENSE`](LICENSE) shipped with the package.
 
 Maintainers: see [`docs/releasing.md`](docs/releasing.md) for the PyPI release workflow.
 
+## Trademarks
+
+`Elgato` and `Stream Deck` are trademarks of Corsair Memory, Inc. This project is an independent, unofficial, community-maintained toolkit and is not affiliated with, endorsed by, or sponsored by Elgato or Corsair.
+
 ## SEE ALSO
 
 ### python-elgato-streamdeck repository
