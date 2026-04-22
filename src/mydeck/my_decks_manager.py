@@ -554,7 +554,12 @@ class VirtualDeck:
 
     def set_key_image(self, key, image):
         """Set key image."""
-        if self.has_real_deck():
+        # Only touch the physical deck when one is actually attached *and*
+        # currently connected. `has_real_deck()` stays True for known but
+        # not-yet-connected decks (see devices_from_known_serials); in that
+        # state PILHelper.to_native_format would call key_image_format() on
+        # the DeckGuard (real_deck=None) and raise AttributeError.
+        if self.has_real_deck() and self.connected:
             if image is None:
                 self.real_deck.set_key_image(key, None)
             else:
@@ -568,7 +573,7 @@ class VirtualDeck:
         self.output.output(self.current_key_status, self.touchscreen_image)
 
     def set_touchscreen_image(self, image, x_pos=0, y_pos=0, width=0, height=0):
-        if self.has_real_deck():
+        if self.has_real_deck() and self.connected:
             self.real_deck.set_touchscreen_image(
                 image, x_pos, y_pos, width, height)
 
