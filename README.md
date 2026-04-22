@@ -448,6 +448,12 @@ if __name__ == "__main__":
 
 MIT: https://ktat.mit-license.org/2016
 
+See also [`LICENSE`](LICENSE) shipped with the package.
+
+## Releasing
+
+Maintainers: see [`docs/releasing.md`](docs/releasing.md) for the PyPI release workflow.
+
 ## SEE ALSO
 
 ### python-elgato-streamdeck repository

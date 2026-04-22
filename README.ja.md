@@ -444,6 +444,12 @@ if __name__ == "__main__":
 
 MIT: https://ktat.mit-license.org/2016
 
+パッケージに同梱されている [`LICENSE`](LICENSE) も参照してください。
+
+## リリース
+
+メンテナ向け: PyPI へのリリース手順は [`docs/releasing.md`](docs/releasing.md) を参照してください。
+
 ## 関連情報
 
 ### python-elgato-streamdeck リポジトリ

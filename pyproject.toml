@@ -1,0 +1,58 @@
+[project]
+name = "mydeck"
+version = "0.1.0"
+description = "Handling STREAM DECK device - configure real devices and virtual decks in a browser"
+readme = "README.md"
+requires-python = ">=3.10"
+license = { file = "LICENSE" }
+authors = [{ name = "Atsushi Kato", email = "ktat.is@gmail.com" }]
+keywords = ["streamdeck", "elgato", "keyboard", "hardware"]
+classifiers = [
+  "Development Status :: 3 - Alpha",
+  "License :: OSI Approved :: MIT License",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.10",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
+  "Operating System :: POSIX :: Linux",
+  "Intended Audience :: End Users/Desktop",
+  "Topic :: Multimedia",
+]
+dependencies = [
+  "pyyaml",
+  "streamdeck",
+  "qrcode",
+  "netifaces",
+  "pidfile",
+  "python-daemon",
+  "psutil",
+  "Pillow",
+  "requests",
+  "wand",
+  "cairosvg",
+  "pyotp",
+  "pyzbar",
+  "keyring",
+]
+
+[project.optional-dependencies]
+dev = ["pytest", "mypy", "build", "twine"]
+
+[project.scripts]
+mydeck = "mydeck.my_decks_starter:main"
+
+[project.urls]
+Homepage = "https://github.com/ktat/mydeck"
+Repository = "https://github.com/ktat/mydeck"
+Issues = "https://github.com/ktat/mydeck/issues"
+
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+mydeck = ["Assets/**/*", "html/**/*"]

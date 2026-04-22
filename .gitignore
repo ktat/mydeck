@@ -5,3 +5,8 @@ __pycache__/
 src/l.py
 .vscode/settings.json
 d.py
+build/
+dist/
+*.egg-info/
+.mypy_cache/
+.pytest_cache/

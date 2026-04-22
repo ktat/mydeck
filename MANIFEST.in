@@ -1,0 +1,15 @@
+include LICENSE
+include README.md
+include README.ja.md
+recursive-include src/mydeck/Assets *
+recursive-include src/mydeck/html *
+global-exclude __pycache__
+global-exclude *.py[cod]
+global-exclude .DS_Store
+exclude c.py d.py t.py t2.py w.py run.log
+prune build
+prune dist
+prune .mypy_cache
+prune .pytest_cache
+prune improvement
+prune example
