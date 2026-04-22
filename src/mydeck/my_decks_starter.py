@@ -1,4 +1,5 @@
 import logging
+import re
 import signal
 from daemon import pidfile
 from daemon.daemon import DaemonContext
@@ -12,6 +13,12 @@ from typing import Dict, Any, Optional
 import argparse
 import netifaces
 import qrcode
+
+# Match filenames that look like StreamDeck serial numbers:
+# uppercase alphanumeric, 8+ chars, no dots/dashes/underscores.
+# Intentionally excludes vdeck.yml, vdeckN.yml, and any user-named
+# config*.yml / backup variants that live in the same directory.
+_SERIAL_FILENAME_RE = re.compile(r'^[A-Z0-9]{8,}\.yml$')
 
 
 class MyDecksStarter:
@@ -44,6 +51,25 @@ class MyDecksStarter:
                 self.check_deck_config_and_create_if_required(
                     data[index]["serial_number"])
         return True
+
+    def register_known_device_configs(self) -> int:
+        """Scan config_path for serial-numbered deck YAMLs and register them
+        as known decks (without creating/overwriting the files). Returns the
+        number of decks registered.
+        """
+        config_path: str = self.config["config_path"]
+        if not os.path.isdir(config_path):
+            return 0
+        count: int = 0
+        for name in sorted(os.listdir(config_path)):
+            if not _SERIAL_FILENAME_RE.match(name):
+                continue
+            sn = name[:-4]
+            if sn in self.config["decks"]:
+                continue
+            self.check_deck_config_and_create_if_required(sn)
+            count += 1
+        return count
 
     def check_deck_config_and_create_if_required(self, sn: str):
         file_path = self.config['config_path'] + '/' + sn + '.yml'
@@ -96,11 +122,28 @@ class MyDecksStarter:
                     "StreamDeck devices are not found and no --use-vdeck flag. Do you use vdeck? (y/n)")
                 answer = input()
                 if answer.lower() == "n":
-                    return False
+                    # User declined vdeck setup. Instead of exiting, try to
+                    # keep the Web UI usable: register previously-seen decks
+                    # (serial-numbered YAMLs under config_path) so the device
+                    # supervisor can reattach them when the user plugs one in,
+                    # and so at least one MyDeck instance exists to host the
+                    # web server. If nothing is known, there is nothing to
+                    # run and we fall back to the original exit behavior.
+                    found = self.register_known_device_configs()
+                    if found == 0:
+                        logging.warning(
+                            "No previously-configured decks found under %s.",
+                            config_path)
+                        return False
+                    logging.info(
+                        "Registered %d known deck config(s); waiting for device(s) to connect.",
+                        found)
+                    break
                 elif answer.lower() == "y":
                     self.config['vdeck_config'] = vdeck_config_path
                     configure_vdeck = not self.load_vdeck_config(
                         vdeck_config_path)
+                    break
 
         if configure_vdeck:
             if not os.path.exists(vdeck_config_path):
