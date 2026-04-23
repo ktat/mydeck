@@ -6,6 +6,8 @@ from typing import Any, Dict, Optional
 class Command(Enum):
     SET_IMAGE = "setImage"
     SET_TITLE = "setTitle"
+    SET_SETTINGS = "setSettings"
+    GET_SETTINGS = "getSettings"
 
 
 @dataclass
@@ -37,6 +39,10 @@ def _appear_payload(
             "isInMultiAction": False,
         },
     }
+
+
+def make_did_receive_settings(action_uuid, context, device, row, column, settings):
+    return _appear_payload(action_uuid, context, device, row, column, settings, "didReceiveSettings")
 
 
 def make_will_appear(action_uuid, context, device, row, column, settings):

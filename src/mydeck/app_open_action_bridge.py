@@ -9,10 +9,12 @@ from mydeck import BackgroundAppBase, MyDeck
 from mydeck.openaction.context import KeyContext
 from mydeck.openaction.registry import ActionRegistry
 from mydeck.openaction.server import OpenActionServer
+from mydeck.openaction.settings_store import SettingsStore
 
 log = logging.getLogger(__name__)
 
 DEFAULT_PLUGINS_DIR = Path(os.path.expanduser("~/.config/mydeck/plugins"))
+DEFAULT_SETTINGS_PATH = Path(os.path.expanduser("~/.config/mydeck/openaction-settings.json"))
 
 
 class AppOpenActionBridge(BackgroundAppBase):
@@ -24,11 +26,14 @@ class AppOpenActionBridge(BackgroundAppBase):
         config = config or {}
         self.plugins_dir = Path(config.get("plugins_dir", DEFAULT_PLUGINS_DIR))
         self.port = int(config.get("port", 0))
+        self.settings_path = Path(config.get("settings_path", DEFAULT_SETTINGS_PATH))
         self._loop: Optional[asyncio.AbstractEventLoop] = None
         self._server: Optional[OpenActionServer] = None
         self._registry: Optional[ActionRegistry] = None
         self._plugin_procs: list = []
         self._started = threading.Event()
+        self._settings_store = SettingsStore(self.settings_path)
+        self._context_actions: dict = {}  # context_token -> (plugin_uuid, action_uuid)
 
     def start(self):
         if AppOpenActionBridge.IS_ALREADY_WORKING:
@@ -85,7 +90,7 @@ class AppOpenActionBridge(BackgroundAppBase):
 
     async def _on_command(self, plugin_uuid: str, cmd):
         from mydeck.openaction.context import KeyContext
-        from mydeck.openaction.protocol import Command
+        from mydeck.openaction.protocol import Command, make_did_receive_settings
 
         try:
             ctx = KeyContext.from_token(cmd.context)
@@ -93,12 +98,33 @@ class AppOpenActionBridge(BackgroundAppBase):
             log.warning("malformed context token: %r", cmd.context)
             return
 
-        # Only the bridge's own MyDeck for MVP; multi-deck routing is future work.
+        # Settings commands can fire even if the user has switched pages; handle
+        # them before the page-check so persistence still works.
+        if cmd.kind == Command.SET_SETTINGS:
+            self._settings_store.set(plugin_uuid, cmd.context, cmd.payload or {})
+            tracked = self._context_actions.get(cmd.context)
+            if tracked is not None:
+                _puuid, action_uuid = tracked
+                msg = make_did_receive_settings(
+                    action_uuid, cmd.context, ctx.deck_serial, 0, ctx.key, cmd.payload or {})
+                await self._server.send_to_plugin(plugin_uuid, msg)
+            return
+
+        if cmd.kind == Command.GET_SETTINGS:
+            stored = self._settings_store.get(plugin_uuid, cmd.context)
+            tracked = self._context_actions.get(cmd.context)
+            if tracked is not None:
+                _puuid, action_uuid = tracked
+                msg = make_did_receive_settings(
+                    action_uuid, cmd.context, ctx.deck_serial, 0, ctx.key, stored)
+                await self._server.send_to_plugin(plugin_uuid, msg)
+            return
+
+        # Rendering commands: only the bridge's own MyDeck for MVP.
         mydeck = self.mydeck
         if mydeck.deck is None or str(mydeck.deck.id()) != ctx.deck_serial:
             return
         if mydeck.current_page() != ctx.page:
-            # key is on a different page — drop the command
             return
 
         key = mydeck.abs_key(ctx.key)
@@ -114,10 +140,6 @@ class AppOpenActionBridge(BackgroundAppBase):
                 log.warning("unsupported setImage image format: %r", image_field[:40])
         elif cmd.kind == Command.SET_TITLE:
             title = cmd.payload.get("title", "")
-            # No image source on title-only update — use a black placeholder so
-            # render_key_image has a valid ImageOrFile to draw the label on top of.
-            # A future enhancement is to remember the last setImage per context
-            # so we can re-render the title on top of the real image.
             from PIL import Image
             from mydeck.my_decks import ImageOrFile
             placeholder = ImageOrFile(Image.new("RGB", (72, 72), "black"))
@@ -145,8 +167,12 @@ class AppOpenActionBridge(BackgroundAppBase):
         if entry is None:
             log.warning("unknown action uuid: %s", action_uuid)
             return
+        token = key_ctx.to_token()
+        stored = self._settings_store.get(entry.plugin_uuid, token)
+        merged = {**(settings or {}), **stored}  # stored wins
+        self._context_actions[token] = (entry.plugin_uuid, action_uuid)
         self._schedule(self._server.dispatch_will_appear(
-            entry.plugin_uuid, action_uuid, key_ctx, settings))
+            entry.plugin_uuid, action_uuid, key_ctx, merged))
 
     def will_disappear(self, key_ctx: KeyContext, action_uuid: str, settings: dict):
         if self._registry is None:
@@ -155,8 +181,10 @@ class AppOpenActionBridge(BackgroundAppBase):
         if entry is None:
             log.warning("unknown action uuid: %s", action_uuid)
             return
+        token = key_ctx.to_token()
+        self._context_actions.pop(token, None)
         self._schedule(self._server.dispatch_will_disappear(
-            entry.plugin_uuid, action_uuid, key_ctx, settings))
+            entry.plugin_uuid, action_uuid, key_ctx, settings or {}))
 
     def key_down(self, key_ctx: KeyContext, action_uuid: str, settings: dict):
         if self._registry is None:

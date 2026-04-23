@@ -74,3 +74,25 @@ def test_parse_command_set_title():
 def test_parse_command_unknown_event_returns_none():
     raw = {"event": "somethingElse", "context": "c"}
     assert parse_command(raw) is None
+
+
+def test_parse_command_set_settings():
+    raw = {"event": "setSettings", "context": "ctx-1", "payload": {"value": 5}}
+    cmd = parse_command(raw)
+    assert cmd.kind == Command.SET_SETTINGS
+    assert cmd.payload == {"value": 5}
+
+
+def test_parse_command_get_settings():
+    raw = {"event": "getSettings", "context": "ctx-1", "payload": {}}
+    cmd = parse_command(raw)
+    assert cmd.kind == Command.GET_SETTINGS
+
+
+def test_make_did_receive_settings():
+    from mydeck.openaction.protocol import make_did_receive_settings
+    msg = make_did_receive_settings("com.x.action", "ctx-1", "dev-1", 0, 2, {"value": 5})
+    assert msg["event"] == "didReceiveSettings"
+    assert msg["action"] == "com.x.action"
+    assert msg["context"] == "ctx-1"
+    assert msg["payload"]["settings"] == {"value": 5}
