@@ -47,13 +47,15 @@ class AppOpenActionBridge(BackgroundAppBase):
         self._server.on_command = self._on_command
         await self._server.start()
         log.info("OpenAction bridge listening on port %d", self._server.port)
+        # Register with MyDeck BEFORE spawning plugins so the attribute is always
+        # available to set_key calls that race with plugin startup.
+        self.mydeck._openaction_bridge = self
         for manifest in self._registry.all_plugins():
             try:
                 proc = await self._server.launch_plugin(manifest)
                 self._plugin_procs.append(proc)
             except Exception as e:
                 log.warning("failed to spawn plugin %s: %s", manifest.plugin_uuid, e)
-        self.mydeck._openaction_bridge = self
         self._started.set()
         # block until shutdown
         while not self.mydeck._exit:
@@ -68,15 +70,21 @@ class AppOpenActionBridge(BackgroundAppBase):
                 pass
         for proc in self._plugin_procs:
             try:
-                await proc.wait()
+                await asyncio.wait_for(proc.wait(), timeout=5.0)
+            except asyncio.TimeoutError:
+                try:
+                    proc.kill()
+                    await proc.wait()
+                except Exception:
+                    pass
             except Exception:
                 pass
         if self._server is not None:
             await self._server.stop()
 
     async def _on_command(self, plugin_uuid: str, cmd):
+        from mydeck.openaction.context import KeyContext
         from mydeck.openaction.protocol import Command
-        from mydeck.openaction.server import KeyContext
 
         try:
             ctx = KeyContext.from_token(cmd.context)
@@ -86,7 +94,7 @@ class AppOpenActionBridge(BackgroundAppBase):
 
         # Only the bridge's own MyDeck for MVP; multi-deck routing is future work.
         mydeck = self.mydeck
-        if str(mydeck.deck.id()) != ctx.deck_serial:
+        if mydeck.deck is None or str(mydeck.deck.id()) != ctx.deck_serial:
             return
         if mydeck.current_page() != ctx.page:
             # key is on a different page — drop the command

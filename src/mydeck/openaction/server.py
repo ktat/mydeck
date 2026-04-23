@@ -2,31 +2,16 @@ import asyncio
 import json
 import logging
 import os as _os
-from dataclasses import dataclass
 from pathlib import Path as _Path
 from typing import Awaitable, Callable, Dict, Optional
 
 import websockets
 from websockets.asyncio.server import ServerConnection
 
+from .context import KeyContext  # re-exported so existing imports still work
 from .protocol import ParsedCommand, parse_command
 
 log = logging.getLogger(__name__)
-
-
-@dataclass(frozen=True)
-class KeyContext:
-    deck_serial: str
-    page: str
-    key: int
-
-    def to_token(self) -> str:
-        return f"{self.deck_serial}|{self.page}|{self.key}"
-
-    @classmethod
-    def from_token(cls, token: str) -> "KeyContext":
-        deck, page, key = token.rsplit("|", 2)
-        return cls(deck_serial=deck, page=page, key=int(key))
 
 
 class OpenActionServer:
@@ -72,7 +57,10 @@ class OpenActionServer:
                 log.warning("duplicate registration for uuid %s; replacing", plugin_uuid)
             self._plugin_sockets[plugin_uuid] = ws
             if self.on_registered:
-                await self.on_registered(plugin_uuid)
+                try:
+                    await self.on_registered(plugin_uuid)
+                except Exception as exc:
+                    log.warning("on_registered raised for plugin %s: %s", plugin_uuid, exc)
 
             async for raw in ws:
                 try:
@@ -81,7 +69,10 @@ class OpenActionServer:
                     log.warning("bad json from plugin %s", plugin_uuid)
                     continue
                 if cmd is not None and self.on_command is not None:
-                    await self.on_command(plugin_uuid, cmd)
+                    try:
+                        await self.on_command(plugin_uuid, cmd)
+                    except Exception as exc:
+                        log.warning("on_command raised for plugin %s: %s", plugin_uuid, exc)
         except websockets.ConnectionClosed:
             pass
         finally:

@@ -100,6 +100,37 @@ async def test_server_spawns_plugin_and_receives_registration():
         await server.stop()
 
 
+@pytest.mark.asyncio
+async def test_server_survives_on_command_exception():
+    server = OpenActionServer(host="127.0.0.1", port=0)
+    await server.start()
+
+    async def failing_handler(uuid, cmd):
+        raise RuntimeError("boom")
+
+    server.on_command = failing_handler
+
+    async with websockets.connect(f"ws://127.0.0.1:{server.port}") as ws:
+        import json as _json
+        await ws.send(_json.dumps({"event": "registerPlugin", "uuid": "com.crashtest"}))
+        await asyncio.sleep(0.1)
+        # Send a setImage that will trigger the failing handler
+        await ws.send(_json.dumps({
+            "event": "setImage",
+            "context": "x|y|0",
+            "payload": {"image": "data:image/png;base64,AAAA"}
+        }))
+        # Send a second command; server should still be listening despite previous exception
+        await ws.send(_json.dumps({
+            "event": "setTitle",
+            "context": "x|y|0",
+            "payload": {"title": "t"}
+        }))
+        # Wait briefly then close
+        await asyncio.sleep(0.2)
+    await server.stop()
+
+
 def test_key_context_roundtrip():
     ctx = KeyContext(deck_serial="DEV1", page="@HOME", key=3)
     token = ctx.to_token()

@@ -642,7 +642,7 @@ class MyDeck:
             return
 
         if conf.get("action") is not None:
-            from mydeck.openaction.server import KeyContext
+            from mydeck.openaction.context import KeyContext
             ctx = KeyContext(
                 deck_serial=str(deck.id()) if deck is not None else "unknown",
                 page=self.current_page(),
@@ -880,7 +880,7 @@ class MyDeck:
 
         # OpenAction plugin dispatch — bypass built-in handlers
         if conf is not None and conf.get("action") is not None:
-            from mydeck.openaction.server import KeyContext
+            from mydeck.openaction.context import KeyContext
             bridge = getattr(self, "_openaction_bridge", None)
             if bridge is not None:
                 ctx = KeyContext(
