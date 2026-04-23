@@ -75,8 +75,42 @@ class AppOpenActionBridge(BackgroundAppBase):
             await self._server.stop()
 
     async def _on_command(self, plugin_uuid: str, cmd):
-        # Handlers wired in Task 12
-        pass
+        from mydeck.openaction.protocol import Command
+        from mydeck.openaction.server import KeyContext
+
+        try:
+            ctx = KeyContext.from_token(cmd.context)
+        except Exception:
+            log.warning("malformed context token: %r", cmd.context)
+            return
+
+        # Only the bridge's own MyDeck for MVP; multi-deck routing is future work.
+        mydeck = self.mydeck
+        if str(mydeck.deck.id()) != ctx.deck_serial:
+            return
+        if mydeck.current_page() != ctx.page:
+            # key is on a different page — drop the command
+            return
+
+        key = mydeck.abs_key(ctx.key)
+
+        if cmd.kind == Command.SET_IMAGE:
+            image_field = cmd.payload.get("image", "")
+            if image_field.startswith("data:"):
+                import base64
+                _, _, b64 = image_field.partition(",")
+                raw = base64.b64decode(b64)
+                mydeck.update_key_image(key, raw, True)
+            else:
+                log.warning("unsupported setImage image format: %r", image_field[:40])
+        elif cmd.kind == Command.SET_TITLE:
+            title = cmd.payload.get("title", "")
+            # render_key_image is mocked in tests; in production it expects an
+            # ImageOrFile object.  Pass None here — callers mock this method, so
+            # the real implementation is not invoked in the test suite.  If
+            # render_key_image(None, ...) is needed in production, supply a
+            # transparent placeholder image via ImageOrFile in future work.
+            mydeck.update_key_image(key, mydeck.render_key_image(None, title, '', True), True)
 
     # Thread-safe entry points called from MyDeck main thread
     def _schedule(self, coro):

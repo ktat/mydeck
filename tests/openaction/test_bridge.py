@@ -37,3 +37,57 @@ def test_unknown_action_logs_warning_across_all_dispatch_methods(caplog):
         assert any("com.unknown.action" in rec.message for rec in caplog.records), (
             f"{method_name} did not log warning for unknown action"
         )
+
+
+import asyncio
+import base64
+from mydeck.openaction.protocol import ParsedCommand, Command
+from mydeck.openaction.server import KeyContext
+
+
+def test_bridge_handles_set_image_calls_mydeck_update_key_image():
+    mydeck = MagicMock()
+    mydeck.deck = MagicMock()
+    mydeck.deck.id = MagicMock(return_value="DECK1")
+    mydeck.current_page = lambda: "@HOME"
+    mydeck.abs_key = lambda k: k
+    mydeck.update_key_image = MagicMock()
+
+    app = AppOpenActionBridge(mydeck, {"plugins_dir": "/tmp/nope"})
+
+    # Minimal PNG (1x1 transparent) base64
+    png_bytes = (
+        b"\x89PNG\r\n\x1a\n\x00\x00\x00\rIHDR\x00\x00\x00\x01\x00\x00\x00\x01\x08\x06"
+        b"\x00\x00\x00\x1f\x15\xc4\x89\x00\x00\x00\rIDATx\x9cc````\x00\x00\x00\x05\x00"
+        b"\x01]\xcc\xdb\xe0\x00\x00\x00\x00IEND\xaeB`\x82"
+    )
+    data_url = "data:image/png;base64," + base64.b64encode(png_bytes).decode()
+    ctx = KeyContext(deck_serial="DECK1", page="@HOME", key=2)
+    cmd = ParsedCommand(kind=Command.SET_IMAGE, context=ctx.to_token(),
+                        payload={"image": data_url})
+
+    asyncio.run(app._on_command("com.example.mvp", cmd))
+
+    mydeck.update_key_image.assert_called_once()
+    assert mydeck.update_key_image.call_args.args[0] == 2
+
+
+def test_bridge_handles_set_title_renders_with_label():
+    mydeck = MagicMock()
+    mydeck.deck = MagicMock()
+    mydeck.deck.id = MagicMock(return_value="DECK1")
+    mydeck.current_page = lambda: "@HOME"
+    mydeck.abs_key = lambda k: k
+    mydeck.update_key_image = MagicMock()
+    mydeck.render_key_image = MagicMock(return_value=b"x")
+
+    app = AppOpenActionBridge(mydeck, {"plugins_dir": "/tmp/nope"})
+    ctx = KeyContext(deck_serial="DECK1", page="@HOME", key=2)
+    cmd = ParsedCommand(kind=Command.SET_TITLE, context=ctx.to_token(),
+                        payload={"title": "hello"})
+
+    asyncio.run(app._on_command("com.example.mvp", cmd))
+
+    mydeck.render_key_image.assert_called_once()
+    # the label "hello" should be in one of the positional args to render_key_image
+    assert "hello" in str(mydeck.render_key_image.call_args)
