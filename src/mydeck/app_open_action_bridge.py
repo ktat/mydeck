@@ -105,12 +105,14 @@ class AppOpenActionBridge(BackgroundAppBase):
                 log.warning("unsupported setImage image format: %r", image_field[:40])
         elif cmd.kind == Command.SET_TITLE:
             title = cmd.payload.get("title", "")
-            # render_key_image is mocked in tests; in production it expects an
-            # ImageOrFile object.  Pass None here — callers mock this method, so
-            # the real implementation is not invoked in the test suite.  If
-            # render_key_image(None, ...) is needed in production, supply a
-            # transparent placeholder image via ImageOrFile in future work.
-            mydeck.update_key_image(key, mydeck.render_key_image(None, title, '', True), True)
+            # No image source on title-only update — use a black placeholder so
+            # render_key_image has a valid ImageOrFile to draw the label on top of.
+            # A future enhancement is to remember the last setImage per context
+            # so we can re-render the title on top of the real image.
+            from PIL import Image
+            from mydeck.my_decks import ImageOrFile
+            placeholder = ImageOrFile(Image.new("RGB", (72, 72), "black"))
+            mydeck.update_key_image(key, mydeck.render_key_image(placeholder, title, '', True), True)
 
     # Thread-safe entry points called from MyDeck main thread
     def _schedule(self, coro):
