@@ -29,7 +29,7 @@ class AppOpenActionBridge(BackgroundAppBase):
         self._plugin_procs: list = []
         self._started = threading.Event()
 
-    def execute_in_thread(self):
+    def start(self):
         if AppOpenActionBridge.IS_ALREADY_WORKING:
             log.debug("duplicate AppOpenActionBridge start ignored")
             return
@@ -82,7 +82,16 @@ class AppOpenActionBridge(BackgroundAppBase):
     def _schedule(self, coro):
         if self._loop is None:
             return
-        asyncio.run_coroutine_threadsafe(coro, self._loop)
+        fut = asyncio.run_coroutine_threadsafe(coro, self._loop)
+
+        def _report(f):
+            if f.cancelled():
+                return
+            exc = f.exception()
+            if exc is not None:
+                log.warning("bridge dispatch error: %s", exc)
+
+        fut.add_done_callback(_report)
 
     def will_appear(self, key_ctx: KeyContext, action_uuid: str, settings: dict):
         if self._registry is None:
@@ -99,6 +108,7 @@ class AppOpenActionBridge(BackgroundAppBase):
             return
         entry = self._registry.lookup(action_uuid)
         if entry is None:
+            log.warning("unknown action uuid: %s", action_uuid)
             return
         self._schedule(self._server.dispatch_will_disappear(
             entry.plugin_uuid, action_uuid, key_ctx, settings))
@@ -108,6 +118,7 @@ class AppOpenActionBridge(BackgroundAppBase):
             return
         entry = self._registry.lookup(action_uuid)
         if entry is None:
+            log.warning("unknown action uuid: %s", action_uuid)
             return
         self._schedule(self._server.dispatch_key_down(
             entry.plugin_uuid, action_uuid, key_ctx, settings))
@@ -117,6 +128,7 @@ class AppOpenActionBridge(BackgroundAppBase):
             return
         entry = self._registry.lookup(action_uuid)
         if entry is None:
+            log.warning("unknown action uuid: %s", action_uuid)
             return
         self._schedule(self._server.dispatch_key_up(
             entry.plugin_uuid, action_uuid, key_ctx, settings))
