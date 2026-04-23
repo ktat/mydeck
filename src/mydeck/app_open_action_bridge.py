@@ -6,8 +6,9 @@ from pathlib import Path
 from typing import Optional
 
 from mydeck import BackgroundAppBase, MyDeck
+from mydeck.openaction.context import KeyContext
 from mydeck.openaction.registry import ActionRegistry
-from mydeck.openaction.server import KeyContext, OpenActionServer
+from mydeck.openaction.server import OpenActionServer
 
 log = logging.getLogger(__name__)
 
