@@ -1,0 +1,20 @@
+{
+  "Name": "MVP Plugin",
+  "Version": "1.0.0.0",
+  "Author": "test",
+  "UUID": "com.example.mvp",
+  "CodePath": "bin/plugin.js",
+  "Icon": "icons/plugin",
+  "Description": "Test fixture",
+  "OS": [{"Platform": "linux", "MinimumVersion": "22.04"}],
+  "Software": {"MinimumVersion": "6.0"},
+  "SDKVersion": 2,
+  "Actions": [
+    {
+      "UUID": "com.example.mvp.ping",
+      "Name": "Ping",
+      "Icon": "icons/ping",
+      "States": [{"Image": "icons/ping_key"}]
+    }
+  ]
+}
