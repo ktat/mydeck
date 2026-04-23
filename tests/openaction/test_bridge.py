@@ -85,9 +85,10 @@ def test_bridge_handles_set_title_calls_update_key_image():
     cmd = ParsedCommand(kind=Command.SET_TITLE, context=ctx.to_token(),
                         payload={"title": "hello"})
 
-    # Stub _render_title_image so the test does not require a real deck with
-    # a native image format; verify it is invoked with the title.
-    app._render_title_image = MagicMock(return_value=b"rendered")
+    # Stub both helpers so the test does not require a real deck.
+    from unittest.mock import MagicMock as _MM
+    app._render_title_image = _MM(return_value=_MM())  # returns a fake PIL Image
+    app._pil_to_native = _MM(return_value=b"rendered")
 
     asyncio.run(app._on_command("com.example.mvp", cmd))
 
@@ -111,11 +112,11 @@ def test_bridge_set_title_renders_multiline_each_line():
     cmd = ParsedCommand(kind=Command.SET_TITLE, context=ctx.to_token(),
                         payload={"title": "2d 02h\n17m 30s"})
 
-    app._render_title_image = MagicMock(return_value=b"rendered")
+    from unittest.mock import MagicMock as _MM
+    app._render_title_image = _MM(return_value=_MM())
+    app._pil_to_native = _MM(return_value=b"rendered")
     asyncio.run(app._on_command("com.example.mvp", cmd))
 
-    # The helper receives the raw multi-line title; splitting / sizing lives
-    # inside it (tested separately via its unit).
     assert app._render_title_image.call_args.args[1] == "2d 02h\n17m 30s"
 
 

@@ -216,45 +216,52 @@ class AppOpenActionBridge(BackgroundAppBase):
             image_field = cmd.payload.get("image", "")
             if image_field.startswith("data:"):
                 import base64
+                import io
+                from PIL import Image
                 _, _, b64 = image_field.partition(",")
                 raw = base64.b64decode(b64)
-                mydeck.update_key_image(key, raw, True)
+                pil = Image.open(io.BytesIO(raw)).convert("RGB")
+                native = self._pil_to_native(mydeck, pil)
+                mydeck.update_key_image(key, native, True)
             else:
                 log.warning("unsupported setImage image format: %r", image_field[:40])
         elif cmd.kind == Command.SET_TITLE:
             title = cmd.payload.get("title", "")
-            rendered = self._render_title_image(mydeck, title)
-            mydeck.update_key_image(key, rendered, True)
+            pil = self._render_title_image(mydeck, title)
+            native = self._pil_to_native(mydeck, pil)
+            mydeck.update_key_image(key, native, True)
 
-    def _render_title_image(self, mydeck, title: str) -> bytes:
-        """Render a title string onto a black key image.
+    def _pil_to_native(self, mydeck, pil_image) -> bytes:
+        """Convert a PIL Image to the deck's native key-image bytes."""
+        import io
+        from StreamDeck.ImageHelpers import PILHelper
+        deck = mydeck.deck
+        try:
+            scaled = PILHelper.create_scaled_key_image(deck, pil_image, margins=[0, 0, 0, 0], background="black")
+            return PILHelper.to_native_key_format(deck, scaled)
+        except Exception:
+            buf = io.BytesIO()
+            pil_image.save(buf, format="PNG")
+            return buf.getvalue()
 
-        Handles multi-line titles (separated by ``\\n``) by picking a font size
-        that fits the longest line and stacking lines vertically around the
-        middle of the key. MyDeck's built-in render_key_image auto-scales by
-        *total* string length, so a two-line string like ``"Linux\\nUbuntu"``
-        would be rendered at ~8pt and appear tiny — this helper avoids that.
+    def _render_title_image(self, mydeck, title: str):
+        """Render a title string onto a black PIL Image sized for a key.
+
+        Returns a PIL Image (not bytes); the caller must convert to native
+        format via _pil_to_native before passing to update_key_image.
         """
         from PIL import Image, ImageDraw, ImageFont
-        from StreamDeck.ImageHelpers import PILHelper
 
-        deck = mydeck.deck
         lines = title.split("\n") if title else [""]
         longest = max((len(line) for line in lines), default=0) or 1
 
-        # Match the sizing from render_key_image: 14pt base, scale down past 7
-        # chars per line. Floor at 10pt so single-line long strings shrink but
-        # multi-line short strings stay readable.
         base = 14
         font_size = base if longest <= 7 else max(10, int(base * 7 / longest + 0.999))
 
-        placeholder = Image.new("RGB", (72, 72), "black")
-        image = PILHelper.create_scaled_image(deck, placeholder, margins=[0, 0, 0, 0], background="black")
+        image = Image.new("RGB", (72, 72), "black")
         draw = ImageDraw.Draw(image)
         font = ImageFont.truetype(mydeck.font_path, font_size)
 
-        # Vertically center the block of lines. ascent+descent per line from
-        # the font metrics is a reasonable per-line advance.
         line_h = font_size + 2
         total_h = line_h * len(lines)
         start_y = max(0, (image.height - total_h) // 2) + line_h // 2
@@ -264,7 +271,7 @@ class AppOpenActionBridge(BackgroundAppBase):
                 font=font, text=line, anchor="mm", fill="white",
             )
 
-        return PILHelper.to_native_format(deck, image)
+        return image
 
     # Thread-safe entry points called from MyDeck main thread
     def _schedule(self, coro):
