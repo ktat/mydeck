@@ -39,11 +39,19 @@ class OpenActionServer:
         plugin_uuid: Optional[str] = None
         try:
             raw = await ws.recv()
-            msg = json.loads(raw)
+            try:
+                msg = json.loads(raw)
+            except json.JSONDecodeError:
+                log.warning("rejecting connection: non-JSON registration")
+                await ws.close()
+                return
             if msg.get("event") != "registerPlugin" or "uuid" not in msg:
                 log.warning("rejecting connection: bad registration %r", msg)
+                await ws.close()
                 return
             plugin_uuid = msg["uuid"]
+            if plugin_uuid in self._plugin_sockets:
+                log.warning("duplicate registration for uuid %s; replacing", plugin_uuid)
             self._plugin_sockets[plugin_uuid] = ws
             if self.on_registered:
                 await self.on_registered(plugin_uuid)
