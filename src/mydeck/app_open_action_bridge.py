@@ -231,17 +231,27 @@ class AppOpenActionBridge(BackgroundAppBase):
             native = self._pil_to_native(mydeck, pil)
             mydeck.update_key_image(key, native, True)
 
-    def _pil_to_native(self, mydeck, pil_image) -> bytes:
-        """Convert a PIL Image to the deck's native key-image bytes."""
-        import io
+    def _pil_to_native(self, mydeck, pil_image):
+        """Return image in the format expected by update_key_image.
+
+        Mirrors render_key_image: virtual decks (MyDecksManager wrappers)
+        call PILHelper.to_native_format internally in their set_key_image, so
+        we must pass a PIL Image. Real decks expect pre-converted native bytes.
+        """
         from StreamDeck.ImageHelpers import PILHelper
         deck = mydeck.deck
         try:
             scaled = PILHelper.create_scaled_key_image(deck, pil_image, margins=[0, 0, 0, 0], background="black")
+        except Exception:
+            scaled = pil_image
+        if hasattr(deck, 'is_virtual'):
+            return scaled
+        try:
             return PILHelper.to_native_key_format(deck, scaled)
         except Exception:
+            import io
             buf = io.BytesIO()
-            pil_image.save(buf, format="PNG")
+            scaled.save(buf, format="PNG")
             return buf.getvalue()
 
     def _render_title_image(self, mydeck, title: str):
