@@ -37,7 +37,7 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-dev = ["pytest", "mypy", "build", "twine"]
+dev = ["pytest", "pytest-asyncio", "mypy", "build", "twine"]
 openaction = ["websockets>=12"]
 
 [project.scripts]
@@ -57,3 +57,6 @@ where = ["src"]
 
 [tool.setuptools.package-data]
 mydeck = ["Assets/**/*", "html/**/*"]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
