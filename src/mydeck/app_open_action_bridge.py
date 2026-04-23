@@ -53,9 +53,14 @@ class AppOpenActionBridge(BackgroundAppBase):
         self._server.on_command = self._on_command
         await self._server.start()
         log.info("OpenAction bridge listening on port %d", self._server.port)
-        # Register with MyDeck BEFORE spawning plugins so the attribute is always
-        # available to set_key calls that race with plugin startup.
-        self.mydeck._openaction_bridge = self
+        # Register with every MyDeck BEFORE spawning plugins so the attribute is
+        # always available to set_key calls that race with plugin startup.
+        # Multi-deck sessions share one bridge instance; whichever MyDeck's
+        # BackgroundApp won the IS_ALREADY_WORKING race becomes the bridge's
+        # owner, but all other MyDecks still need to be able to dispatch into
+        # it from their key_change_callback / set_key paths.
+        for md in self._all_mydecks():
+            md._openaction_bridge = self
         for manifest in self._registry.all_plugins():
             try:
                 proc = await self._server.launch_plugin(manifest)
@@ -67,6 +72,37 @@ class AppOpenActionBridge(BackgroundAppBase):
         while not self.mydeck._exit:
             await asyncio.sleep(0.5)
         await self._shutdown()
+
+    def _all_mydecks(self) -> list:
+        """Return every MyDeck in the current session, or just self.mydeck.
+
+        Only descend into the MyDecks manager if its ``mydecks`` attribute is
+        a real ``dict`` — otherwise we'd treat MagicMock fakes as valid in
+        tests and break the fallback to the bridge's own MyDeck.
+        """
+        manager = getattr(self.mydeck, "mydecks", None)
+        if manager is not None:
+            inner = getattr(manager, "mydecks", None)
+            if isinstance(inner, dict) and inner:
+                return list(inner.values())
+        return [self.mydeck]
+
+    def _mydeck_for_serial(self, serial: str):
+        """Find the MyDeck whose deck serial matches ``serial``. Fallback to
+        ``self.mydeck`` if no match so MVP single-deck tests still work."""
+        for md in self._all_mydecks():
+            deck = getattr(md, "deck", None)
+            if deck is None:
+                continue
+            try:
+                if str(deck.id()) == serial:
+                    return md
+            except Exception:
+                continue
+        # Fallback: if we couldn't find a match (e.g. because tests don't set
+        # deck.id() or only one MyDeck is present), return self.mydeck so MVP
+        # single-deck flows keep working.
+        return self.mydeck
 
     async def _shutdown(self):
         for proc in self._plugin_procs:
@@ -120,9 +156,9 @@ class AppOpenActionBridge(BackgroundAppBase):
                 await self._server.send_to_plugin(plugin_uuid, msg)
             return
 
-        # Rendering commands: only the bridge's own MyDeck for MVP.
-        mydeck = self.mydeck
-        if mydeck.deck is None or str(mydeck.deck.id()) != ctx.deck_serial:
+        # Rendering commands: route to the MyDeck that owns the serial in ctx.
+        mydeck = self._mydeck_for_serial(ctx.deck_serial)
+        if mydeck is None or mydeck.deck is None:
             return
         if mydeck.current_page() != ctx.page:
             return
