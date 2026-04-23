@@ -54,6 +54,7 @@ from .app_doodle import *
 from .app_bing_photo import *
 from .app_trigger import *
 from .app_web_server import *
+from .app_open_action_bridge import AppOpenActionBridge
 from .app_totp import *
 from .game_memory import *
 from .game_random_number import *
