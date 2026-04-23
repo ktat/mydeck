@@ -204,7 +204,8 @@ class AppOpenActionBridge(BackgroundAppBase):
             from PIL import Image
             from mydeck.my_decks import ImageOrFile
             placeholder = ImageOrFile(Image.new("RGB", (72, 72), "black"))
-            mydeck.update_key_image(key, mydeck.render_key_image(placeholder, title, '', True), True)
+            # no_label=False so the title text is actually drawn on the key.
+            mydeck.update_key_image(key, mydeck.render_key_image(placeholder, title, '', False), True)
 
     # Thread-safe entry points called from MyDeck main thread
     def _schedule(self, coro):
