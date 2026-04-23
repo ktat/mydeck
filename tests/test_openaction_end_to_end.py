@@ -24,6 +24,15 @@ async def test_end_to_end_key_down_triggers_set_title():
     mydeck.update_key_image = MagicMock()
     mydeck.render_key_image = MagicMock(return_value=b"img")
     mydeck._exit = False
+    # _render_title_image needs a real font path
+    import subprocess
+    try:
+        _fc = subprocess.check_output(
+            ["fc-match", "--format=%{file}", "monospace"], text=True
+        ).strip()
+        mydeck.font_path = _fc or "/usr/share/fonts/truetype/liberation/LiberationSans-Bold.ttf"
+    except Exception:
+        mydeck.font_path = "/usr/share/fonts/truetype/liberation/LiberationSans-Bold.ttf"
 
     app = AppOpenActionBridge(mydeck, {"plugins_dir": str(FIXTURES)})
 
