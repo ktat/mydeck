@@ -223,11 +223,48 @@ class AppOpenActionBridge(BackgroundAppBase):
                 log.warning("unsupported setImage image format: %r", image_field[:40])
         elif cmd.kind == Command.SET_TITLE:
             title = cmd.payload.get("title", "")
-            from PIL import Image
-            from mydeck.my_decks import ImageOrFile
-            placeholder = ImageOrFile(Image.new("RGB", (72, 72), "black"))
-            # no_label=False so the title text is actually drawn on the key.
-            mydeck.update_key_image(key, mydeck.render_key_image(placeholder, title, '', False), True)
+            rendered = self._render_title_image(mydeck, title)
+            mydeck.update_key_image(key, rendered, True)
+
+    def _render_title_image(self, mydeck, title: str) -> bytes:
+        """Render a title string onto a black key image.
+
+        Handles multi-line titles (separated by ``\\n``) by picking a font size
+        that fits the longest line and stacking lines vertically around the
+        middle of the key. MyDeck's built-in render_key_image auto-scales by
+        *total* string length, so a two-line string like ``"Linux\\nUbuntu"``
+        would be rendered at ~8pt and appear tiny — this helper avoids that.
+        """
+        from PIL import Image, ImageDraw, ImageFont
+        from StreamDeck.ImageHelpers import PILHelper
+
+        deck = mydeck.deck
+        lines = title.split("\n") if title else [""]
+        longest = max((len(line) for line in lines), default=0) or 1
+
+        # Match the sizing from render_key_image: 14pt base, scale down past 7
+        # chars per line. Floor at 10pt so single-line long strings shrink but
+        # multi-line short strings stay readable.
+        base = 14
+        font_size = base if longest <= 7 else max(10, int(base * 7 / longest + 0.999))
+
+        placeholder = Image.new("RGB", (72, 72), "black")
+        image = PILHelper.create_scaled_image(deck, placeholder, margins=[0, 0, 0, 0], background="black")
+        draw = ImageDraw.Draw(image)
+        font = ImageFont.truetype(mydeck.font_path, font_size)
+
+        # Vertically center the block of lines. ascent+descent per line from
+        # the font metrics is a reasonable per-line advance.
+        line_h = font_size + 2
+        total_h = line_h * len(lines)
+        start_y = max(0, (image.height - total_h) // 2) + line_h // 2
+        for i, line in enumerate(lines):
+            draw.text(
+                (image.width / 2, start_y + i * line_h),
+                font=font, text=line, anchor="mm", fill="white",
+            )
+
+        return PILHelper.to_native_format(deck, image)
 
     # Thread-safe entry points called from MyDeck main thread
     def _schedule(self, coro):

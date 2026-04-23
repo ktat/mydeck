@@ -72,47 +72,51 @@ def test_bridge_handles_set_image_calls_mydeck_update_key_image():
     assert mydeck.update_key_image.call_args.args[0] == 2
 
 
-def test_bridge_handles_set_title_renders_with_label():
+def test_bridge_handles_set_title_calls_update_key_image():
     mydeck = MagicMock()
     mydeck.deck = MagicMock()
     mydeck.deck.id = MagicMock(return_value="DECK1")
     mydeck.current_page = lambda: "@HOME"
     mydeck.abs_key = lambda k: k
     mydeck.update_key_image = MagicMock()
-    mydeck.render_key_image = MagicMock(return_value=b"x")
 
     app = AppOpenActionBridge(mydeck, {"plugins_dir": "/tmp/nope"})
     ctx = KeyContext(deck_serial="DECK1", page="@HOME", key=2)
     cmd = ParsedCommand(kind=Command.SET_TITLE, context=ctx.to_token(),
                         payload={"title": "hello"})
 
+    # Stub _render_title_image so the test does not require a real deck with
+    # a native image format; verify it is invoked with the title.
+    app._render_title_image = MagicMock(return_value=b"rendered")
+
     asyncio.run(app._on_command("com.example.mvp", cmd))
 
-    mydeck.render_key_image.assert_called_once()
-    # the label "hello" should be in one of the positional args to render_key_image
-    assert "hello" in str(mydeck.render_key_image.call_args)
+    app._render_title_image.assert_called_once()
+    assert app._render_title_image.call_args.args[1] == "hello"
+    mydeck.update_key_image.assert_called_once()
+    assert mydeck.update_key_image.call_args.args[0] == 2
+    assert mydeck.update_key_image.call_args.args[1] == b"rendered"
 
 
-def test_bridge_set_title_passes_non_none_image_to_render():
-    from PIL import Image as _PILImage
+def test_bridge_set_title_renders_multiline_each_line():
     mydeck = MagicMock()
     mydeck.deck = MagicMock()
     mydeck.deck.id = MagicMock(return_value="DECK1")
     mydeck.current_page = lambda: "@HOME"
     mydeck.abs_key = lambda k: k
     mydeck.update_key_image = MagicMock()
-    mydeck.render_key_image = MagicMock(return_value=b"x")
 
     app = AppOpenActionBridge(mydeck, {"plugins_dir": "/tmp/nope"})
     ctx = KeyContext(deck_serial="DECK1", page="@HOME", key=2)
     cmd = ParsedCommand(kind=Command.SET_TITLE, context=ctx.to_token(),
-                        payload={"title": "hello"})
+                        payload={"title": "2d 02h\n17m 30s"})
 
+    app._render_title_image = MagicMock(return_value=b"rendered")
     asyncio.run(app._on_command("com.example.mvp", cmd))
 
-    # The first positional arg to render_key_image must NOT be None
-    first_arg = mydeck.render_key_image.call_args.args[0]
-    assert first_arg is not None, "setTitle must pass a valid image placeholder, not None"
+    # The helper receives the raw multi-line title; splitting / sizing lives
+    # inside it (tested separately via its unit).
+    assert app._render_title_image.call_args.args[1] == "2d 02h\n17m 30s"
 
 
 def test_will_appear_merges_stored_settings_over_provided(tmp_path):
