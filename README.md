@@ -121,6 +121,9 @@ To ship a plugin as its own package, install it into the same Python environment
 
 A working example of an external plugin (live CPU usage pie chart) is at [ktat/mydeck-hello-plugin](https://github.com/ktat/mydeck-hello-plugin).
 
+**Elgato-compatible plugins (experimental):** MyDeck can also run unmodified
+Stream Deck / OpenAction plugins. See [`docs/openaction_plugins.md`](docs/openaction_plugins.md).
+
 ## How to run example without install `mydeck` command
 
 ### If you have STREAM DECK device
