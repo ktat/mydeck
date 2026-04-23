@@ -1,8 +1,13 @@
 import asyncio
 import json
+import os
+import sys
+from pathlib import Path
+
 import pytest
 import websockets
 
+from mydeck.openaction.manifest import PluginManifest
 from mydeck.openaction.server import OpenActionServer
 
 
@@ -59,4 +64,37 @@ async def test_server_rejects_wrong_event_registration():
             except asyncio.TimeoutError:
                 pytest.fail("server did not close bad registration")
     finally:
+        await server.stop()
+
+
+@pytest.mark.asyncio
+async def test_server_spawns_plugin_and_receives_registration():
+    fixtures = Path(__file__).parent / "fixtures"
+    manifest = PluginManifest(
+        plugin_uuid="com.example.mock",
+        name="mock",
+        code_path="mock_plugin.py",
+        plugin_dir=fixtures,
+        actions=[],
+    )
+
+    server = OpenActionServer()
+    await server.start()
+    registered = asyncio.Event()
+
+    async def on_registered(uuid: str):
+        registered.plugin_uuid = uuid
+        registered.set()
+
+    server.on_registered = on_registered
+
+    env = os.environ.copy()
+    env["MOCK_PLUGIN_SCRIPT"] = "noop"
+    proc = await server.launch_plugin(manifest, python_executable=sys.executable, env=env)
+    try:
+        await asyncio.wait_for(registered.wait(), timeout=3.0)
+        assert registered.plugin_uuid == "com.example.mock"
+    finally:
+        proc.terminate()
+        await proc.wait()
         await server.stop()

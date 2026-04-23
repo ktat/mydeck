@@ -1,6 +1,8 @@
 import asyncio
 import json
 import logging
+import os as _os
+from pathlib import Path as _Path
 from typing import Awaitable, Callable, Dict, Optional
 
 import websockets
@@ -76,3 +78,23 @@ class OpenActionServer:
             log.warning("no plugin connection for %s", plugin_uuid)
             return
         await ws.send(json.dumps(message))
+
+    async def launch_plugin(
+        self,
+        manifest,
+        python_executable: str = "python3",
+        node_executable: str = "node",
+        env: Optional[dict] = None,
+    ) -> asyncio.subprocess.Process:
+        code = _Path(manifest.plugin_dir) / manifest.code_path
+        if code.suffix == ".py":
+            argv = [python_executable, str(code)]
+        else:
+            argv = [node_executable, str(code)]
+        argv += [
+            "-port", str(self.port),
+            "-pluginUUID", manifest.plugin_uuid,
+            "-registerEvent", "registerPlugin",
+            "-info", json.dumps({"plugin": {"uuid": manifest.plugin_uuid}}),
+        ]
+        return await asyncio.create_subprocess_exec(*argv, env=env or _os.environ.copy())
