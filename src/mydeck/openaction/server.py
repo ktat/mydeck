@@ -114,3 +114,23 @@ class OpenActionServer:
             "-info", json.dumps({"plugin": {"uuid": manifest.plugin_uuid}}),
         ]
         return await asyncio.create_subprocess_exec(*argv, env=env or _os.environ.copy())
+
+    async def dispatch_will_appear(self, plugin_uuid, action_uuid, context, settings):
+        from .protocol import make_will_appear
+        await self.send_to_plugin(plugin_uuid, make_will_appear(
+            action_uuid, context.to_token(), context.deck_serial, 0, context.key, settings))
+
+    async def dispatch_will_disappear(self, plugin_uuid, action_uuid, context, settings):
+        from .protocol import make_will_disappear
+        await self.send_to_plugin(plugin_uuid, make_will_disappear(
+            action_uuid, context.to_token(), context.deck_serial, 0, context.key, settings))
+
+    async def dispatch_key_down(self, plugin_uuid, action_uuid, context, settings):
+        from .protocol import make_key_down
+        await self.send_to_plugin(plugin_uuid, make_key_down(
+            action_uuid, context.to_token(), context.deck_serial, 0, context.key, settings))
+
+    async def dispatch_key_up(self, plugin_uuid, action_uuid, context, settings):
+        from .protocol import make_key_up
+        await self.send_to_plugin(plugin_uuid, make_key_up(
+            action_uuid, context.to_token(), context.deck_serial, 0, context.key, settings))

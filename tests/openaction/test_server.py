@@ -111,3 +111,54 @@ def test_key_context_is_stable():
     a = KeyContext("D", "P", 1).to_token()
     b = KeyContext("D", "P", 1).to_token()
     assert a == b
+
+
+@pytest.mark.asyncio
+async def test_dispatch_key_down_roundtrips_setTitle():
+    fixtures = Path(__file__).parent / "fixtures"
+    manifest = PluginManifest(
+        plugin_uuid="com.example.mock",
+        name="mock",
+        code_path="mock_plugin.py",
+        plugin_dir=fixtures,
+        actions=[],
+    )
+
+    server = OpenActionServer()
+    await server.start()
+    registered = asyncio.Event()
+    commands_received: list = []
+
+    async def on_registered(uuid: str):
+        registered.set()
+
+    async def on_command(uuid: str, cmd):
+        commands_received.append((uuid, cmd))
+
+    server.on_registered = on_registered
+    server.on_command = on_command
+
+    env = os.environ.copy()
+    env["MOCK_PLUGIN_SCRIPT"] = "echo-key"
+    proc = await server.launch_plugin(manifest, python_executable=sys.executable, env=env)
+    try:
+        await asyncio.wait_for(registered.wait(), timeout=3.0)
+        ctx = KeyContext("D", "@HOME", 0)
+        await server.dispatch_key_down(
+            plugin_uuid="com.example.mock",
+            action_uuid="com.example.mock.x",
+            context=ctx,
+            settings={},
+        )
+        # wait for the mock plugin to echo back setTitle
+        for _ in range(30):
+            if commands_received:
+                break
+            await asyncio.sleep(0.1)
+        assert len(commands_received) == 1
+        _, cmd = commands_received[0]
+        assert cmd.payload["title"] == "pressed"
+    finally:
+        proc.terminate()
+        await proc.wait()
+        await server.stop()
