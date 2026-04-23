@@ -873,13 +873,31 @@ class MyDeck:
             # Print new key state
             self.debug("Key %s = %s" % (key, state))
 
+        current_page: str = self.current_page()
+        conf: Optional[dict] = None
+        if self.key_config().get(current_page) is not None:
+            conf = self.key_config()[current_page].get(key)
+
+        # OpenAction plugin dispatch — bypass built-in handlers
+        if conf is not None and conf.get("action") is not None:
+            from mydeck.openaction.server import KeyContext
+            bridge = getattr(self, "_openaction_bridge", None)
+            if bridge is not None:
+                ctx = KeyContext(
+                    deck_serial=str(deck.id()) if deck is not None else "unknown",
+                    page=current_page,
+                    key=self.abs_key(key),
+                )
+                settings = conf.get("settings") or {}
+                if state:
+                    bridge.key_down(ctx, conf["action"], settings)
+                else:
+                    bridge.key_up(ctx, conf["action"], settings)
+            return
+
         # Check if the key is changing to the pressed state.
         if state:
-            current_page: str = self.current_page()
-            conf: Optional[dict] = None
-            if self.key_config().get(current_page) is not None:
-                conf = self.key_config()[current_page].get(key)
-
+            # conf already looked up above
             # When an exit button is pressed, close the application.
             if conf is not None:
                 if conf.get("exit") == 1:

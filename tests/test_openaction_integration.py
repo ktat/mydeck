@@ -47,3 +47,28 @@ def test_set_key_without_action_uses_default_path():
 
     bridge.will_appear.assert_not_called()
     mydeck.update_key_image.assert_called_once()
+
+
+def test_key_change_callback_with_action_dispatches_key_down():
+    from mydeck import MyDeck
+    from unittest.mock import MagicMock
+
+    bridge = MagicMock()
+    mydeck = MyDeck.__new__(MyDeck)
+    mydeck.deck = MagicMock()
+    mydeck.deck.id = MagicMock(return_value="DECK1")
+    mydeck._exit = False
+    mydeck._openaction_bridge = bridge
+    mydeck.current_page = lambda: "@HOME"
+    mydeck.abs_key = lambda k: k
+    mydeck.debug = lambda *a, **kw: None
+    mydeck.key_config = lambda: {"@HOME": {0: {"action": "com.example.mvp.ping", "settings": {"a": 1}}}}
+    mydeck.config = None
+
+    # Press
+    mydeck.key_change_callback(0, True)
+    bridge.key_down.assert_called_once()
+    assert bridge.key_down.call_args.args[1] == "com.example.mvp.ping"
+    # Release
+    mydeck.key_change_callback(0, False)
+    bridge.key_up.assert_called_once()
