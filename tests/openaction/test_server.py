@@ -8,7 +8,7 @@ import pytest
 import websockets
 
 from mydeck.openaction.manifest import PluginManifest
-from mydeck.openaction.server import OpenActionServer
+from mydeck.openaction.server import KeyContext, OpenActionServer
 
 
 @pytest.mark.asyncio
@@ -98,3 +98,16 @@ async def test_server_spawns_plugin_and_receives_registration():
         proc.terminate()
         await proc.wait()
         await server.stop()
+
+
+def test_key_context_roundtrip():
+    ctx = KeyContext(deck_serial="DEV1", page="@HOME", key=3)
+    token = ctx.to_token()
+    parsed = KeyContext.from_token(token)
+    assert parsed == ctx
+
+
+def test_key_context_is_stable():
+    a = KeyContext("D", "P", 1).to_token()
+    b = KeyContext("D", "P", 1).to_token()
+    assert a == b

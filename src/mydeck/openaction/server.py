@@ -2,6 +2,7 @@ import asyncio
 import json
 import logging
 import os as _os
+from dataclasses import dataclass
 from pathlib import Path as _Path
 from typing import Awaitable, Callable, Dict, Optional
 
@@ -11,6 +12,24 @@ from websockets.asyncio.server import ServerConnection
 from .protocol import ParsedCommand, parse_command
 
 log = logging.getLogger(__name__)
+
+
+@dataclass(frozen=True)
+class KeyContext:
+    deck_serial: str
+    page: str
+    key: int
+
+    def to_token(self) -> str:
+        return f"{self.deck_serial}|{self.page}|{self.key}"
+
+    @classmethod
+    def from_token(cls, token: str) -> "KeyContext":
+        parts = token.split("|")
+        deck = parts[0]
+        key = int(parts[-1])
+        page = "|".join(parts[1:-1])
+        return cls(deck_serial=deck, page=page, key=key)
 
 
 class OpenActionServer:
