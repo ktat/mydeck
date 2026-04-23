@@ -61,9 +61,33 @@ class AppOpenActionBridge(BackgroundAppBase):
         # it from their key_change_callback / set_key paths.
         for md in self._all_mydecks():
             md._openaction_bridge = self
+        # Build device list from all MyDecks for the plugin's -info payload.
+        # Plugins use this to recognize which decks they can render to; events
+        # for unknown device IDs are silently dropped by the plugin.
+        devices = []
+        for md in self._all_mydecks():
+            deck = getattr(md, "deck", None)
+            if deck is None:
+                continue
+            try:
+                dev_id = str(deck.id())
+                key_count = md.key_count
+                columns = getattr(md, "columns", 5)
+                rows = max(1, key_count // max(1, columns))
+            except Exception as e:
+                log.warning("failed to read deck info for %s: %s",
+                            getattr(md, "myname", "?"), e)
+                continue
+            devices.append({
+                "id": dev_id,
+                "name": getattr(md, "myname", dev_id),
+                "size": {"columns": columns, "rows": rows},
+                "type": 0,  # StreamDeck (Elgato "type 0" is the original)
+            })
+
         for manifest in self._registry.all_plugins():
             try:
-                proc = await self._server.launch_plugin(manifest)
+                proc = await self._server.launch_plugin(manifest, devices=devices)
                 self._plugin_procs.append(proc)
             except Exception as e:
                 log.warning("failed to spawn plugin %s: %s", manifest.plugin_uuid, e)
@@ -85,8 +109,6 @@ class AppOpenActionBridge(BackgroundAppBase):
         # bridge attribute became available.
         for md in self._all_mydecks():
             try:
-                log.info("re-running key_touchscreen_setup for %s after bridge ready",
-                         getattr(md, "myname", "?"))
                 md.key_touchscreen_setup()
             except Exception as e:
                 log.warning("re-setup failed for %s: %s",

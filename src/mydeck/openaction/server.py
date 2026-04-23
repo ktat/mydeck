@@ -68,7 +68,9 @@ class OpenActionServer:
                 except json.JSONDecodeError:
                     log.warning("bad json from plugin %s", plugin_uuid)
                     continue
-                if cmd is not None and self.on_command is not None:
+                if cmd is None:
+                    continue
+                if self.on_command is not None:
                     try:
                         await self.on_command(plugin_uuid, cmd)
                     except Exception as exc:
@@ -92,6 +94,7 @@ class OpenActionServer:
         python_executable: str = "python3",
         node_executable: str = "node",
         env: Optional[dict] = None,
+        devices: Optional[list] = None,
     ) -> asyncio.subprocess.Process:
         code = _Path(manifest.plugin_dir) / manifest.code_path
         if code.suffix == ".py":
@@ -118,6 +121,7 @@ class OpenActionServer:
                 "version": "1.0.0",
             },
             "devicePixelRatio": 1,
+            "devices": list(devices) if devices else [],
             "colors": {
                 "buttonPressedBackgroundColor": "#303030FF",
                 "buttonPressedBorderColor": "#646464FF",
@@ -126,7 +130,6 @@ class OpenActionServer:
                 "highlightColor": "#F7821BFF",
                 "mouseDownColor": "#CF6304FF",
             },
-            "devices": [],
         }
         argv += [
             "-port", str(self.port),
