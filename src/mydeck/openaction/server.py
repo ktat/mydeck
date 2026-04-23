@@ -96,13 +96,43 @@ class OpenActionServer:
         code = _Path(manifest.plugin_dir) / manifest.code_path
         if code.suffix == ".py":
             argv = [python_executable, str(code)]
-        else:
+        elif code.suffix in (".js", ".mjs", ".cjs"):
             argv = [node_executable, str(code)]
+        else:
+            # Native executable (compiled binary). Ensure it's marked executable.
+            try:
+                code.chmod(code.stat().st_mode | 0o111)
+            except OSError:
+                pass
+            argv = [str(code)]
+        info = {
+            "application": {
+                "font": "",
+                "language": "en",
+                "platform": "linux",
+                "platformVersion": "",
+                "version": "6.0.0",
+            },
+            "plugin": {
+                "uuid": manifest.plugin_uuid,
+                "version": "1.0.0",
+            },
+            "devicePixelRatio": 1,
+            "colors": {
+                "buttonPressedBackgroundColor": "#303030FF",
+                "buttonPressedBorderColor": "#646464FF",
+                "buttonPressedTextColor": "#969696FF",
+                "disabledColor": "#F7821B59",
+                "highlightColor": "#F7821BFF",
+                "mouseDownColor": "#CF6304FF",
+            },
+            "devices": [],
+        }
         argv += [
             "-port", str(self.port),
             "-pluginUUID", manifest.plugin_uuid,
             "-registerEvent", "registerPlugin",
-            "-info", json.dumps({"plugin": {"uuid": manifest.plugin_uuid}}),
+            "-info", json.dumps(info),
         ]
         return await asyncio.create_subprocess_exec(*argv, env=env or _os.environ.copy())
 
