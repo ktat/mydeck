@@ -67,6 +67,31 @@ class AppOpenActionBridge(BackgroundAppBase):
                 self._plugin_procs.append(proc)
             except Exception as e:
                 log.warning("failed to spawn plugin %s: %s", manifest.plugin_uuid, e)
+
+        # Give newly-spawned plugins up to 2 seconds to complete the
+        # registerPlugin handshake before re-triggering key setup — otherwise
+        # the very first willAppear events would be sent before the plugin
+        # socket exists in self._server._plugin_sockets and silently dropped.
+        plugin_uuids = {m.plugin_uuid for m in self._registry.all_plugins()}
+        for _ in range(20):
+            if plugin_uuids.issubset(set(self._server._plugin_sockets.keys())):
+                break
+            await asyncio.sleep(0.1)
+
+        # After the bridge is fully ready (server running, bridge registered
+        # on every MyDeck, plugins spawned and registered), re-run
+        # key_touchscreen_setup on each MyDeck. This fires willAppear for any
+        # action: key that was set up during the startup race before the
+        # bridge attribute became available.
+        for md in self._all_mydecks():
+            try:
+                log.info("re-running key_touchscreen_setup for %s after bridge ready",
+                         getattr(md, "myname", "?"))
+                md.key_touchscreen_setup()
+            except Exception as e:
+                log.warning("re-setup failed for %s: %s",
+                            getattr(md, "myname", "?"), e)
+
         self._started.set()
         # block until shutdown
         while not self.mydeck._exit:
