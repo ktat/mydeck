@@ -160,6 +160,16 @@ class AppOpenActionBridge(BackgroundAppBase):
 
         fut.add_done_callback(_report)
 
+    def _merged_settings(self, plugin_uuid: str, token: str, provided: Optional[dict]) -> dict:
+        """Stored settings win over YAML-provided settings.
+
+        Every event sent to a plugin (willAppear/willDisappear/keyDown/keyUp)
+        must carry the plugin's current persisted settings in payload.settings,
+        per Elgato protocol. Plugins rely on this to drive per-keystroke state.
+        """
+        stored = self._settings_store.get(plugin_uuid, token)
+        return {**(provided or {}), **stored}
+
     def will_appear(self, key_ctx: KeyContext, action_uuid: str, settings: dict):
         if self._registry is None:
             return
@@ -168,9 +178,8 @@ class AppOpenActionBridge(BackgroundAppBase):
             log.warning("unknown action uuid: %s", action_uuid)
             return
         token = key_ctx.to_token()
-        stored = self._settings_store.get(entry.plugin_uuid, token)
-        merged = {**(settings or {}), **stored}  # stored wins
         self._context_actions[token] = (entry.plugin_uuid, action_uuid)
+        merged = self._merged_settings(entry.plugin_uuid, token, settings)
         self._schedule(self._server.dispatch_will_appear(
             entry.plugin_uuid, action_uuid, key_ctx, merged))
 
@@ -182,9 +191,10 @@ class AppOpenActionBridge(BackgroundAppBase):
             log.warning("unknown action uuid: %s", action_uuid)
             return
         token = key_ctx.to_token()
+        merged = self._merged_settings(entry.plugin_uuid, token, settings)
         self._context_actions.pop(token, None)
         self._schedule(self._server.dispatch_will_disappear(
-            entry.plugin_uuid, action_uuid, key_ctx, settings or {}))
+            entry.plugin_uuid, action_uuid, key_ctx, merged))
 
     def key_down(self, key_ctx: KeyContext, action_uuid: str, settings: dict):
         if self._registry is None:
@@ -193,8 +203,9 @@ class AppOpenActionBridge(BackgroundAppBase):
         if entry is None:
             log.warning("unknown action uuid: %s", action_uuid)
             return
+        merged = self._merged_settings(entry.plugin_uuid, key_ctx.to_token(), settings)
         self._schedule(self._server.dispatch_key_down(
-            entry.plugin_uuid, action_uuid, key_ctx, settings))
+            entry.plugin_uuid, action_uuid, key_ctx, merged))
 
     def key_up(self, key_ctx: KeyContext, action_uuid: str, settings: dict):
         if self._registry is None:
@@ -203,5 +214,6 @@ class AppOpenActionBridge(BackgroundAppBase):
         if entry is None:
             log.warning("unknown action uuid: %s", action_uuid)
             return
+        merged = self._merged_settings(entry.plugin_uuid, key_ctx.to_token(), settings)
         self._schedule(self._server.dispatch_key_up(
-            entry.plugin_uuid, action_uuid, key_ctx, settings))
+            entry.plugin_uuid, action_uuid, key_ctx, merged))
