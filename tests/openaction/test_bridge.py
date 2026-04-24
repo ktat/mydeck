@@ -85,15 +85,16 @@ def test_bridge_handles_set_title_calls_update_key_image():
     cmd = ParsedCommand(kind=Command.SET_TITLE, context=ctx.to_token(),
                         payload={"title": "hello"})
 
-    # Stub both helpers so the test does not require a real deck.
+    # Stub helpers so the test does not require a real deck/font.
     from unittest.mock import MagicMock as _MM
-    app._render_title_image = _MM(return_value=_MM())  # returns a fake PIL Image
+    app._compose_layers = _MM(return_value=_MM())  # returns a fake PIL Image
     app._pil_to_native = _MM(return_value=b"rendered")
 
     asyncio.run(app._on_command("com.example.mvp", cmd))
 
-    app._render_title_image.assert_called_once()
-    assert app._render_title_image.call_args.args[1] == "hello"
+    # SET_TITLE updates the title layer and triggers a composite render.
+    assert app._key_layers[ctx.to_token()]["title"] == "hello"
+    app._compose_layers.assert_called_once()
     mydeck.update_key_image.assert_called_once()
     assert mydeck.update_key_image.call_args.args[0] == 2
     assert mydeck.update_key_image.call_args.args[1] == b"rendered"
@@ -113,11 +114,11 @@ def test_bridge_set_title_renders_multiline_each_line():
                         payload={"title": "2d 02h\n17m 30s"})
 
     from unittest.mock import MagicMock as _MM
-    app._render_title_image = _MM(return_value=_MM())
+    app._compose_layers = _MM(return_value=_MM())
     app._pil_to_native = _MM(return_value=b"rendered")
     asyncio.run(app._on_command("com.example.mvp", cmd))
 
-    assert app._render_title_image.call_args.args[1] == "2d 02h\n17m 30s"
+    assert app._key_layers[ctx.to_token()]["title"] == "2d 02h\n17m 30s"
 
 
 def test_will_appear_merges_stored_settings_over_provided(tmp_path):

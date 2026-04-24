@@ -36,6 +36,10 @@ class AppOpenActionBridge(BackgroundAppBase):
         self._context_actions: dict = {}  # context_token -> (plugin_uuid, action_uuid)
         self._playwright = None
         self._browser = None
+        # Per-key render state: token -> {"image": PIL.Image, "title": str}
+        # setImage sets the background, setTitle overlays text — Elgato treats
+        # them as independent layers, so we composite both when either changes.
+        self._key_layers: dict = {}
 
     def start(self):
         if AppOpenActionBridge.IS_ALREADY_WORKING:
@@ -264,21 +268,81 @@ class AppOpenActionBridge(BackgroundAppBase):
         if cmd.kind == Command.SET_IMAGE:
             image_field = cmd.payload.get("image", "")
             if image_field.startswith("data:"):
-                import base64
-                import io
-                from PIL import Image
-                _, _, b64 = image_field.partition(",")
-                raw = base64.b64decode(b64)
-                pil = Image.open(io.BytesIO(raw)).convert("RGB")
-                native = self._pil_to_native(mydeck, pil)
-                mydeck.update_key_image(key, native, True)
+                pil = self._decode_image_data_url(image_field, plugin_uuid)
+                if pil is None:
+                    return
+                self._update_layers(cmd.context, image=pil)
             else:
                 log.warning("unsupported setImage image format: %r", image_field[:40])
+                return
+            composite = self._compose_layers(mydeck, cmd.context)
+            mydeck.update_key_image(key, self._pil_to_native(mydeck, composite), True)
         elif cmd.kind == Command.SET_TITLE:
             title = cmd.payload.get("title", "")
-            pil = self._render_title_image(mydeck, title)
-            native = self._pil_to_native(mydeck, pil)
-            mydeck.update_key_image(key, native, True)
+            self._update_layers(cmd.context, title=title)
+            composite = self._compose_layers(mydeck, cmd.context)
+            mydeck.update_key_image(key, self._pil_to_native(mydeck, composite), True)
+
+    def _decode_image_data_url(self, image_field: str, plugin_uuid: str):
+        import base64
+        import io
+        from PIL import Image
+        header, _, b64 = image_field.partition(",")
+        mime = header.split(":", 1)[1].split(";", 1)[0] if ":" in header else ""
+        raw = base64.b64decode(b64)
+        if mime == "image/svg+xml" or raw.lstrip().startswith(b"<"):
+            try:
+                import cairosvg
+                png = cairosvg.svg2png(bytestring=raw, output_width=144, output_height=144)
+                return Image.open(io.BytesIO(png)).convert("RGBA")
+            except Exception as e:
+                log.warning("failed to render SVG setImage for %s: %s", plugin_uuid, e)
+                return None
+        try:
+            return Image.open(io.BytesIO(raw)).convert("RGBA")
+        except Exception as e:
+            log.warning("failed to decode setImage for %s: %s", plugin_uuid, e)
+            return None
+
+    def _update_layers(self, token: str, image=None, title=None):
+        layers = self._key_layers.setdefault(token, {"image": None, "title": ""})
+        if image is not None:
+            layers["image"] = image
+        if title is not None:
+            layers["title"] = title
+
+    def _compose_layers(self, mydeck, token: str):
+        """Return a PIL Image that layers the current title on top of the image.
+
+        Mirrors Elgato semantics: setImage is the background, setTitle is
+        text drawn over it. Both persist independently until replaced.
+        """
+        from PIL import Image, ImageDraw, ImageFont
+        layers = self._key_layers.get(token) or {}
+        bg = layers.get("image")
+        title = layers.get("title") or ""
+        if bg is None:
+            canvas = Image.new("RGB", (144, 144), "black")
+        else:
+            canvas = bg.convert("RGB").resize((144, 144))
+        if title:
+            lines = title.split("\n")
+            longest = max((len(line) for line in lines), default=0) or 1
+            base = 28  # Larger base than _render_title_image since canvas is 144, not 72
+            font_size = base if longest <= 7 else max(20, int(base * 7 / longest + 0.999))
+            draw = ImageDraw.Draw(canvas)
+            font = ImageFont.truetype(mydeck.font_path, font_size)
+            line_h = font_size + 4
+            total_h = line_h * len(lines)
+            start_y = max(0, (canvas.height - total_h) // 2) + line_h // 2
+            for i, line in enumerate(lines):
+                # Draw a black stroke behind white text so it remains readable
+                # over any image.
+                x = canvas.width / 2
+                y = start_y + i * line_h
+                draw.text((x, y), font=font, text=line, anchor="mm",
+                          fill="white", stroke_width=2, stroke_fill="black")
+        return canvas
 
     def _pil_to_native(self, mydeck, pil_image):
         """Return image in the format expected by update_key_image.
@@ -380,6 +444,7 @@ class AppOpenActionBridge(BackgroundAppBase):
         token = key_ctx.to_token()
         merged = self._merged_settings(entry.plugin_uuid, token, settings)
         self._context_actions.pop(token, None)
+        self._key_layers.pop(token, None)
         self._schedule(self._server.dispatch_will_disappear(
             entry.plugin_uuid, action_uuid, key_ctx, merged))
 

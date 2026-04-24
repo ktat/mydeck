@@ -161,7 +161,13 @@ class OpenActionServer:
             "-registerEvent", "registerPlugin",
             "-info", json.dumps(info),
         ]
-        return await asyncio.create_subprocess_exec(*argv, env=env or _os.environ.copy())
+        # Spawn with cwd set to the plugin directory — Elgato SDK plugins
+        # typically resolve logs/settings paths relative to their own cwd.
+        return await asyncio.create_subprocess_exec(
+            *argv,
+            env=env or _os.environ.copy(),
+            cwd=str(manifest.plugin_dir),
+        )
 
     async def _launch_html_plugin(self, manifest, code_path: _Path, info: dict, browser) -> "PageHandle":
         page = await browser.new_page()
