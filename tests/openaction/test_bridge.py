@@ -178,6 +178,9 @@ def test_on_command_set_settings_persists_and_echoes_did_receive(tmp_path):
         fake_send.calls.append((plugin_uuid, msg))
     fake_send.calls = []
     app._server.send_to_plugin = fake_send
+    async def fake_send_pi(ctx_token, msg):
+        pass
+    app._server.send_to_pi = fake_send_pi
 
     ctx = KeyContext("D", "@HOME", 0)
     cmd = ParsedCommand(kind=_Command.SET_SETTINGS, context=ctx.to_token(),
@@ -226,3 +229,128 @@ def test_on_command_get_settings_echoes_stored(tmp_path):
     _, msg = fake_send.calls[0]
     assert msg["event"] == "didReceiveSettings"
     assert msg["payload"]["settings"] == {"stored": "yes"}
+
+
+def test_pi_set_settings_stores_and_notifies_plugin(tmp_path):
+    import asyncio as _asyncio
+    from mydeck.openaction.protocol import ParsedCommand, Command as _Command
+    from mydeck.openaction.server import KeyContext
+
+    mydeck = MagicMock()
+    mydeck.deck = MagicMock()
+    app = AppOpenActionBridge(mydeck, {
+        "plugins_dir": "/tmp/nope",
+        "settings_path": str(tmp_path / "s.json"),
+    })
+    ctx = KeyContext("D", "@HOME", 0)
+    app._context_actions[ctx.to_token()] = ("pl.uuid", "pl.uuid.a")
+
+    app._server = MagicMock()
+    async def fake_plugin_send(p, m): fake_plugin_send.calls.append((p, m))
+    fake_plugin_send.calls = []
+    app._server.send_to_plugin = fake_plugin_send
+
+    cmd = ParsedCommand(kind=_Command.SET_SETTINGS, context=ctx.to_token(),
+                        payload={"k": "v"})
+    _asyncio.run(app._on_pi_command(ctx.to_token(), cmd))
+
+    # Stored under the plugin UUID from _context_actions
+    assert app._settings_store.get("pl.uuid", ctx.to_token()) == {"k": "v"}
+    # Plugin was notified via didReceiveSettings
+    assert len(fake_plugin_send.calls) == 1
+    puuid, msg = fake_plugin_send.calls[0]
+    assert puuid == "pl.uuid"
+    assert msg["event"] == "didReceiveSettings"
+    assert msg["action"] == "pl.uuid.a"
+    assert msg["payload"]["settings"] == {"k": "v"}
+
+
+def test_pi_get_settings_replies_to_pi(tmp_path):
+    import asyncio as _asyncio
+    from mydeck.openaction.protocol import ParsedCommand, Command as _Command
+    from mydeck.openaction.server import KeyContext
+
+    mydeck = MagicMock()
+    mydeck.deck = MagicMock()
+    app = AppOpenActionBridge(mydeck, {
+        "plugins_dir": "/tmp/nope",
+        "settings_path": str(tmp_path / "s.json"),
+    })
+    ctx = KeyContext("D", "@HOME", 0)
+    app._context_actions[ctx.to_token()] = ("pl.uuid", "pl.uuid.a")
+    app._settings_store.set("pl.uuid", ctx.to_token(), {"x": 1})
+
+    app._server = MagicMock()
+    async def fake_pi_send(c, m): fake_pi_send.calls.append((c, m))
+    fake_pi_send.calls = []
+    app._server.send_to_pi = fake_pi_send
+
+    cmd = ParsedCommand(kind=_Command.GET_SETTINGS, context=ctx.to_token(), payload={})
+    _asyncio.run(app._on_pi_command(ctx.to_token(), cmd))
+
+    assert len(fake_pi_send.calls) == 1
+    token, msg = fake_pi_send.calls[0]
+    assert token == ctx.to_token()
+    assert msg["event"] == "didReceiveSettings"
+    assert msg["payload"]["settings"] == {"x": 1}
+
+
+def test_pi_send_to_plugin_forwards_to_plugin(tmp_path):
+    import asyncio as _asyncio
+    from mydeck.openaction.protocol import ParsedCommand, Command as _Command
+    from mydeck.openaction.server import KeyContext
+
+    mydeck = MagicMock()
+    mydeck.deck = MagicMock()
+    app = AppOpenActionBridge(mydeck, {
+        "plugins_dir": "/tmp/nope",
+        "settings_path": str(tmp_path / "s.json"),
+    })
+    ctx = KeyContext("D", "@HOME", 0)
+    app._context_actions[ctx.to_token()] = ("pl.uuid", "pl.uuid.a")
+
+    app._server = MagicMock()
+    async def fake_send(p, m): fake_send.calls.append((p, m))
+    fake_send.calls = []
+    app._server.send_to_plugin = fake_send
+
+    cmd = ParsedCommand(kind=_Command.SEND_TO_PLUGIN, context=ctx.to_token(),
+                        payload={"custom": "payload"})
+    _asyncio.run(app._on_pi_command(ctx.to_token(), cmd))
+
+    assert len(fake_send.calls) == 1
+    puuid, msg = fake_send.calls[0]
+    assert puuid == "pl.uuid"
+    assert msg["event"] == "sendToPlugin"
+    assert msg["action"] == "pl.uuid.a"
+    assert msg["payload"] == {"custom": "payload"}
+
+
+def test_plugin_send_to_pi_forwards_to_pi(tmp_path):
+    import asyncio as _asyncio
+    from mydeck.openaction.protocol import ParsedCommand, Command as _Command
+    from mydeck.openaction.server import KeyContext
+
+    mydeck = MagicMock()
+    mydeck.deck = MagicMock()
+    app = AppOpenActionBridge(mydeck, {
+        "plugins_dir": "/tmp/nope",
+        "settings_path": str(tmp_path / "s.json"),
+    })
+    ctx = KeyContext("D", "@HOME", 0)
+    app._context_actions[ctx.to_token()] = ("pl.uuid", "pl.uuid.a")
+
+    app._server = MagicMock()
+    async def fake_send(c, m): fake_send.calls.append((c, m))
+    fake_send.calls = []
+    app._server.send_to_pi = fake_send
+
+    cmd = ParsedCommand(kind=_Command.SEND_TO_PI, context=ctx.to_token(),
+                        payload={"from_plugin": "hi"})
+    _asyncio.run(app._on_command("pl.uuid", cmd))
+
+    assert len(fake_send.calls) == 1
+    token, msg = fake_send.calls[0]
+    assert token == ctx.to_token()
+    assert msg["event"] == "sendToPropertyInspector"
+    assert msg["payload"] == {"from_plugin": "hi"}

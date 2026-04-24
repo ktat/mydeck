@@ -57,6 +57,7 @@ class AppOpenActionBridge(BackgroundAppBase):
         self._registry = ActionRegistry.from_directory(self.plugins_dir)
         self._server = OpenActionServer(port=self.port)
         self._server.on_command = self._on_command
+        self._server.on_pi_command = self._on_pi_command
         await self._server.start()
         log.info("OpenAction bridge listening on port %d", self._server.port)
         # Register with every MyDeck BEFORE spawning plugins so the attribute is
@@ -226,7 +227,9 @@ class AppOpenActionBridge(BackgroundAppBase):
 
     async def _on_command(self, plugin_uuid: str, cmd):
         from mydeck.openaction.context import KeyContext
-        from mydeck.openaction.protocol import Command, make_did_receive_settings
+        from mydeck.openaction.protocol import (
+            Command, make_did_receive_settings, make_send_to_pi,
+        )
 
         try:
             ctx = KeyContext.from_token(cmd.context)
@@ -244,6 +247,8 @@ class AppOpenActionBridge(BackgroundAppBase):
                 msg = make_did_receive_settings(
                     action_uuid, cmd.context, ctx.deck_serial, 0, ctx.key, cmd.payload or {})
                 await self._server.send_to_plugin(plugin_uuid, msg)
+                # Mirror the update to an attached Property Inspector, if any.
+                await self._server.send_to_pi(cmd.context, msg)
             return
 
         if cmd.kind == Command.GET_SETTINGS:
@@ -254,6 +259,20 @@ class AppOpenActionBridge(BackgroundAppBase):
                 msg = make_did_receive_settings(
                     action_uuid, cmd.context, ctx.deck_serial, 0, ctx.key, stored)
                 await self._server.send_to_plugin(plugin_uuid, msg)
+            return
+
+        if cmd.kind == Command.SEND_TO_PI:
+            tracked = self._context_actions.get(cmd.context)
+            action_uuid = tracked[1] if tracked else ""
+            await self._server.send_to_pi(
+                cmd.context,
+                make_send_to_pi(action_uuid, cmd.context, cmd.payload or {}),
+            )
+            return
+
+        if cmd.kind == Command.LOG_MESSAGE:
+            log.info("[plugin %s log] %s", plugin_uuid,
+                     (cmd.payload or {}).get("message", ""))
             return
 
         # Rendering commands: route to the MyDeck that owns the serial in ctx.
@@ -282,6 +301,58 @@ class AppOpenActionBridge(BackgroundAppBase):
             self._update_layers(cmd.context, title=title)
             composite = self._compose_layers(mydeck, cmd.context)
             mydeck.update_key_image(key, self._pil_to_native(mydeck, composite), True)
+
+    async def _on_pi_command(self, context_token: str, cmd):
+        """Handle commands from a Property Inspector socket.
+
+        The PI identifies itself by the per-key context token (same token
+        the plugin sees). We look up the plugin UUID from _context_actions.
+        """
+        from mydeck.openaction.context import KeyContext
+        from mydeck.openaction.protocol import (
+            Command, make_did_receive_settings, make_send_to_plugin,
+        )
+
+        tracked = self._context_actions.get(context_token)
+        if tracked is None:
+            log.warning("PI command for unknown context %s", context_token)
+            return
+        plugin_uuid, action_uuid = tracked
+        try:
+            ctx = KeyContext.from_token(context_token)
+        except Exception:
+            log.warning("malformed context token from PI: %r", context_token)
+            return
+
+        if cmd.kind == Command.SET_SETTINGS:
+            self._settings_store.set(plugin_uuid, context_token, cmd.payload or {})
+            # Inform the plugin of the new settings — matches Elgato behavior
+            # where PI-driven setSettings triggers didReceiveSettings on plugin.
+            msg = make_did_receive_settings(
+                action_uuid, context_token, ctx.deck_serial, 0, ctx.key, cmd.payload or {})
+            await self._server.send_to_plugin(plugin_uuid, msg)
+            return
+
+        if cmd.kind == Command.GET_SETTINGS:
+            stored = self._settings_store.get(plugin_uuid, context_token)
+            msg = make_did_receive_settings(
+                action_uuid, context_token, ctx.deck_serial, 0, ctx.key, stored)
+            await self._server.send_to_pi(context_token, msg)
+            return
+
+        if cmd.kind == Command.SEND_TO_PLUGIN:
+            await self._server.send_to_plugin(
+                plugin_uuid,
+                make_send_to_plugin(action_uuid, context_token, cmd.payload or {}),
+            )
+            return
+
+        if cmd.kind == Command.LOG_MESSAGE:
+            log.info("[PI %s log] %s", context_token,
+                     (cmd.payload or {}).get("message", ""))
+            return
+
+        log.debug("PI command not handled: %s from %s", cmd.kind, context_token)
 
     def _decode_image_data_url(self, image_field: str, plugin_uuid: str):
         import base64

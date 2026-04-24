@@ -40,8 +40,13 @@ class OpenActionServer:
         self._requested_port = port
         self._server: Optional[websockets.asyncio.server.Server] = None
         self._plugin_sockets: Dict[str, ServerConnection] = {}
+        # Property Inspector sockets are keyed by context token (per-key UUID
+        # passed via connectElgatoStreamDeckSocket). Each PI instance opens
+        # its own socket when the Web UI loads the configuration dialog.
+        self._pi_sockets: Dict[str, ServerConnection] = {}
         self.on_registered: Optional[Callable[[str], Awaitable[None]]] = None
         self.on_command: Optional[Callable[[str, ParsedCommand], Awaitable[None]]] = None
+        self.on_pi_command: Optional[Callable[[str, ParsedCommand], Awaitable[None]]] = None
 
     @property
     def port(self) -> int:
@@ -60,6 +65,7 @@ class OpenActionServer:
 
     async def _handle(self, ws: ServerConnection) -> None:
         plugin_uuid: Optional[str] = None
+        pi_context: Optional[str] = None
         try:
             raw = await ws.recv()
             try:
@@ -68,43 +74,65 @@ class OpenActionServer:
                 log.warning("rejecting connection: non-JSON registration")
                 await ws.close()
                 return
-            if msg.get("event") != "registerPlugin" or "uuid" not in msg:
+            event = msg.get("event")
+            if event == "registerPlugin" and "uuid" in msg:
+                plugin_uuid = msg["uuid"]
+                if plugin_uuid in self._plugin_sockets:
+                    log.warning("duplicate registration for uuid %s; replacing", plugin_uuid)
+                self._plugin_sockets[plugin_uuid] = ws
+                if self.on_registered:
+                    try:
+                        await self.on_registered(plugin_uuid)
+                    except Exception as exc:
+                        log.warning("on_registered raised for plugin %s: %s", plugin_uuid, exc)
+                await self._pump_commands(ws, plugin_uuid, is_pi=False)
+            elif event == "registerPropertyInspector" and "uuid" in msg:
+                pi_context = msg["uuid"]
+                self._pi_sockets[pi_context] = ws
+                log.info("PI registered for context %s", pi_context)
+                await self._pump_commands(ws, pi_context, is_pi=True)
+            else:
                 log.warning("rejecting connection: bad registration %r", msg)
                 await ws.close()
                 return
-            plugin_uuid = msg["uuid"]
-            if plugin_uuid in self._plugin_sockets:
-                log.warning("duplicate registration for uuid %s; replacing", plugin_uuid)
-            self._plugin_sockets[plugin_uuid] = ws
-            if self.on_registered:
-                try:
-                    await self.on_registered(plugin_uuid)
-                except Exception as exc:
-                    log.warning("on_registered raised for plugin %s: %s", plugin_uuid, exc)
-
-            async for raw in ws:
-                try:
-                    cmd = parse_command(json.loads(raw))
-                except json.JSONDecodeError:
-                    log.warning("bad json from plugin %s", plugin_uuid)
-                    continue
-                if cmd is None:
-                    continue
-                if self.on_command is not None:
-                    try:
-                        await self.on_command(plugin_uuid, cmd)
-                    except Exception as exc:
-                        log.warning("on_command raised for plugin %s: %s", plugin_uuid, exc)
         except websockets.ConnectionClosed:
             pass
         finally:
             if plugin_uuid is not None:
                 self._plugin_sockets.pop(plugin_uuid, None)
+            if pi_context is not None:
+                self._pi_sockets.pop(pi_context, None)
+
+    async def _pump_commands(self, ws: ServerConnection, source_id: str, is_pi: bool) -> None:
+        async for raw in ws:
+            try:
+                cmd = parse_command(json.loads(raw))
+            except json.JSONDecodeError:
+                log.warning("bad json from %s %s", "PI" if is_pi else "plugin", source_id)
+                continue
+            if cmd is None:
+                continue
+            handler = self.on_pi_command if is_pi else self.on_command
+            if handler is None:
+                continue
+            try:
+                await handler(source_id, cmd)
+            except Exception as exc:
+                import traceback
+                log.warning("%s_command raised for %s: %s\n%s",
+                            "on_pi" if is_pi else "on", source_id, exc, traceback.format_exc())
 
     async def send_to_plugin(self, plugin_uuid: str, message: dict) -> None:
         ws = self._plugin_sockets.get(plugin_uuid)
         if ws is None:
             log.warning("no plugin connection for %s", plugin_uuid)
+            return
+        await ws.send(json.dumps(message))
+
+    async def send_to_pi(self, context_token: str, message: dict) -> None:
+        ws = self._pi_sockets.get(context_token)
+        if ws is None:
+            log.debug("no PI connection for context %s", context_token)
             return
         await ws.send(json.dumps(message))
 

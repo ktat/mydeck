@@ -32,6 +32,76 @@ async def test_server_accepts_registration():
 
 
 @pytest.mark.asyncio
+async def test_server_accepts_property_inspector_registration():
+    """A PI socket registers via registerPropertyInspector and gets tracked
+    in _pi_sockets keyed by its context token. send_to_pi should reach it."""
+    server = OpenActionServer(host="127.0.0.1", port=0)
+    await server.start()
+    context = "DECK|@HOME|0"
+    received = asyncio.Event()
+    received.msg = None
+
+    try:
+        async with websockets.connect(f"ws://127.0.0.1:{server.port}") as ws:
+            await ws.send(json.dumps({"event": "registerPropertyInspector", "uuid": context}))
+
+            async def consumer():
+                received.msg = json.loads(await ws.recv())
+                received.set()
+
+            task = asyncio.create_task(consumer())
+            # Give the server a moment to register the socket, then push to it.
+            await asyncio.sleep(0.1)
+            await server.send_to_pi(context, {"event": "didReceiveSettings", "payload": {"k": "v"}})
+            await asyncio.wait_for(received.wait(), timeout=1.0)
+            task.cancel()
+
+        assert received.msg["event"] == "didReceiveSettings"
+        assert received.msg["payload"] == {"k": "v"}
+    finally:
+        await server.stop()
+
+
+@pytest.mark.asyncio
+async def test_server_routes_pi_command_to_on_pi_command():
+    """Commands from a PI socket are dispatched to on_pi_command, not on_command."""
+    from mydeck.openaction.protocol import Command
+    server = OpenActionServer(host="127.0.0.1", port=0)
+    await server.start()
+    plugin_calls = []
+    pi_calls = []
+
+    async def on_cmd(src, cmd): plugin_calls.append((src, cmd))
+    async def on_pi(src, cmd): pi_calls.append((src, cmd))
+
+    server.on_command = on_cmd
+    server.on_pi_command = on_pi
+
+    try:
+        async with websockets.connect(f"ws://127.0.0.1:{server.port}") as ws:
+            await ws.send(json.dumps({"event": "registerPropertyInspector", "uuid": "ctx"}))
+            await ws.send(json.dumps({
+                "event": "setSettings",
+                "context": "ctx",
+                "payload": {"a": 1},
+            }))
+            # wait for the server to dispatch
+            for _ in range(20):
+                if pi_calls:
+                    break
+                await asyncio.sleep(0.05)
+
+        assert len(plugin_calls) == 0
+        assert len(pi_calls) == 1
+        src, cmd = pi_calls[0]
+        assert src == "ctx"
+        assert cmd.kind == Command.SET_SETTINGS
+        assert cmd.payload == {"a": 1}
+    finally:
+        await server.stop()
+
+
+@pytest.mark.asyncio
 async def test_server_rejects_non_json_registration():
     server = OpenActionServer(host="127.0.0.1", port=0)
     await server.start()
