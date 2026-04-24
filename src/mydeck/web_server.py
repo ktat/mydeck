@@ -103,6 +103,12 @@ class DeckOutputWebHandler(http.server.BaseHTTPRequestHandler):
     def do_GET(self):
         if self.path == '/':
             return self.res_file_html(ROOT_DIR+'/html/index.html')
+        elif self.path == '/api/openaction/info':
+            return self.res_openaction_info()
+        elif self.path == '/api/openaction/plugins':
+            return self.res_openaction_plugins()
+        elif (m := re.search(r"^/pi/([a-zA-Z0-9._-]+\.sdPlugin)/(.+)$", self.path)) is not None:
+            return self.res_pi_file(m.group(1), m.group(2))
         elif (m := re.search(r"(/(?:js|css)/[^/]+\.(?:js|css))", self.path)) is not None:
             js_or_css_path = m.group(1)
             with open(ROOT_DIR+'/html' + js_or_css_path, mode="rb") as f:
@@ -579,6 +585,182 @@ class DeckOutputWebHandler(http.server.BaseHTTPRequestHandler):
             MyDecksManager.ConfigQueue[sn].put(data)
 
         self.api_json_response({})
+
+    def res_openaction_info(self):
+        """Expose the OpenAction bridge WebSocket port to the Web UI so
+        Property Inspector iframes can connect with connectElgatoStreamDeckSocket."""
+        try:
+            from .my_decks import MyDecks
+            for md in MyDecks.mydecks.values():
+                bridge = getattr(md, '_openaction_bridge', None)
+                if bridge is None or bridge._server is None:
+                    continue
+                return self.api_json_response({"port": bridge._server.port})
+        except Exception as e:
+            logging.debug("openaction info lookup failed: %s", e)
+        return self.api_json_response({"port": None})
+
+    def res_openaction_plugins(self):
+        """List installed OpenAction plugins and their actions for the Web UI's action-picker."""
+        try:
+            from .my_decks import MyDecks
+            for md in MyDecks.mydecks.values():
+                bridge = getattr(md, '_openaction_bridge', None)
+                if bridge is None or bridge._registry is None:
+                    continue
+                plugins = []
+                for manifest in bridge._registry.all_plugins():
+                    plugins.append({
+                        "uuid": manifest.plugin_uuid,
+                        "name": manifest.name,
+                        "actions": [
+                            {
+                                "uuid": a.action_uuid,
+                                "name": a.name,
+                                "property_inspector": self._pi_path_for(manifest, a.action_uuid),
+                            }
+                            for a in manifest.actions
+                        ],
+                    })
+                return self.api_json_response({"plugins": plugins})
+        except Exception as e:
+            logging.debug("openaction plugins lookup failed: %s", e)
+        return self.api_json_response({"plugins": []})
+
+    def _pi_path_for(self, manifest, action_uuid):
+        """Return a relative URL for the PI HTML if the plugin ships one."""
+        plugin_dir = manifest.plugin_dir
+        short = action_uuid
+        if manifest.plugin_uuid and action_uuid.startswith(manifest.plugin_uuid + "."):
+            short = action_uuid[len(manifest.plugin_uuid) + 1:]
+        candidates = []
+        for base in ("ui", "propertyinspector", "pi", "action/js"):
+            for name in (short, short.replace("_", "-"), short.replace("-", "_"),
+                         "inspector", "index", "index_pi"):
+                for ext in (".html", "/index.html"):
+                    candidates.append("{}/{}{}".format(base, name, ext))
+            candidates.extend([
+                "{}/index.html".format(base),
+                "{}/inspector.html".format(base),
+            ])
+        candidates.extend(["inspector.html", "index.html"])
+        for c in candidates:
+            if (plugin_dir / c).is_file():
+                return "/pi/{}/{}".format(plugin_dir.name, c)
+        return None
+
+    def res_pi_file(self, plugin_sd_dir: str, rest: str):
+        """Serve files from a plugin directory for Property Inspector iframes,
+        confined to the plugins root."""
+        import os as _os
+        # rest may include a query string (self.path is the full request path);
+        # strip it before resolving on disk. The query is still available via
+        # self.path for _inject_pi_bootstrap to parse.
+        if '?' in rest:
+            rest = rest.split('?', 1)[0]
+        try:
+            from .my_decks import MyDecks
+            plugins_root = None
+            for md in MyDecks.mydecks.values():
+                bridge = getattr(md, '_openaction_bridge', None)
+                if bridge is not None:
+                    plugins_root = bridge.plugins_dir
+                    break
+            if plugins_root is None:
+                return self.response_404()
+            target = (plugins_root / plugin_sd_dir / rest).resolve()
+            root = _os.path.realpath(str(plugins_root))
+            if _os.path.commonpath([str(target), root]) != root:
+                return self.response_404()
+            if not target.is_file():
+                return self.response_404()
+            ext = target.suffix.lstrip('.').lower()
+            mime = {
+                'html': 'text/html; charset=utf-8',
+                'htm': 'text/html; charset=utf-8',
+                'js': 'application/javascript; charset=utf-8',
+                'mjs': 'application/javascript; charset=utf-8',
+                'css': 'text/css; charset=utf-8',
+                'png': 'image/png',
+                'jpg': 'image/jpeg',
+                'jpeg': 'image/jpeg',
+                'gif': 'image/gif',
+                'svg': 'image/svg+xml',
+                'json': 'application/json; charset=utf-8',
+                'woff': 'font/woff',
+                'woff2': 'font/woff2',
+                'ttf': 'font/ttf',
+                'wav': 'audio/wav',
+                'mp3': 'audio/mpeg',
+            }.get(ext, 'application/octet-stream')
+            data = target.read_bytes()
+            if ext in ('html', 'htm'):
+                from urllib.parse import urlparse, parse_qs
+                try:
+                    q = parse_qs(urlparse(self.path).query)
+                    ctx = (q.get('ctx') or [''])[0]
+                    action = (q.get('action') or [''])[0]
+                except Exception:
+                    ctx, action = '', ''
+                data = self._inject_pi_bootstrap(data, ctx, action)
+            self.send_response(200)
+            self.send_header('Content-Type', mime)
+            self.send_header('Content-Length', str(len(data)))
+            self.end_headers()
+            self.wfile.write(data)
+            return
+        except Exception as e:
+            logging.debug("PI file serve failed: %s", e)
+            return self.response_404()
+
+    def _inject_pi_bootstrap(self, html_bytes: bytes, ctx: str, action_uuid: str) -> bytes:
+        """Inject a bootstrap script so the PI iframe connects to the bridge.
+        The PI's own scripts define connectElgatoStreamDeckSocket; we wait for
+        it to appear, fetch the bridge port from the Web UI, and invoke it with
+        the context token and action UUID supplied via query string."""
+        import json as _json
+        ctx_js = _json.dumps(ctx)
+        action_js = _json.dumps(action_uuid)
+        bootstrap = (
+            "<script>\n"
+            "(function() {\n"
+            "  var CTX = " + ctx_js + ";\n"
+            "  var ACTION = " + action_js + ";\n"
+            "  function waitFor(pred, cb, max) {\n"
+            "    var tries = 0;\n"
+            "    var id = setInterval(function() {\n"
+            "      if (pred()) { clearInterval(id); cb(); }\n"
+            "      else if (++tries > (max || 100)) { clearInterval(id); }\n"
+            "    }, 50);\n"
+            "  }\n"
+            "  window.addEventListener('DOMContentLoaded', function() {\n"
+            "    fetch('/api/openaction/info').then(function(r) { return r.json(); }).then(function(info) {\n"
+            "      if (!info || !info.port) return;\n"
+            "      var appInfo = {\n"
+            "        application: { font: '', language: 'en', platform: 'linux', platformVersion: '', version: '6.0.0' },\n"
+            "        plugin: { uuid: '', version: '1.0.0' },\n"
+            "        devicePixelRatio: 1, devices: [], colors: {}\n"
+            "      };\n"
+            "      var actionInfo = { action: ACTION, context: CTX, device: '', payload: { settings: {}, coordinates: {row:0, column:0} } };\n"
+            "      waitFor(\n"
+            "        function() { return typeof connectElgatoStreamDeckSocket === 'function' || typeof connectSocket === 'function'; },\n"
+            "        function() {\n"
+            "          var fn = window.connectElgatoStreamDeckSocket || window.connectSocket;\n"
+            "          fn(info.port, CTX, 'registerPropertyInspector', JSON.stringify(appInfo), JSON.stringify(actionInfo));\n"
+            "        }\n"
+            "      );\n"
+            "    });\n"
+            "  });\n"
+            "})();\n"
+            "</script>\n"
+        ).encode('utf-8')
+        lower = html_bytes.lower()
+        idx = lower.rfind(b"</head>")
+        if idx < 0:
+            idx = lower.rfind(b"</body>")
+        if idx < 0:
+            return html_bytes + bootstrap
+        return html_bytes[:idx] + bootstrap + html_bytes[idx:]
 
     def res_totp_accounts(self):
         from .totp_account_manager import TotpAccountManager
