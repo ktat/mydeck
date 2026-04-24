@@ -120,7 +120,10 @@ class MyDecksStarter:
             while True:
                 print(
                     "StreamDeck devices are not found and no --use-vdeck flag. Do you use vdeck? (y/n)")
-                answer = input()
+                try:
+                    answer = input()
+                except EOFError:
+                    answer = "n"
                 if answer.lower() == "n":
                     # User declined vdeck setup. Instead of exiting, try to
                     # keep the Web UI usable: register previously-seen decks
