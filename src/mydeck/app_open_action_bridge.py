@@ -34,6 +34,8 @@ class AppOpenActionBridge(BackgroundAppBase):
         self._started = threading.Event()
         self._settings_store = SettingsStore(self.settings_path)
         self._context_actions: dict = {}  # context_token -> (plugin_uuid, action_uuid)
+        self._playwright = None
+        self._browser = None
 
     def start(self):
         if AppOpenActionBridge.IS_ALREADY_WORKING:
@@ -85,19 +87,30 @@ class AppOpenActionBridge(BackgroundAppBase):
                 "type": 0,  # StreamDeck (Elgato "type 0" is the original)
             })
 
+        # Start a headless browser if any plugin uses an HTML CodePath.
+        from pathlib import Path as _Path
+        needs_browser = any(
+            (_Path(m.plugin_dir) / m.code_path).suffix == ".html"
+            for m in self._registry.all_plugins()
+        )
+        if needs_browser:
+            await self._start_browser()
+
         for manifest in self._registry.all_plugins():
             try:
-                proc = await self._server.launch_plugin(manifest, devices=devices)
+                proc = await self._server.launch_plugin(
+                    manifest, devices=devices, browser=self._browser)
                 self._plugin_procs.append(proc)
             except Exception as e:
                 log.warning("failed to spawn plugin %s: %s", manifest.plugin_uuid, e)
 
-        # Give newly-spawned plugins up to 2 seconds to complete the
+        # Give newly-spawned plugins up to 5 seconds to complete the
         # registerPlugin handshake before re-triggering key setup — otherwise
         # the very first willAppear events would be sent before the plugin
         # socket exists in self._server._plugin_sockets and silently dropped.
+        # HTML plugins (browser-based) may take longer to connect than native ones.
         plugin_uuids = {m.plugin_uuid for m in self._registry.all_plugins()}
-        for _ in range(20):
+        for _ in range(50):
             if plugin_uuids.issubset(set(self._server._plugin_sockets.keys())):
                 break
             await asyncio.sleep(0.1)
@@ -151,6 +164,32 @@ class AppOpenActionBridge(BackgroundAppBase):
         # single-deck flows keep working.
         return self.mydeck
 
+    async def _start_browser(self):
+        try:
+            from playwright.async_api import async_playwright
+            import shutil
+            self._playwright = await async_playwright().start()
+            # Prefer a system browser when Playwright's own Chromium is not
+            # available (e.g. unsupported OS version).
+            system_chrome = (
+                shutil.which("google-chrome")
+                or shutil.which("chromium")
+                or shutil.which("chromium-browser")
+            )
+            kwargs = dict(
+                headless=True,
+                args=["--allow-file-access-from-files", "--disable-web-security"],
+            )
+            if system_chrome:
+                kwargs["executable_path"] = system_chrome
+            self._browser = await self._playwright.chromium.launch(**kwargs)
+            log.info("headless browser started for HTML plugins (%s)",
+                     system_chrome or "playwright-bundled")
+        except ImportError:
+            log.warning("playwright not installed; HTML plugins will be skipped. "
+                        "Install with: uv tool install --with playwright mydeck && "
+                        "playwright install chromium")
+
     async def _shutdown(self):
         for proc in self._plugin_procs:
             try:
@@ -166,6 +205,16 @@ class AppOpenActionBridge(BackgroundAppBase):
                     await proc.wait()
                 except Exception:
                     pass
+            except Exception:
+                pass
+        if self._browser is not None:
+            try:
+                await self._browser.close()
+            except Exception:
+                pass
+        if self._playwright is not None:
+            try:
+                await self._playwright.stop()
             except Exception:
                 pass
         if self._server is not None:

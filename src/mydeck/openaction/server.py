@@ -14,6 +14,26 @@ from .protocol import ParsedCommand, parse_command
 log = logging.getLogger(__name__)
 
 
+class PageHandle:
+    """Wraps a Playwright Page with the same terminate/kill/wait interface as
+    asyncio.subprocess.Process so _shutdown can treat both uniformly."""
+
+    def __init__(self, page):
+        self._page = page
+
+    def terminate(self):
+        pass
+
+    def kill(self):
+        pass
+
+    async def wait(self):
+        try:
+            await self._page.close()
+        except Exception:
+            pass
+
+
 class OpenActionServer:
     def __init__(self, host: str = "127.0.0.1", port: int = 0):
         self._host = host
@@ -95,19 +115,9 @@ class OpenActionServer:
         node_executable: str = "node",
         env: Optional[dict] = None,
         devices: Optional[list] = None,
-    ) -> asyncio.subprocess.Process:
+        browser=None,
+    ):
         code = _Path(manifest.plugin_dir) / manifest.code_path
-        if code.suffix == ".py":
-            argv = [python_executable, str(code)]
-        elif code.suffix in (".js", ".mjs", ".cjs"):
-            argv = [node_executable, str(code)]
-        else:
-            # Native executable (compiled binary). Ensure it's marked executable.
-            try:
-                code.chmod(code.stat().st_mode | 0o111)
-            except OSError:
-                pass
-            argv = [str(code)]
         info = {
             "application": {
                 "font": "",
@@ -131,6 +141,20 @@ class OpenActionServer:
                 "mouseDownColor": "#CF6304FF",
             },
         }
+        if code.suffix == ".html" and browser is not None:
+            return await self._launch_html_plugin(manifest, code, info, browser)
+
+        if code.suffix == ".py":
+            argv = [python_executable, str(code)]
+        elif code.suffix in (".js", ".mjs", ".cjs"):
+            argv = [node_executable, str(code)]
+        else:
+            # Native executable (compiled binary). Ensure it's marked executable.
+            try:
+                code.chmod(code.stat().st_mode | 0o111)
+            except OSError:
+                pass
+            argv = [str(code)]
         argv += [
             "-port", str(self.port),
             "-pluginUUID", manifest.plugin_uuid,
@@ -138,6 +162,46 @@ class OpenActionServer:
             "-info", json.dumps(info),
         ]
         return await asyncio.create_subprocess_exec(*argv, env=env or _os.environ.copy())
+
+    async def _launch_html_plugin(self, manifest, code_path: _Path, info: dict, browser) -> "PageHandle":
+        page = await browser.new_page()
+        # Forward browser console messages to Python log for diagnostics.
+        page.on("console", lambda msg: log.debug("[%s console %s] %s",
+                                                  manifest.plugin_uuid, msg.type, msg.text))
+        page.on("pageerror", lambda err: log.warning("[%s pageerror] %s",
+                                                      manifest.plugin_uuid, err))
+        await page.goto(f"file://{code_path}")
+        # Wait until connectElgatoStreamDeckSocket (or connectSocket legacy) is
+        # available — scripts may finish executing slightly after "load".
+        try:
+            await page.wait_for_function(
+                "typeof connectElgatoStreamDeckSocket === 'function' || "
+                "typeof connectSocket === 'function'",
+                timeout=5000,
+            )
+        except Exception:
+            log.warning("connectElgatoStreamDeckSocket not found in %s after 5s",
+                        manifest.plugin_uuid)
+            return PageHandle(page)
+        # Call the plugin's registration entry-point with the same args the
+        # Elgato software would pass.
+        try:
+            await page.evaluate(
+                """(args) => {
+                    const fn = window.connectElgatoStreamDeckSocket || window.connectSocket;
+                    if (fn) fn(args.port, args.uuid, args.event, args.info);
+                }""",
+                {
+                    "port": self.port,
+                    "uuid": manifest.plugin_uuid,
+                    "event": "registerPlugin",
+                    "info": json.dumps(info),
+                },
+            )
+        except Exception as e:
+            log.warning("failed to invoke connectElgatoStreamDeckSocket for %s: %s",
+                        manifest.plugin_uuid, e)
+        return PageHandle(page)
 
     async def dispatch_will_appear(self, plugin_uuid, action_uuid, context, settings):
         from .protocol import make_will_appear

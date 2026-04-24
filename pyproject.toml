@@ -39,6 +39,7 @@ dependencies = [
 [project.optional-dependencies]
 dev = ["pytest", "pytest-asyncio", "mypy", "build", "twine"]
 openaction = ["websockets>=12"]
+html-plugins = ["websockets>=12", "playwright>=1.40"]
 
 [project.scripts]
 mydeck = "mydeck.my_decks_starter:main"
