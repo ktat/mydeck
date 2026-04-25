@@ -33,7 +33,10 @@ class AppOpenActionBridge(BackgroundAppBase):
         self._loop: Optional[asyncio.AbstractEventLoop] = None
         self._server: Optional[OpenActionServer] = None
         self._registry: Optional[ActionRegistry] = None
-        self._plugin_procs: list = []
+        # plugin_uuid -> handle (asyncio.subprocess.Process or PageHandle).
+        # Was previously a list; switched to dict for hot-reload so we can
+        # terminate a single plugin by uuid (Web UI uninstall).
+        self._plugin_procs: dict = {}
         self._started = threading.Event()
         self._settings_store = SettingsStore(self.settings_path)
         self._context_actions: dict = {}  # context_token -> (plugin_uuid, action_uuid)
@@ -88,31 +91,7 @@ class AppOpenActionBridge(BackgroundAppBase):
         # it from their key_change_callback / set_key paths.
         for md in self._all_mydecks():
             md._openaction_bridge = self
-        # Build device list from all MyDecks for the plugin's -info payload.
-        # Plugins use this to recognize which decks they can render to; events
-        # for unknown device IDs are silently dropped by the plugin.
-        devices = []
-        for md in self._all_mydecks():
-            deck = getattr(md, "deck", None)
-            if deck is None:
-                continue
-            try:
-                dev_id = str(deck.id())
-                key_count = md.key_count
-                columns = getattr(md, "columns", 5)
-                rows = max(1, key_count // max(1, columns))
-            except Exception as e:
-                log.warning("failed to read deck info for %s: %s",
-                            getattr(md, "myname", "?"), e)
-                continue
-            devices.append({
-                "id": dev_id,
-                "name": getattr(md, "myname", dev_id),
-                "size": {"columns": columns, "rows": rows},
-                "type": 0,  # StreamDeck (Elgato "type 0" is the original)
-            })
-            log.info("registered device for plugins: id=%s name=%s",
-                     dev_id, getattr(md, "myname", dev_id))
+        devices = self._build_devices(log_each=True)
 
         # Start a headless browser if any plugin uses an HTML CodePath.
         from pathlib import Path as _Path
@@ -127,7 +106,7 @@ class AppOpenActionBridge(BackgroundAppBase):
             try:
                 proc = await self._server.launch_plugin(
                     manifest, devices=devices, browser=self._browser)
-                self._plugin_procs.append(proc)
+                self._plugin_procs[manifest.plugin_uuid] = proc
             except Exception as e:
                 log.warning("failed to spawn plugin %s: %s", manifest.plugin_uuid, e)
 
@@ -174,6 +153,120 @@ class AppOpenActionBridge(BackgroundAppBase):
                 return list(inner.values())
         return [self.mydeck]
 
+    def _build_devices(self, log_each: bool = False) -> list:
+        """Snapshot the current MyDecks as the Elgato -info devices array.
+        Plugins drop events for unknown device IDs, so this list must reflect
+        every connected deck at spawn time."""
+        devices: list = []
+        for md in self._all_mydecks():
+            deck = getattr(md, "deck", None)
+            if deck is None:
+                continue
+            try:
+                dev_id = str(deck.id())
+                key_count = md.key_count
+                columns = getattr(md, "columns", 5)
+                rows = max(1, key_count // max(1, columns))
+            except Exception as e:
+                log.warning("failed to read deck info for %s: %s",
+                            getattr(md, "myname", "?"), e)
+                continue
+            devices.append({
+                "id": dev_id,
+                "name": getattr(md, "myname", dev_id),
+                "size": {"columns": columns, "rows": rows},
+                "type": 0,
+            })
+            if log_each:
+                log.info("registered device for plugins: id=%s name=%s",
+                         dev_id, getattr(md, "myname", dev_id))
+        return devices
+
+    async def spawn_plugin(self, manifest):
+        """Spawn one plugin after the bridge is already running (Web UI hot-reload).
+
+        Mirrors the relevant parts of _serve(): start the headless browser if
+        the new plugin is HTML-based and we don't already have one, launch the
+        plugin process / page, wait briefly for it to register, then re-run
+        key_touchscreen_setup so any keys already configured for this plugin's
+        actions emit willAppear and pick up an icon.
+        """
+        if manifest.plugin_uuid in self._plugin_procs:
+            log.info("plugin %s already running; skip spawn", manifest.plugin_uuid)
+            return
+        from pathlib import Path as _Path
+        is_html = (_Path(manifest.plugin_dir) / manifest.code_path).suffix == ".html"
+        if is_html and self._browser is None:
+            await self._start_browser()
+        try:
+            proc = await self._server.launch_plugin(
+                manifest, devices=self._build_devices(), browser=self._browser)
+            self._plugin_procs[manifest.plugin_uuid] = proc
+        except Exception as e:
+            log.warning("hot-reload spawn failed for %s: %s", manifest.plugin_uuid, e)
+            return
+        for _ in range(50):
+            if manifest.plugin_uuid in self._server._plugin_sockets:
+                break
+            await asyncio.sleep(0.1)
+        for md in self._all_mydecks():
+            try:
+                md.key_touchscreen_setup()
+            except Exception as e:
+                log.warning("hot-reload re-setup failed for %s: %s",
+                            getattr(md, "myname", "?"), e)
+
+    async def terminate_plugin(self, plugin_uuid: str):
+        """Stop a running plugin and drop its socket. Used by Web UI uninstall."""
+        proc = self._plugin_procs.pop(plugin_uuid, None)
+        if proc is None:
+            return
+        try:
+            proc.terminate()
+        except Exception:
+            pass
+        try:
+            await asyncio.wait_for(proc.wait(), timeout=5.0)
+        except asyncio.TimeoutError:
+            try:
+                proc.kill()
+                await proc.wait()
+            except Exception:
+                pass
+        except Exception:
+            pass
+        # Forget any per-key state tied to actions of this plugin.
+        stale = [tok for tok, (puuid, _) in self._context_actions.items()
+                 if puuid == plugin_uuid]
+        for tok in stale:
+            self._context_actions.pop(tok, None)
+            self._key_layers.pop(tok, None)
+
+    def spawn_plugin_sync(self, manifest, timeout: float = 15.0) -> bool:
+        """Cross-thread entry point — schedule spawn_plugin onto the bridge's
+        asyncio loop and block until it completes (or timeout)."""
+        if self._loop is None:
+            return False
+        fut = asyncio.run_coroutine_threadsafe(self.spawn_plugin(manifest), self._loop)
+        try:
+            fut.result(timeout=timeout)
+            return True
+        except Exception as e:
+            log.warning("spawn_plugin_sync failed: %s", e)
+            return False
+
+    def terminate_plugin_sync(self, plugin_uuid: str, timeout: float = 10.0) -> bool:
+        if self._loop is None:
+            return False
+        fut = asyncio.run_coroutine_threadsafe(
+            self.terminate_plugin(plugin_uuid), self._loop)
+        try:
+            fut.result(timeout=timeout)
+            return True
+        except Exception as e:
+            log.warning("terminate_plugin_sync failed: %s", e)
+            return False
+
     def _mydeck_for_serial(self, serial: str):
         """Find the MyDeck whose deck serial matches ``serial``. Fallback to
         ``self.mydeck`` if no match so MVP single-deck tests still work."""
@@ -218,12 +311,13 @@ class AppOpenActionBridge(BackgroundAppBase):
                         "playwright install chromium")
 
     async def _shutdown(self):
-        for proc in self._plugin_procs:
+        procs = list(self._plugin_procs.values())
+        for proc in procs:
             try:
                 proc.terminate()
             except Exception:
                 pass
-        for proc in self._plugin_procs:
+        for proc in procs:
             try:
                 await asyncio.wait_for(proc.wait(), timeout=5.0)
             except asyncio.TimeoutError:
@@ -234,6 +328,7 @@ class AppOpenActionBridge(BackgroundAppBase):
                     pass
             except Exception:
                 pass
+        self._plugin_procs.clear()
         if self._browser is not None:
             try:
                 await self._browser.close()

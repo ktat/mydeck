@@ -65,7 +65,7 @@ async def test_end_to_end_key_down_triggers_set_title():
     env = os.environ.copy()
     env["MOCK_PLUGIN_SCRIPT"] = "echo-key"
     proc = await app._server.launch_plugin(manifest, python_executable=sys.executable, env=env)
-    app._plugin_procs.append(proc)
+    app._plugin_procs[manifest.plugin_uuid] = proc
 
     try:
         # Wait for plugin registration

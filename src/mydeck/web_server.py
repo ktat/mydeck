@@ -616,6 +616,7 @@ class DeckOutputWebHandler(http.server.BaseHTTPRequestHandler):
             from .my_decks import MyDecks
             plugins_root = None
             registry = None
+            bridge = None
             for md in MyDecks.mydecks.values():
                 bridge = getattr(md, '_openaction_bridge', None)
                 if bridge is not None:
@@ -714,21 +715,33 @@ class DeckOutputWebHandler(http.server.BaseHTTPRequestHandler):
             # restart) see the new plugin. We do not spawn the plugin here —
             # bridge.launch_plugin runs only at startup; daemon restart is
             # required for the new plugin to actually run.
+            spawned = False
             try:
                 if registry is not None:
                     from .openaction.registry import ActionRegistry
                     new_reg = ActionRegistry.from_directory(plugins_root)
                     registry._plugins = new_reg._plugins
                     registry._by_action_uuid = new_reg._by_action_uuid
+                    # Find the manifest for the just-uploaded plugin and ask
+                    # the bridge to spawn it on its asyncio loop. If spawn
+                    # succeeds, the new plugin connects without a restart.
+                    new_manifest = None
+                    for m in registry.all_plugins():
+                        if m.plugin_uuid == plugin_uuid:
+                            new_manifest = m
+                            break
+                    if new_manifest is not None and bridge is not None:
+                        spawned = bridge.spawn_plugin_sync(new_manifest)
             except Exception as e:
-                logging.warning("openaction registry rescan failed: %s", e)
+                logging.warning("openaction registry/spawn failed: %s", e)
 
             return self.api_json_response({
                 "ok": True,
                 "plugin_uuid": plugin_uuid,
                 "synthesized_manifest": synthesized,
                 "actions": actions_found,
-                "restart_required": True,
+                "restart_required": not spawned,
+                "hot_loaded": spawned,
             })
         except Exception as e:
             logging.error("openaction upload error: %s", e)
@@ -818,6 +831,7 @@ class DeckOutputWebHandler(http.server.BaseHTTPRequestHandler):
             from .my_decks import MyDecks
             plugins_root = None
             registry = None
+            bridge = None
             for md in MyDecks.mydecks.values():
                 bridge = getattr(md, '_openaction_bridge', None)
                 if bridge is not None:
@@ -841,16 +855,23 @@ class DeckOutputWebHandler(http.server.BaseHTTPRequestHandler):
                 return self.api_json_response({"error": "plugin not installed"})
             _shutil.rmtree(str(target))
 
+            terminated = False
             try:
+                if bridge is not None:
+                    terminated = bridge.terminate_plugin_sync(plugin_uuid)
                 if registry is not None:
                     from .openaction.registry import ActionRegistry
                     new_reg = ActionRegistry.from_directory(plugins_root)
                     registry._plugins = new_reg._plugins
                     registry._by_action_uuid = new_reg._by_action_uuid
             except Exception as e:
-                logging.warning("openaction registry rescan failed: %s", e)
+                logging.warning("openaction registry rescan/terminate failed: %s", e)
 
-            return self.api_json_response({"ok": True, "restart_required": True})
+            return self.api_json_response({
+                "ok": True,
+                "restart_required": not terminated,
+                "hot_unloaded": terminated,
+            })
         except Exception as e:
             logging.error("openaction uninstall error: %s", e)
             return self.api_json_response({"error": str(e)})

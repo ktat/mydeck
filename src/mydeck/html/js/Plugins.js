@@ -51,6 +51,7 @@ const Plugins = {
           if (r.data.synthesized_manifest) {
             msg += ` (synthesized manifest, ${(r.data.actions || []).length} action${(r.data.actions || []).length === 1 ? '' : 's'} detected)`;
           }
+          if (r.data.hot_loaded) msg += ' — running now';
           this.uploadStatus = { ok: true, message: msg };
           if (r.data.restart_required) this.restartRequired = true;
           this.refresh();
@@ -70,7 +71,9 @@ const Plugins = {
         if (r.data.error) {
           this.uploadStatus = { ok: false, message: r.data.error };
         } else {
-          this.uploadStatus = { ok: true, message: `Uninstalled ${plugin.uuid}` };
+          let msg = `Uninstalled ${plugin.uuid}`;
+          if (r.data.hot_unloaded) msg += ' — stopped now';
+          this.uploadStatus = { ok: true, message: msg };
           if (r.data.restart_required) this.restartRequired = true;
           this.refresh();
         }
