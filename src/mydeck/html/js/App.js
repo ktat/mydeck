@@ -83,8 +83,14 @@ const App = {
                         </div>
                     </div>
                     <div class="dropdown">
+                        <a class="dropbtn">Plugins</a>
+                        <div class="dropdown-content">
+                            <a @click="page='plugins'" href="/#plugins">Manage Plugins</a>
+                        </div>
+                    </div>
+                    <div class="dropdown">
                         <a class="dropbtn">?</a>
-                        <div class="dropdown-content">    
+                        <div class="dropdown-content">
                         <a @click="page='help'" href="/#help">Help</a>
                         <a target="_blank" href="/chart/status">Status Chart &#x29c9;</a>
                         <a target="_blank" href="https://github.com/ktat/mydeck/">GitHub &#x29c9;</a>
@@ -94,6 +100,9 @@ const App = {
                 <div :id="'app-container'+ (page.match('^full-device') ? '-full' : '')">
                     <div v-if="page === 'help'">
                         <help />
+                    </div>
+                    <div v-else-if="page === 'plugins'">
+                        <plugins />
                     </div>
                     <div v-else-if="page.match(/^(full-)?device-/)">
                         <template v-for="config in items" :key="config.id">

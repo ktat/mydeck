@@ -239,6 +239,12 @@ class DeckOutputWebHandler(http.server.BaseHTTPRequestHandler):
         if self.path == '/api/totp/upload':
             return self.res_totp_upload()
 
+        if self.path == '/api/openaction/upload':
+            return self.res_openaction_upload()
+
+        if self.path == '/api/openaction/uninstall':
+            return self.res_openaction_uninstall()
+
         if self.path == '/api/totp/scan':
             return self.res_totp_scan()
 
@@ -585,6 +591,269 @@ class DeckOutputWebHandler(http.server.BaseHTTPRequestHandler):
             MyDecksManager.ConfigQueue[sn].put(data)
 
         self.api_json_response({})
+
+    def res_openaction_upload(self):
+        """Receive a .streamDeckPlugin (zip) file as base64-encoded JSON,
+        extract it under the bridge's plugins_dir, and synthesize a minimal
+        manifest.json when the bundled one is encrypted (Elgato Marketplace
+        plugins ship a binary "ELGATO"-prefixed manifest the desktop app
+        decrypts at runtime; we cannot, so we extract action UUIDs from the
+        plugin code instead).
+
+        Body: {"filename": "...", "file_b64": "..."}
+        Returns: {"ok": True, "plugin_uuid": "...", "actions": [...] } | {"error": "..."}
+
+        After upload, mydeck must be restarted to spawn the new plugin —
+        the bridge spawns plugins once at startup and does not hot-reload.
+        """
+        import base64 as _base64
+        import io as _io
+        import os as _os
+        import zipfile as _zipfile
+        import re as _re
+        from pathlib import Path as _Path
+        try:
+            from .my_decks import MyDecks
+            plugins_root = None
+            registry = None
+            for md in MyDecks.mydecks.values():
+                bridge = getattr(md, '_openaction_bridge', None)
+                if bridge is not None:
+                    plugins_root = bridge.plugins_dir
+                    registry = bridge._registry
+                    break
+            if plugins_root is None:
+                return self.api_json_response({"error": "OpenAction bridge not running"})
+
+            content_length = int(self.headers.get('content-length', 0))
+            if content_length > 50 * 1024 * 1024:
+                return self.api_json_response({"error": "file too large (max 50 MB)"})
+            body = json.loads(self.rfile.read(content_length).decode('utf-8'))
+            data = _base64.b64decode(body.get('file_b64', ''))
+            if not data:
+                return self.api_json_response({"error": "empty file"})
+
+            # Confirm it's a zip; .streamDeckPlugin is a zip archive.
+            try:
+                zf = _zipfile.ZipFile(_io.BytesIO(data))
+            except _zipfile.BadZipFile:
+                return self.api_json_response({"error": "not a valid .streamDeckPlugin (zip) file"})
+
+            # Find the .sdPlugin top-level directory inside the zip.
+            sd_dir = None
+            for name in zf.namelist():
+                first = name.split('/', 1)[0]
+                if first.endswith('.sdPlugin'):
+                    sd_dir = first
+                    break
+            if sd_dir is None:
+                return self.api_json_response({"error": "no .sdPlugin folder inside archive"})
+
+            target_dir = plugins_root / sd_dir
+            if target_dir.exists():
+                # Refuse to overwrite existing plugin to avoid clobbering
+                # user-edited manifests (e.g. the synthetic one for Timebox).
+                return self.api_json_response({
+                    "error": "plugin already installed: {}; uninstall it first".format(sd_dir)
+                })
+
+            # Path-traversal guard.
+            plugins_root_real = _os.path.realpath(str(plugins_root))
+            for name in zf.namelist():
+                dest = _os.path.realpath(str(plugins_root / name))
+                if _os.path.commonpath([dest, plugins_root_real]) != plugins_root_real:
+                    return self.api_json_response({"error": "archive contains unsafe paths"})
+
+            zf.extractall(str(plugins_root))
+
+            # Inspect manifest. If it begins with the "ELGATO" magic bytes the
+            # plugin was packaged by Elgato Marketplace and the manifest is
+            # encrypted. Synthesize a minimal one so our registry can load it.
+            manifest_path = target_dir / "manifest.json"
+            synthesized = False
+            plugin_uuid = sd_dir[: -len(".sdPlugin")]
+            actions_found: list = []
+            if not manifest_path.is_file():
+                synthesized = True
+            else:
+                head = manifest_path.read_bytes()[:6]
+                if head.startswith(b"ELGATO"):
+                    synthesized = True
+            if synthesized:
+                actions_found = self._synthesize_openaction_manifest(target_dir, plugin_uuid)
+
+            # Verify the plugin is actually loadable on this platform — Stocks
+            # and similar Mac/Windows-only plugins ship native binaries and
+            # have no Linux CodePath; they unzip fine but the registry skips
+            # them silently, so the user would never see them in the list.
+            try:
+                from .openaction.manifest import load_manifest
+                load_manifest(target_dir)
+                load_error = None
+            except Exception as e:
+                load_error = str(e)
+
+            if load_error is not None:
+                # Roll back the extracted files so the user can retry without
+                # hitting "plugin already installed".
+                import shutil as _shutil
+                try:
+                    _shutil.rmtree(str(target_dir))
+                except Exception:
+                    pass
+                return self.api_json_response({
+                    "error": (
+                        "Plugin extracted but cannot run on this platform: "
+                        + load_error
+                        + ". Most likely it ships only Mac/Windows binaries "
+                          "or uses a CodePath we do not support."
+                    ),
+                })
+
+            # Trigger a registry rescan so future lookups (and the next bridge
+            # restart) see the new plugin. We do not spawn the plugin here —
+            # bridge.launch_plugin runs only at startup; daemon restart is
+            # required for the new plugin to actually run.
+            try:
+                if registry is not None:
+                    from .openaction.registry import ActionRegistry
+                    new_reg = ActionRegistry.from_directory(plugins_root)
+                    registry._plugins = new_reg._plugins
+                    registry._by_action_uuid = new_reg._by_action_uuid
+            except Exception as e:
+                logging.warning("openaction registry rescan failed: %s", e)
+
+            return self.api_json_response({
+                "ok": True,
+                "plugin_uuid": plugin_uuid,
+                "synthesized_manifest": synthesized,
+                "actions": actions_found,
+                "restart_required": True,
+            })
+        except Exception as e:
+            logging.error("openaction upload error: %s", e)
+            return self.api_json_response({"error": str(e)})
+
+    def _synthesize_openaction_manifest(self, target_dir, plugin_uuid: str) -> list:
+        """Generate a minimal manifest.json for an Elgato-encrypted plugin.
+
+        Strategy: scan plugin bundles (.js / native) for occurrences of
+        "<plugin_uuid>.<something>" — those are the action UUIDs. Pick the
+        most likely CodePath from common SDK layouts.
+        """
+        import json as _json
+        import re as _re
+        from pathlib import Path as _Path
+
+        # Collect strings matching "<plugin_uuid>.<id>" from common code files.
+        action_pattern = _re.compile(_re.escape(plugin_uuid) + r"\.[a-zA-Z0-9._-]+")
+        seen = set()
+        for f in target_dir.rglob("*"):
+            if not f.is_file():
+                continue
+            if f.suffix.lower() not in (".js", ".mjs", ".cjs", ".ts"):
+                continue
+            try:
+                text = f.read_text(errors="ignore")
+            except Exception:
+                continue
+            for m in action_pattern.findall(text):
+                # Filter out things like the plugin uuid itself or paths.
+                tail = m[len(plugin_uuid) + 1:]
+                if "." in tail or "/" in tail:
+                    continue
+                seen.add(m)
+
+        # Pick a CodePath from common locations.
+        candidates = ["bin/plugin.js", "bin/plugin.mjs", "plugin/index.html",
+                      "index.html", "plugin.js", "main.js"]
+        code_path = None
+        for c in candidates:
+            if (target_dir / c).is_file():
+                code_path = c
+                break
+
+        actions = []
+        for uuid in sorted(seen):
+            short = uuid[len(plugin_uuid) + 1:]
+            actions.append({
+                "UUID": uuid,
+                "Name": short.replace("-", " ").replace("_", " ").title(),
+                "Tooltip": short,
+                "States": [{"Image": "imgs/plugin/marketplace", "Name": short}],
+            })
+
+        manifest = {
+            "Name": plugin_uuid.split(".")[-1].title(),
+            "Version": "1.0",
+            "Author": "unknown",
+            "OS": [{"Platform": "linux", "MinimumVersion": "1.0"}],
+            "SDKVersion": 2,
+            "Software": {"MinimumVersion": "6.0"},
+            "Icon": "imgs/plugin/marketplace",
+            "Category": plugin_uuid.split(".")[-1].title(),
+            "UUID": plugin_uuid,
+            "Actions": actions,
+        }
+        if code_path is not None:
+            manifest["CodePath"] = code_path
+
+        manifest_path = target_dir / "manifest.json"
+        # If an encrypted manifest is in the way, keep a backup before
+        # overwriting so the user can compare or restore later.
+        if manifest_path.is_file():
+            backup = manifest_path.with_suffix(".json.elgato-encrypted")
+            if not backup.is_file():
+                manifest_path.rename(backup)
+        with manifest_path.open("w") as f:
+            _json.dump(manifest, f, indent=2)
+        return [a["UUID"] for a in actions]
+
+    def res_openaction_uninstall(self):
+        """Remove an installed OpenAction plugin directory.
+        Body: {"plugin_uuid": "..."}"""
+        import os as _os
+        import shutil as _shutil
+        try:
+            from .my_decks import MyDecks
+            plugins_root = None
+            registry = None
+            for md in MyDecks.mydecks.values():
+                bridge = getattr(md, '_openaction_bridge', None)
+                if bridge is not None:
+                    plugins_root = bridge.plugins_dir
+                    registry = bridge._registry
+                    break
+            if plugins_root is None:
+                return self.api_json_response({"error": "OpenAction bridge not running"})
+
+            content_length = int(self.headers.get('content-length', 0))
+            body = json.loads(self.rfile.read(content_length).decode('utf-8'))
+            plugin_uuid = body.get('plugin_uuid', '')
+            if not plugin_uuid or '/' in plugin_uuid or '..' in plugin_uuid:
+                return self.api_json_response({"error": "invalid plugin_uuid"})
+            target = plugins_root / (plugin_uuid + ".sdPlugin")
+            real_target = _os.path.realpath(str(target))
+            real_root = _os.path.realpath(str(plugins_root))
+            if _os.path.commonpath([real_target, real_root]) != real_root:
+                return self.api_json_response({"error": "path outside plugins_dir"})
+            if not target.exists():
+                return self.api_json_response({"error": "plugin not installed"})
+            _shutil.rmtree(str(target))
+
+            try:
+                if registry is not None:
+                    from .openaction.registry import ActionRegistry
+                    new_reg = ActionRegistry.from_directory(plugins_root)
+                    registry._plugins = new_reg._plugins
+                    registry._by_action_uuid = new_reg._by_action_uuid
+            except Exception as e:
+                logging.warning("openaction registry rescan failed: %s", e)
+
+            return self.api_json_response({"ok": True, "restart_required": True})
+        except Exception as e:
+            logging.error("openaction uninstall error: %s", e)
+            return self.api_json_response({"error": str(e)})
 
     def res_openaction_info(self):
         """Expose the OpenAction bridge WebSocket port to the Web UI so
