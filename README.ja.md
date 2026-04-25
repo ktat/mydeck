@@ -117,6 +117,12 @@ games:
 
 外部プラグインの動作例(CPU使用率のパイチャート)として [ktat/mydeck-hello-plugin](https://github.com/ktat/mydeck-hello-plugin) があります。
 
+### Elgato 互換プラグイン (Stream Deck / OpenAction)
+
+MyDeck は Elgato Stream Deck / OpenAction プラグインを **無改変で** 実行できます。Python / Node.js / Linux ネイティブバイナリ / HTML(ブラウザ型) のいずれの形式にも対応しています。Web UI の **Plugins → Manage Plugins** で `.streamDeckPlugin` をアップロードし、キーを右クリックしてアクションを割り当てるだけです。Property Inspector は iframe で表示され、設定変更はライブで保存されます。アップロード/アンインストール時はプラグインプロセスがホットリロードされ、`mydeck` の再起動は不要です。
+
+サポート範囲・制約・セットアップの詳細は [`docs/openaction_plugins.md`](docs/openaction_plugins.md) を参照してください。
+
 ## `mydeck` をインストールせずに example を動かす場合
 
 ### STREAM DECK 実機を持っている場合

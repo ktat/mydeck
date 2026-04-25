@@ -322,6 +322,8 @@ class MyDeck:
             self._config_file = opt.get('config') or ''
             self.config = Config(self, self._config_file)
 
+        self._openaction_bridge = None
+
     def debug(self, message: str):
         """Output debug message"""
         logging.debug("[%s] %s in %s at %s", self.deck.id(
@@ -636,20 +638,34 @@ class MyDeck:
         """Set a key and its configuration."""
         key = self.abs_key(key)
         deck = self.deck
-        if conf is not None:
-            if conf.get('chrome'):
-                chrome = conf['chrome']
-                url = chrome[-1]
-                if conf.get('image') is None and conf.get('image_url') is None:
-                    self.image_url_to_image(conf, url)
-                elif conf.get("image_url") is not None:
-                    self.image_url_to_image(conf)
-            elif conf.get("image") is None and conf.get('image_url') is not None:
-                self.image_url_to_image(conf)
+        if conf is None:
+            return
 
-            if conf.get('no_image') is None:
-                self.update_key_image(key, self.render_key_image(ImageOrFile(conf["image"]), conf.get(
-                    "label") or '', conf.get("background_color") or ''), use_lock)
+        if conf.get("action") is not None:
+            from mydeck.openaction.context import KeyContext
+            ctx = KeyContext(
+                deck_serial=str(deck.id()) if deck is not None else "unknown",
+                page=self.current_page(),
+                key=key,
+            )
+            bridge = getattr(self, "_openaction_bridge", None)
+            if bridge is not None:
+                bridge.will_appear(ctx, conf["action"], conf.get("settings") or {})
+            return
+
+        if conf.get('chrome'):
+            chrome = conf['chrome']
+            url = chrome[-1]
+            if conf.get('image') is None and conf.get('image_url') is None:
+                self.image_url_to_image(conf, url)
+            elif conf.get("image_url") is not None:
+                self.image_url_to_image(conf)
+        elif conf.get("image") is None and conf.get('image_url') is not None:
+            self.image_url_to_image(conf)
+
+        if conf.get('no_image') is None:
+            self.update_key_image(key, self.render_key_image(ImageOrFile(conf["image"]), conf.get(
+                "label") or '', conf.get("background_color") or ''), use_lock)
 
     def determine_image_url(self, image_url: Optional[str], url: Optional[str]) -> Optional[str]:
         """Return url for key image"""
@@ -857,13 +873,31 @@ class MyDeck:
             # Print new key state
             self.debug("Key %s = %s" % (key, state))
 
+        current_page: str = self.current_page()
+        conf: Optional[dict] = None
+        if self.key_config().get(current_page) is not None:
+            conf = self.key_config()[current_page].get(key)
+
+        # OpenAction plugin dispatch — bypass built-in handlers
+        if conf is not None and conf.get("action") is not None:
+            from mydeck.openaction.context import KeyContext
+            bridge = getattr(self, "_openaction_bridge", None)
+            if bridge is not None:
+                ctx = KeyContext(
+                    deck_serial=str(deck.id()) if deck is not None else "unknown",
+                    page=current_page,
+                    key=self.abs_key(key),
+                )
+                settings = conf.get("settings") or {}
+                if state:
+                    bridge.key_down(ctx, conf["action"], settings)
+                else:
+                    bridge.key_up(ctx, conf["action"], settings)
+            return
+
         # Check if the key is changing to the pressed state.
         if state:
-            current_page: str = self.current_page()
-            conf: Optional[dict] = None
-            if self.key_config().get(current_page) is not None:
-                conf = self.key_config()[current_page].get(key)
-
+            # conf already looked up above
             # When an exit button is pressed, close the application.
             if conf is not None:
                 if conf.get("exit") == 1:

@@ -163,16 +163,23 @@ div.app h1 {
 .settingGameModal {
     position: fixed;
     left: 50%;
-    top: 40%;
+    top: 50%;
     transform: translate(-50%, -50%);
     color: white;
     border-radius: 10px;
     width: 500px;
-    height: 450px;
+    max-height: 90vh;
     z-index: 1000;
     background-color: #555;
     opacity: 95%;
     padding: 10px;
+    overflow-y: auto;
+}
+
+/* When the modal is showing a Property Inspector iframe, give it more
+   horizontal room so PI form labels and inputs don't wrap awkwardly. */
+.settingModal.has-pi {
+    width: 720px;
 }
 
 #closeModal {

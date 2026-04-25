@@ -12,6 +12,7 @@ const MyDeck = {
       dialChanged: 0,
       settingMode: false,
       settingGameMode: false,
+      piShown: false,
       settingKey: null,
       settingDial: null,
       settingTouchscreen: false,
@@ -39,6 +40,7 @@ const MyDeck = {
         this.settingKey = null;
         this.settingDial = null;
         this.settingTouchscreen = false;
+        this.piShown = false;
       }
       this.ok = false;
     },
@@ -167,7 +169,7 @@ const MyDeck = {
            @initializeModal="initializeModal"
         ></game-modal>
       </div>      
-      <div v-if="settingMode" class="settingModal">
+      <div v-if="settingMode" :class="['settingModal', { 'has-pi': piShown }]">
         <div id="closeModal" @click.left="closeSettingModal()">&#x274c;</div>
         <modal v-if="settingMode"
          :config="config"
@@ -178,6 +180,7 @@ const MyDeck = {
          :current_page="current_page"
          :root_dir="root_dir"
          @initializeModal="initializeModal"
+         @piShown="(v) => piShown = v"
          ></modal>
       </div>
     </div>
