@@ -13,6 +13,9 @@ from mydeck.openaction.settings_store import SettingsStore
 
 log = logging.getLogger(__name__)
 
+# Sentinel for _update_layers to tell "no update" apart from "clear to None".
+_UNSET = object()
+
 DEFAULT_PLUGINS_DIR = Path(os.path.expanduser("~/.config/mydeck/plugins"))
 DEFAULT_SETTINGS_PATH = Path(os.path.expanduser("~/.config/mydeck/openaction-settings.json"))
 
@@ -60,6 +63,23 @@ class AppOpenActionBridge(BackgroundAppBase):
         self._server.on_pi_command = self._on_pi_command
         await self._server.start()
         log.info("OpenAction bridge listening on port %d", self._server.port)
+        # Wait briefly for additional MyDeck instances to be added to the
+        # session. The bridge is a BackgroundApp started from one MyDeck's
+        # YAML, so on multi-deck setups the other decks are still being
+        # initialised when _serve() runs. We poll _all_mydecks() for up to
+        # 3 seconds, settling once the count has been stable for a few ticks.
+        prev_count = 0
+        stable = 0
+        for _ in range(30):
+            n = len(self._all_mydecks())
+            if n == prev_count and n > 0:
+                stable += 1
+                if stable >= 3:
+                    break
+            else:
+                stable = 0
+            prev_count = n
+            await asyncio.sleep(0.1)
         # Register with every MyDeck BEFORE spawning plugins so the attribute is
         # always available to set_key calls that race with plugin startup.
         # Multi-deck sessions share one bridge instance; whichever MyDeck's
@@ -91,6 +111,8 @@ class AppOpenActionBridge(BackgroundAppBase):
                 "size": {"columns": columns, "rows": rows},
                 "type": 0,  # StreamDeck (Elgato "type 0" is the original)
             })
+            log.info("registered device for plugins: id=%s name=%s",
+                     dev_id, getattr(md, "myname", dev_id))
 
         # Start a headless browser if any plugin uses an HTML CodePath.
         from pathlib import Path as _Path
@@ -286,7 +308,12 @@ class AppOpenActionBridge(BackgroundAppBase):
 
         if cmd.kind == Command.SET_IMAGE:
             image_field = cmd.payload.get("image", "")
-            if image_field.startswith("data:"):
+            if image_field == "":
+                # Elgato semantics: empty image means "clear / use default".
+                # We clear the image layer so a subsequent setTitle still
+                # composites onto a black background.
+                self._update_layers(cmd.context, image=None)
+            elif image_field.startswith("data:"):
                 pil = self._decode_image_data_url(image_field, plugin_uuid)
                 if pil is None:
                     return
@@ -375,11 +402,11 @@ class AppOpenActionBridge(BackgroundAppBase):
             log.warning("failed to decode setImage for %s: %s", plugin_uuid, e)
             return None
 
-    def _update_layers(self, token: str, image=None, title=None):
+    def _update_layers(self, token: str, image=_UNSET, title=_UNSET):
         layers = self._key_layers.setdefault(token, {"image": None, "title": ""})
-        if image is not None:
+        if image is not _UNSET:
             layers["image"] = image
-        if title is not None:
+        if title is not _UNSET:
             layers["title"] = title
 
     def _compose_layers(self, mydeck, token: str):
@@ -502,6 +529,8 @@ class AppOpenActionBridge(BackgroundAppBase):
         token = key_ctx.to_token()
         self._context_actions[token] = (entry.plugin_uuid, action_uuid)
         merged = self._merged_settings(entry.plugin_uuid, token, settings)
+        log.info("willAppear plugin=%s action=%s ctx=%s",
+                 entry.plugin_uuid, action_uuid, token)
         self._schedule(self._server.dispatch_will_appear(
             entry.plugin_uuid, action_uuid, key_ctx, merged))
 

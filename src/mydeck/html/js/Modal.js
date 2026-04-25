@@ -20,6 +20,9 @@ const required = {
     'app': [{ type: 'string' }],
     'config': [{ type: 'json' }],
   },
+  'action': {
+    'action': [{ type: 'string' }],
+  },
 };
 // data modifier
 const dataModifier = {
@@ -45,13 +48,18 @@ const Modal = {
       settingData: {},
       images: [],
       apps: [],
+      openActionPlugins: [],
+      piUrl: null,
       checkResult: {},
       settingType: null,
       iconImage: null,
       target_page: null,
     }
   },
-  emits: ['initializeModal'],
+  emits: ['initializeModal', 'piShown'],
+  watch: {
+    piUrl(v) { this.$emit('piShown', !!v); },
+  },
   props: {
     root_dir: String,
     id: String,
@@ -67,6 +75,10 @@ const Modal = {
     this.images = this.config.images;
     this.apps = this.config.apps;
     this.target_page = this.current_page;
+    // Load installed OpenAction plugins for the action-picker dropdown.
+    axios.get(baseURL + 'api/openaction/plugins').then((r) => {
+      this.openActionPlugins = (r.data && r.data.plugins) || [];
+    }).catch(() => { this.openActionPlugins = []; });
     let url = "";
     if (this.settingTouchscreen) {
       url = baseURL + 'api/device/' + this.id + '/touchscreen_config/' + this.target_page + '/';
@@ -78,7 +90,10 @@ const Modal = {
     axios.get(url).then((response) => {
       const res = response.data;
       if (res.key_config) {
-        this.settingType = res.key_config["change_page"] ? "deck_command" : res.key_config["chrome"] ? "chrome" : "command";
+        this.settingType = res.key_config["change_page"] ? "deck_command"
+          : res.key_config["chrome"] ? "chrome"
+          : res.key_config["action"] ? "action"
+          : "command";
         if (this.settingType === "deck_command") {
           this.settingData.deck_command.deck_command = "change_page";
           this.settingData.deck_command.arg = res.key_config["change_page"];
@@ -92,6 +107,9 @@ const Modal = {
           this.settingData.command.command = res.key_config["command"].join(" ");
           this.iconImage = this.settingData.command.image = res.key_config["image"];
           this.settingData.command.label = res.key_config["label"];
+        } else if (this.settingType === "action") {
+          this.settingData.action.action = res.key_config["action"];
+          this.updatePiUrl();
         }
       } else if (res.app_config) {
         this.settingType = "app";
@@ -137,10 +155,31 @@ const Modal = {
           dial: null,
           config: "{}",
         },
+        action: {
+          action: '',
+        },
         delete: {
           delete: false,
         },
       }
+    },
+    updatePiUrl: function () {
+      // Resolve the Property Inspector URL for the currently-selected action
+      // and compose a ctx token (deck|page|key) so the bootstrap knows which
+      // per-key settings to load.
+      const actionUuid = this.settingData.action.action;
+      if (!actionUuid) { this.piUrl = null; return; }
+      let found = null;
+      for (const p of this.openActionPlugins) {
+        for (const a of (p.actions || [])) {
+          if (a.uuid === actionUuid) { found = a; break; }
+        }
+        if (found) break;
+      }
+      if (!found || !found.property_inspector) { this.piUrl = null; return; }
+      const ctx = `${this.id}|${this.target_page}|${this.settingKey}`;
+      const q = `?ctx=${encodeURIComponent(ctx)}&action=${encodeURIComponent(actionUuid)}`;
+      this.piUrl = found.property_inspector + q;
     },
     fillRequired: function () {
       this.checkResult = {};
@@ -308,6 +347,7 @@ const Modal = {
           <option value="TOTP">Deck Command(2FA)</option>
           <option value="chrome">Chrome</option>
           <option value="command">Command</option>
+          <option value="action" v-if="openActionPlugins.length > 0">Plugin Action</option>
         </template>
         <option value="app">App</option>
         <option value="delete">Delete Setting</option>
@@ -455,6 +495,31 @@ const Modal = {
         v-model="settingData.app.config"
         @input="ok = fillRequired()"
         ></textarea>
+      </div>
+      <div v-if="settingType == 'action'">
+        Plugin Action: <span :class="checkResult.action"></span><br />
+        <select
+          :value="settingData.action.action"
+          @change="
+            settingData.action.action = $event.target.value;
+            updatePiUrl();
+            ok = fillRequired();
+          "
+        >
+          <option value="">select action</option>
+          <optgroup v-for="plugin in openActionPlugins" :label="plugin.name">
+            <option v-for="a in plugin.actions" :value="a.uuid">{{ a.name }}</option>
+          </optgroup>
+        </select><br />
+        <div v-if="piUrl" style="margin-top: 10px;">
+          <div style="font-size: 11px; opacity: 0.8; margin-bottom: 4px;">
+            Property Inspector (live — changes save automatically):
+          </div>
+          <iframe :src="piUrl" style="width: 100%; height: 400px; border: 1px solid #666;"></iframe>
+        </div>
+        <div v-else-if="settingData.action.action" style="margin-top: 10px; font-size: 11px; opacity: 0.7;">
+          This action has no Property Inspector; default settings will be used.
+        </div>
       </div>
       <div v-if="settingType == 'delete'">
         <p>Are you sure to delete this setting?</p>
