@@ -1,21 +1,12 @@
 """Handlers / setup / config-writers mixin for MyDeck."""
 
-import datetime
 import logging
-import os
-import re
-import signal
 import subprocess
 import sys
-import threading
 import time
-import traceback
 from typing import Any, Callable, Dict, List, NoReturn, Optional, Union, TYPE_CHECKING
 
-from PIL import Image
-
-from .lock import Lock
-from .my_decks_manager import VirtualDeck, DeckOutputWebHandler
+from .my_decks_manager import VirtualDeck
 
 if TYPE_CHECKING:
     from .my_decks_app_base import AppBase, BackgroundAppBase

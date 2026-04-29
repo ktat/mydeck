@@ -11,10 +11,9 @@ import traceback
 import yaml
 from typing import Any, Dict, List, Optional, TYPE_CHECKING
 
-from .my_decks_manager import VirtualDeck
-
 if TYPE_CHECKING:
     from .my_decks_app_base import App, AppBase, BackgroundAppBase, HookAppBase
+    from .my_deck import MyDeck
 
 
 class Config:

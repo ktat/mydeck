@@ -5,17 +5,11 @@
 
 import logging
 import os
-import sys
 import threading
-import time
-import traceback
 from typing import Any, Callable, Dict, List, NoReturn, Optional, TYPE_CHECKING, Union
 
 import datetime
 import subprocess
-
-from PIL import Image, ImageDraw, ImageFont
-from StreamDeck.Devices import StreamDeckOriginalV2
 
 from .lock import Lock
 from .my_deck_handlers import MyDeckHandlersMixin
@@ -24,7 +18,7 @@ from .my_decks_manager import VirtualDeck, DeckOutputWebHandler
 
 if TYPE_CHECKING:
     from .my_decks_app_base import App, AppBase, BackgroundAppBase, HookAppBase
-    from .my_decks import Config, ImageOrFile
+    from .my_decks import Config, ImageOrFile, MyDecks
 
 
 class MyDeck(MyDeckImageMixin, MyDeckHandlersMixin):
