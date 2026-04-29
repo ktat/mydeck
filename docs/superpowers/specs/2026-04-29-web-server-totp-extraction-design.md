@@ -4,7 +4,7 @@ Date: 2026-04-29
 
 ## Overview
 
-`src/mydeck/web_server.py` (現在 781 行) が `~/.claude/hooks/check-file-size.sh` の 700 行ブロック上限に抵触し、Edit がブロックされる状態にある。`DeckOutputWebHandler` クラスの中で独立性が高い TOTP 系エンドポイント 10 メソッドを別ファイルに mixin として切り出し、`web_server.py` を 700 行未満に収める。
+`src/mydeck/web_server.py` (現在 781 行) が `~/.claude/hooks/check-file-size.sh` の 700 行ブロック上限に抵触し、Edit がブロックされる状態にある。`DeckOutputWebHandler` クラスの中で独立性が高い TOTP 系エンドポイント 9 メソッド (GET 1, POST 8) を別ファイルに mixin として切り出し、`web_server.py` を 700 行未満に収める。
 
 スコープ:
 
@@ -32,7 +32,7 @@ src/mydeck/
 
 ### TotpEndpointsMixin
 
-`web_server_totp.py` に `TotpEndpointsMixin` クラスを定義し、以下の 10 メソッドを移動する。
+`web_server_totp.py` に `TotpEndpointsMixin` クラスを定義し、以下の 9 メソッドを移動する。
 
 | メソッド | 経路 | HTTPメソッド |
 |---|---|---|
