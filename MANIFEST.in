@@ -3,6 +3,7 @@ include README.md
 include README.ja.md
 recursive-include src/mydeck/Assets *
 recursive-include src/mydeck/html *
+include src/mydeck/*.json
 global-exclude __pycache__
 global-exclude *.py[cod]
 global-exclude .DS_Store
