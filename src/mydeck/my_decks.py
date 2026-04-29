@@ -648,7 +648,9 @@ class MyDeck:
                 self.image_url_to_image(conf)
 
             if conf.get('no_image') is None:
-                self.update_key_image(key, self.render_key_image(ImageOrFile(conf["image"]), conf.get(
+                image_source = conf.get("image")
+                icon = ImageOrFile(image_source) if image_source is not None else None
+                self.update_key_image(key, self.render_key_image(icon, conf.get(
                     "label") or '', conf.get("background_color") or ''), use_lock)
 
     def determine_image_url(self, image_url: Optional[str], url: Optional[str]) -> Optional[str]:
@@ -760,8 +762,12 @@ class MyDeck:
             return PILHelper.to_native_format(deck, image)
 
     # render key image and label
-    def render_key_image(self, icon_filename_or_object: 'ImageOrFile', label: str = '', bg_color: str = '', no_label: bool = False):
-        """Render key image with image, label and background color."""
+    def render_key_image(self, icon_filename_or_object: Optional['ImageOrFile'], label: str = '', bg_color: str = '', no_label: bool = False):
+        """Render key image with image, label and background color.
+
+        If ``icon_filename_or_object`` is None, render a label-only key with a
+        plain background.
+        """
         deck = self.deck
         font_bg_color = "white"
         if bg_color == '' or bg_color == "black":
@@ -771,18 +777,21 @@ class MyDeck:
         if label == '':
             label = ""
 
-        icon: Image.Image = Image.Image()
-        if icon_filename_or_object.is_file:
-            icon = Image.open(icon_filename_or_object.file)
+        if icon_filename_or_object is None:
+            image = PILHelper.create_image(deck, background=bg_color)
         else:
-            icon = icon_filename_or_object.image
+            icon: Image.Image = Image.Image()
+            if icon_filename_or_object.is_file:
+                icon = Image.open(icon_filename_or_object.file)
+            else:
+                icon = icon_filename_or_object.image
 
-        margins = [0, 0, 20, 0]
-        if no_label:
-            margins = [0, 0, 0, 0]
+            margins = [0, 0, 20, 0]
+            if no_label:
+                margins = [0, 0, 0, 0]
 
-        image = PILHelper.create_scaled_image(
-            deck, icon, margins=margins, background=bg_color)
+            image = PILHelper.create_scaled_image(
+                deck, icon, margins=margins, background=bg_color)
 
         draw = ImageDraw.Draw(image)
         if no_label is False:
