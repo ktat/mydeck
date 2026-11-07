@@ -244,11 +244,15 @@ class MyDeckHandlersMixin:
                                 if not app.is_key_app():
                                     continue
 
-                                if app.page_key is not None and app.page_key.get(self.current_page()):
-                                    for key in app.key_command.keys():
-                                        if command == key:
+                                placement = None
+                                if app.page_key is not None:
+                                    placement = app.page_key.get(self.current_page())
+                                # match the pressed key (key 0 is valid, so no truthiness check)
+                                if placement is not None and placement == key:
+                                    for cmd_name in app.key_command.keys():
+                                        if command == cmd_name:
                                             found = True
-                                            cmd = app.key_command[key]
+                                            cmd = app.key_command[cmd_name]
                                             cmd(app)
                                             break
                                 if found:

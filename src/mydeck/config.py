@@ -16,6 +16,11 @@ if TYPE_CHECKING:
     from .my_deck import MyDeck
 
 
+def _without_page(option: Optional[dict]) -> dict:
+    """Return the app option without its touchscreen 'page' placement."""
+    return {k: v for k, v in (option or {}).items() if k != "page"}
+
+
 class Config:
     """STREAM DECK Configuration Class"""
 
@@ -268,10 +273,12 @@ class Config:
                 if existing_config["option"] == new_app_config["option"]:
                     new_app_config["option"][conf_key] = new_page_key
                     # same setting and same key
-                    if origin_page_key.get(page) and origin_page_key[page] == key:
+                    if origin_page_key.get(page) is not None and origin_page_key[page] == key:
                         # same setting and same key, do nothing
                         logging.debug(
                             "### 1. Same setting and same key, do nothing")
+                        # restore the placements popped above
+                        existing_config["option"][conf_key] = origin_page_key
                         return False
                     else:
                         existing_config["option"][conf_key] = origin_page_key
@@ -287,7 +294,7 @@ class Config:
                             logging.debug(
                                 "### 3. Same config, add different page key")
 
-                elif origin_page_key.get(page) and origin_page_key[page] == key:
+                elif origin_page_key.get(page) is not None and origin_page_key[page] == key:
                     # same app and different config and same key
                     del origin_page_key[page]
                     logging.debug(
@@ -300,16 +307,17 @@ class Config:
                     # remove page from page_key
                     existing_config["option"][conf_key].pop(page, None)
                     if len(existing_config["option"][conf_key]) == 0:
-                        # if page_key is empty, remove the app and add new app at last
-                        app_config.remove(existing_config)
+                        # page_key is now empty: the entry is dropped by the filter below
+                        # (removing it here would skip entries while iterating)
                         logging.debug(
-                            "### 5. If page_key is empty, remove the app and add new app at last")
+                            "### 5. page_key is empty, remove the app and add new app at last")
 
-            if modify_status == MODIFY:
-                break
+            # no break: later apps may still hold this placement and must be cleared too
 
-        app_config[:] = list(filter(lambda c: c.get("option") and c["option"].get(
-            conf_key) and len(c['option'][conf_key].keys()) > 0, app_config))
+        # drop only the entries whose placement for conf_key became empty;
+        # apps without any placement of this kind are kept
+        app_config[:] = list(filter(lambda c: conf_key not in (c.get("option") or {})
+                                    or len(c["option"][conf_key]) > 0, app_config))
 
         if modify_status == ADD:
             new_app_config["option"][conf_key] = {page: key}
@@ -327,8 +335,9 @@ class Config:
             app_config = []
         self._config_content_origin["apps"] = app_config
         for existing_config in app_config:
-            # if same app config exists
-            if existing_config["app"] == new_app_config["app"]:
+            # if same app config exists (same app AND same options, ignoring the placement)
+            if existing_config["app"] == new_app_config["app"] and \
+                    _without_page(existing_config.get("option")) == _without_page(new_app_config["option"]):
                 origin_page: Optional[list] = existing_config["option"].pop(
                     "page", None)
                 if origin_page is not None:
@@ -336,16 +345,17 @@ class Config:
                         # same setting and same page, do nothing
                         logging.debug(
                             "a. same setting and same page, do nothing")
+                        # restore the placement we popped above
+                        existing_config["option"]["page"] = origin_page
                         return False
                     else:
                         logging.debug("b. append exsiting config")
                         origin_page.append(page)
                         modify_status = MODIFY
+                    existing_config["option"]["page"] = origin_page
                 else:
-                    # not touchscreen app
+                    # not touchscreen app: nothing was popped, keep the entry as is
                     pass
-
-                existing_config["option"]["page"] = origin_page
             elif existing_config.get("option") is not None:
                 if existing_config["option"].get("page") is not None:
                     # different app already exists in the page
@@ -353,11 +363,12 @@ class Config:
                         existing_config["option"]["page"].remove(page)
                         logging.debug("c. remove page from existing config")
 
-            if modify_status == MODIFY:
-                break
+            # no break: later apps may still hold this placement and must be cleared too
 
-        app_config[:] = list(filter(lambda c: c.get("option") and c["option"].get(
-            "page") and len(c['option']["page"]) > 0, app_config))
+        # drop only the entries whose touchscreen placement became empty;
+        # apps without any touchscreen placement (key/dial apps) are kept
+        app_config[:] = list(filter(lambda c: "page" not in (c.get("option") or {})
+                                    or len(c["option"]["page"]) > 0, app_config))
 
         if modify_status == ADD:
             new_app_config["option"]["page"] = [page]
@@ -379,6 +390,9 @@ class Config:
     def parse(self, conf: dict):
         """Parse configuration file."""
         if self.mydeck is not None:
+            # commands are rebuilt from the loaded file, so a reload drops commands
+            # of removed pages and of pages whose 'commands' field is now absent
+            self.mydeck._PAGE_CONFIG['commands'] = {}
             page_config: Optional[dict[str, dict]] = conf.get('page_config')
             if page_config is not None:
                 for page in page_config.keys():
@@ -398,9 +412,10 @@ class Config:
                     if command_config is not None:
                         self.mydeck.set_command_config(page, command_config)
 
-        apps_conf = conf.get('apps')
-        if apps_conf is not None:
-            self.parse_apps(apps_conf)
+        # parse_apps also registers the built-in Trigger and Totp apps, so run it
+        # even when 'apps' is omitted (treated the same as an empty list)
+        apps_conf = conf.get('apps') or []
+        self.parse_apps(apps_conf)
         games_conf = conf.get('games')
         if games_conf is not None:
             self.parse_games(games_conf)
@@ -435,6 +450,10 @@ class Config:
             if app.use_trigger:
                 app.trigger.set()
 
+        # stop the old background apps before their replacements are started
+        for bg_app in self.background_apps:
+            bg_app.stop(True)
+
         # destloy apps
         for app in self.apps:
             del app
@@ -445,6 +464,9 @@ class Config:
         self.background_apps = []
         self.hook_apps: Dict[str, List['HookAppBase']] = {}
         self.is_background_thread_started = False
+        # threading_apps checks the flag on MyDeck, so reset that one as well;
+        # otherwise reloaded background apps are never started again
+        self.mydeck.is_background_thread_started = False
 
     def parse_apps(self, apps_conf: List[dict]):
         """Apply the configuration of apss"""

@@ -3,6 +3,7 @@ import json
 import logging
 import os
 import re
+import tempfile
 import time
 from urllib.parse import urlparse, parse_qs, unquote
 
@@ -30,6 +31,27 @@ class TotpAccountManager:
         except (json.JSONDecodeError, OSError) as e:
             logging.warning("TotpAccountManager: failed to load %s: %s", self.accounts_file, e)
             return []
+
+    def write_accounts(self, accounts: list[dict]) -> None:
+        """Write the account list atomically.
+
+        Serialize to a private temp file in the same directory and replace the
+        account file only after the write succeeded, so a failure never leaves a
+        truncated or half-written accounts file behind.
+        """
+        directory = os.path.dirname(os.path.abspath(self.accounts_file))
+        fd, tmp_path = tempfile.mkstemp(dir=directory, prefix=".totp_accounts-", suffix=".tmp")
+        try:
+            with os.fdopen(fd, "w") as f:
+                json.dump(accounts, f, indent=2)
+            os.chmod(tmp_path, 0o600)
+            os.replace(tmp_path, self.accounts_file)
+        except BaseException:
+            try:
+                os.unlink(tmp_path)
+            except OSError:
+                pass
+            raise
 
     def save_account(self, name: str, issuer: str, secret: str) -> None:
         accounts = self.load_accounts()

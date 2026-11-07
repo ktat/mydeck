@@ -1,11 +1,13 @@
 """Image / rendering mixin for MyDeck."""
 
+import hashlib
 import os
 import re
 import requests
 import wand.image
 from cairosvg import svg2png
 from typing import Optional, TYPE_CHECKING
+from urllib.parse import urlparse
 
 from PIL import Image, ImageDraw, ImageFont
 from StreamDeck.ImageHelpers import PILHelper
@@ -36,10 +38,12 @@ class MyDeckImageMixin:
 
     def image_url_to_file_name(self, image_url: str) -> str:
         """Return file name from url"""
-        icon_name = re.sub(r'^https?://', '', image_url)
-        icon_name = re.sub(r'[&=?/.]', '-', icon_name)
-        ext = re.sub(r'.+(\.\w+)$', r'\g<1>', image_url)
-        return '/tmp/' + 'mydeck-' + self.myname + icon_name + ext
+        # Hash the URL so the raw URL (slashes, query strings, ...) never ends up in
+        # the path. Keep only a plain terminal extension from the URL path, if any.
+        digest = hashlib.sha256(image_url.encode('utf-8')).hexdigest()[:32]
+        m = re.search(r'\.(\w{1,5})$', urlparse(image_url).path)
+        ext = '.' + m.group(1) if m else ''
+        return '/tmp/' + 'mydeck-' + self.myname + '-' + digest + ext
 
     def image_url_to_image(self, conf: Optional[dict], url: Optional[str] = None):
         """If conf has image_url and get it and then save as the file and set its name as image of conf."""
@@ -63,19 +67,26 @@ class MyDeckImageMixin:
     def save_image(self, icon_url: str, icon_file: str) -> Optional[str]:
         """Get image from icon_url and save it to icon_file"""
         if os.path.exists(icon_file) is False:
-            res = requests.get(icon_url)
+            try:
+                # bounded wait so setup / config reload cannot hang on a dead endpoint
+                res = requests.get(icon_url, timeout=10)
+            except requests.RequestException as e:
+                self.debug("Error in fetching image {}: {}".format(icon_url, e))
+                return None
             if res.status_code == requests.codes.ok:
                 icon_data = res.content
                 l = Lock(icon_file)
                 l.wait()
-                if icon_url[-3:len(icon_url)] == 'svg':
-                    icon_file = icon_file[0:-4] + '.png'
-                    svg2png(bytestring=icon_data, write_to=icon_file)
+                try:
+                    if icon_url[-3:len(icon_url)] == 'svg':
+                        icon_file = icon_file[0:-4] + '.png'
+                        svg2png(bytestring=icon_data, write_to=icon_file)
+                    else:
+                        with open(icon_file, mode="wb") as f:
+                            f.write(icon_data)
+                finally:
+                    # always release the lock, even if conversion or writing raised
                     l.unlock()
-                else:
-                    with open(icon_file, mode="wb") as f:
-                        f.write(icon_data)
-                        l.unlock()
                 if self.check_icon_file(icon_file):
                     return icon_file
         else:

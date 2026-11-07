@@ -2,8 +2,12 @@ import base64
 import http.server
 import logging
 from io import BytesIO
+from typing import TYPE_CHECKING
 from PIL import Image
 from .web_server import DeckOutputWebHandler
+
+if TYPE_CHECKING:
+    from .my_decks_manager import VirtualDeck
 
 
 class DeckOutput:

@@ -1,5 +1,65 @@
+import ipaddress
 import json
 import logging
+import socket
+from urllib.parse import urljoin, urlparse
+
+IMAGE_MAX_BYTES = 10 * 1024 * 1024
+IMAGE_MAX_REDIRECTS = 3
+
+
+class ImageFetchError(Exception):
+    """Raised when an icon URL is refused or cannot be downloaded."""
+
+
+def _is_public_host(host: str) -> bool:
+    """True only if every address the host resolves to is a public address."""
+    try:
+        infos = socket.getaddrinfo(host, None)
+    except OSError:
+        return False
+    for info in infos:
+        ip = ipaddress.ip_address(info[4][0].split('%')[0])
+        if (ip.is_private or ip.is_loopback or ip.is_link_local or ip.is_multicast
+                or ip.is_reserved or ip.is_unspecified):
+            return False
+    return True
+
+
+def _fetch_public_image(url: str, req) -> bytes:
+    """Download an image from a public http(s) URL.
+
+    Guards so the Web UI cannot be used to reach the local network:
+    only http/https, no private/loopback destinations (checked again for every
+    redirect hop, redirects are followed manually), and a hard size limit.
+    """
+    current = url
+    for _ in range(IMAGE_MAX_REDIRECTS + 1):
+        parsed = urlparse(current)
+        if parsed.scheme not in ("http", "https") or not parsed.hostname:
+            raise ImageFetchError("画像URLは http / https のみ指定できます")
+        if not _is_public_host(parsed.hostname):
+            raise ImageFetchError("画像URLの接続先が許可されていません")
+
+        resp = req.get(current, timeout=10, stream=True, allow_redirects=False)
+        try:
+            if resp.status_code in (301, 302, 303, 307, 308):
+                location = resp.headers.get("Location")
+                if not location:
+                    raise ImageFetchError("リダイレクト先が不明です")
+                current = urljoin(current, location)
+                continue
+            if resp.status_code != 200:
+                raise ImageFetchError(f"画像の取得に失敗: HTTP {resp.status_code}")
+            data = bytearray()
+            for chunk in resp.iter_content(chunk_size=64 * 1024):
+                data.extend(chunk)
+                if len(data) > IMAGE_MAX_BYTES:
+                    raise ImageFetchError("image too large (max 10 MB)")
+            return bytes(data)
+        finally:
+            resp.close()
+    raise ImageFetchError("リダイレクトが多すぎます")
 
 
 class TotpEndpointsMixin:
@@ -118,10 +178,7 @@ class TotpEndpointsMixin:
             name = body['name']
             manager = TotpAccountManager()
             if 'image_url' in body:
-                resp = req.get(body['image_url'], timeout=10)
-                if resp.status_code != 200:
-                    return self.api_json_response({"error": f"画像の取得に失敗: HTTP {resp.status_code}"})
-                image_data = resp.content
+                image_data = _fetch_public_image(body['image_url'], req)
             else:
                 image_data = base64.b64decode(body['image_b64'])
             path = manager.set_account_image(name, image_data)
@@ -174,8 +231,7 @@ class TotpEndpointsMixin:
                     # Clear existing image so _auto_fetch_icon will run
                     if acc.get("image"):
                         acc.pop("image")
-                        with open(manager.accounts_file, "w") as f:
-                            json.dump(accounts, f, indent=2)
+                        manager.write_accounts(accounts)
                     break
             manager._auto_fetch_icon(name, issuer)
             # Check if it worked

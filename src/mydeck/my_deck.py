@@ -57,6 +57,7 @@ class MyDeck(MyDeckImageMixin, MyDeckHandlersMixin):
         ])
         self.config: Optional['Config'] = None
         self.is_background_thread_started: bool = False
+        self._config_thread: Optional[threading.Thread] = None
         self._alert_func: Optional[Callable] = None
         self._exit: bool = False
         self._current_page: str = '@HOME'
@@ -197,7 +198,7 @@ class MyDeck(MyDeckImageMixin, MyDeckHandlersMixin):
 
     def set_current_page(self, name: str, add_previous: bool = True):
         """Set given page name as current_page and setup keys."""
-        if name[0] != "~ALERT":
+        if name != "~ALERT":
             self.set_alert_off()
         if self.deck is not None and name != self._current_page:
             if not self.has_page_key_config(name):
@@ -328,6 +329,8 @@ class MyDeck(MyDeckImageMixin, MyDeckHandlersMixin):
 
     def stop_working_apps(self):
         """Try to stop working apps and wait until all of them are stopped."""
+        if self.config is None:
+            return
         for app in self.config.apps:
             app.stop_app()
 
@@ -363,8 +366,7 @@ class MyDeck(MyDeckImageMixin, MyDeckHandlersMixin):
         for app in filter(lambda app: app.is_in_target_page() and app.can_work(), apps):
             if app.use_thread:
                 app.init_app_flag()
-                t = threading.Thread(
-                    target=lambda: app.start(), args=())
+                t = threading.Thread(target=app.start, args=())
                 t.start()
                 self.page_apps[page_name].append(app)
                 if app.use_trigger:
@@ -376,7 +378,7 @@ class MyDeck(MyDeckImageMixin, MyDeckHandlersMixin):
             self.is_background_thread_started = True
             for bg_app in background_apps:
                 self.debug("start background app: %s" % bg_app.name())
-                t = threading.Thread(target=lambda: bg_app.start(), args=())
+                t = threading.Thread(target=bg_app.start, args=())
                 t.start()
 
         # Automatically load AppWebServer when it is not loaded yet.
@@ -386,9 +388,12 @@ class MyDeck(MyDeckImageMixin, MyDeckHandlersMixin):
                 target=lambda: web_server_app.start(), args=())
             t.start()
 
-        t2 = threading.Thread(
-            target=lambda: self.update_config(), args=())
-        t2.start()
+        # Start exactly one configuration consumer per deck. Each call here used
+        # to spawn another thread reading the same ConfigQueue.
+        if self._config_thread is None or not self._config_thread.is_alive():
+            self._config_thread = threading.Thread(
+                target=self.update_config, args=())
+            self._config_thread.start()
 
     def abs_key(self, key: int) -> int:
         """If key is negative number, chnage it as positive number"""
