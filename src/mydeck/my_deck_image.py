@@ -84,6 +84,13 @@ class MyDeckImageMixin:
                     else:
                         with open(icon_file, mode="wb") as f:
                             f.write(icon_data)
+                except Exception as e:
+                    # e.g. the server returned 200 with a body that is not valid SVG.
+                    # Drop any partial file so the next call does not return it.
+                    self.debug("Error in saving image {}: {}".format(icon_url, e))
+                    if os.path.exists(icon_file):
+                        os.remove(icon_file)
+                    return None
                 finally:
                     # always release the lock, even if conversion or writing raised
                     l.unlock()

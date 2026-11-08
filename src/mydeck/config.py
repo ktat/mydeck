@@ -338,7 +338,8 @@ class Config:
             # if same app config exists (same app AND same options, ignoring the placement)
             if existing_config["app"] == new_app_config["app"] and \
                     _without_page(existing_config.get("option")) == _without_page(new_app_config["option"]):
-                origin_page: Optional[list] = existing_config["option"].pop(
+                # entries may lack an 'option' mapping (or have it as null)
+                origin_page: Optional[list] = (existing_config.get("option") or {}).pop(
                     "page", None)
                 if origin_page is not None:
                     if page in origin_page:

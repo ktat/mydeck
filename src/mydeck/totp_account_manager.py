@@ -63,8 +63,7 @@ class TotpAccountManager:
                 break
         else:
             accounts.append({"name": name, "issuer": issuer})
-        with open(self.accounts_file, "w") as f:
-            json.dump(accounts, f, indent=2)
+        self.write_accounts(accounts)
         os.chmod(self.accounts_file, 0o600)
         keyring.set_password(KEYRING_SERVICE, name, secret)
         # Auto-fetch icon for new accounts
@@ -96,8 +95,7 @@ class TotpAccountManager:
                             acc["image"] = new_path
                             os.remove(old_path)
                     acc["name"] = new_name
-                with open(self.accounts_file, "w") as f:
-                    json.dump(accounts, f, indent=2)
+                self.write_accounts(accounts)
                 return True
         return False
 
@@ -106,8 +104,7 @@ class TotpAccountManager:
         new_accounts = [a for a in accounts if a["name"] != name]
         if len(new_accounts) == len(accounts):
             return False
-        with open(self.accounts_file, "w") as f:
-            json.dump(new_accounts, f, indent=2)
+        self.write_accounts(new_accounts)
         keyring.delete_password(KEYRING_SERVICE, name)
         # Remove image if exists
         img_path = self._image_path(name)
@@ -130,8 +127,7 @@ class TotpAccountManager:
             if acc["name"] == name:
                 acc["image"] = path
                 break
-        with open(self.accounts_file, "w") as f:
-            json.dump(accounts, f, indent=2)
+        self.write_accounts(accounts)
         return path
 
     def _auto_fetch_icon(self, name: str, issuer: str) -> None:
@@ -192,8 +188,7 @@ class TotpAccountManager:
             if acc["name"] in by_name:
                 reordered.append(acc)
                 del by_name[acc["name"]]
-        with open(self.accounts_file, "w") as f:
-            json.dump(reordered, f, indent=2)
+        self.write_accounts(reordered)
         return True
 
     def get_secret(self, name: str) -> str | None:
